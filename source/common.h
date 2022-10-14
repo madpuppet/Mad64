@@ -14,13 +14,14 @@ typedef signed int i32;
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include <DMFastDelegate.h>
 using namespace std;
 
 #include "graphicChunk.h"
 #include "sourceFile.h"
+#include "uimanager.h"
 #include "application.h"
 
-// globals
-extern Application* gApp;
+extern class Application* gApp;		// manages general application highlevel control
 
 

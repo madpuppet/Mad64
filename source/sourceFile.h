@@ -17,18 +17,44 @@ struct CompileInfo
     int memAddr;
     int memSize;
     std::vector<u8> data;
-    struct GraphicChunk* addr;
+    GraphicChunk* addr;
 };
 
-struct SourceLine
+class SourceLine
 {
-    CompileInfo* compileInfo;
-    struct GraphicChunk* line;
-    vector<char> chars;
+public:
+    SourceLine(const char* start, const char* end)
+    {
+        m_compileInfo = nullptr;
+        m_gcLine = nullptr;
+        while (start != end)
+        {
+            m_chars.push_back(*start++);
+        }
+    }
+
+    // create graphics chunk - break up line using syntax highlighting
+    void Visualize()
+    {
+        // break into tokens
+
+    }
+
+
+protected:
+    CompileInfo* m_compileInfo;
+    GraphicChunk* m_gcLine;
+    vector<char> m_chars;
 };
 
-struct SourceFile
+class SourceFile
 {
-    string path;
-    vector<SourceLine *> lines;
+public:
+    SourceFile(const char* path);
+    bool Load();
+
+protected:
+    string m_name;
+    string m_path;
+    vector<SourceLine *> m_lines;
 };

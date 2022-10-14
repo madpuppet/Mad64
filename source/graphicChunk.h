@@ -1,55 +1,43 @@
 #pragma once
 
-struct GraphicElement
+class GraphicElement
 {
-    static GraphicElement* CreateFromText(SDL_Renderer* renderer, TTF_Font* font, const char* text, const SDL_Color& col, const SDL_Point& pos)
-    {
-        GraphicElement* ge = new GraphicElement();
+public:
+    GraphicElement(SDL_Texture* tex, i32 x, i32 y, bool ownTexture);
+    ~GraphicElement();
 
-        SDL_Surface* surface = TTF_RenderText_Solid(font, text, col);
-        ge->tex = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_Point size;
-        SDL_QueryTexture(ge->tex, NULL, NULL, &size.x, &size.y);
-        ge->quad.x = pos.x;
-        ge->quad.y = pos.y;
-        ge->quad.w = size.x;
-        ge->quad.h = size.y;
-        SDL_FreeSurface(surface);
-        return ge;
-    }
+    static GraphicElement* CreateFromImage(const char* path, i32 x, i32 y);
+    static GraphicElement* CreateFromTexture(SDL_Texture* tex, i32 x, i32 y, bool ownTexture);
+    static GraphicElement* CreateFromText(TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
 
-    SDL_Rect quad;
-    SDL_Texture* tex;
+    void SetPos(i32 x, i32 y) { m_quad.x = x; m_quad.y = y; }
+    void SetText(TTF_Font* font, const char* text, const SDL_Color& col);
+    void SetTexture(SDL_Texture *tex, bool ownTexture);
+
+    bool IsEnabled() { return m_enabled; }
+    const SDL_Rect& GetRect() { return m_quad; }
+    SDL_Texture* GetTexture() { return m_tex; }
+
+protected:
+    bool m_enabled;         // element won't be rendered if not enabled
+    bool m_ownTexture;      // the texture is owned by this element and will be destroyed if a new texture is assigned, or the element is destroyed
+
+    SDL_Rect m_quad;
+    SDL_Texture *m_tex;
 };
 
-struct GraphicChunk
+class GraphicChunk
 {
+public:
+    void Add(GraphicElement* e) { elements.push_back(e); }
+    void Draw();
+    void DrawAt(i32 x, i32 y);
+
+    ~GraphicChunk();
+
+protected:
     std::vector<GraphicElement*> elements;
-
-    void Draw(SDL_Renderer* renderer)
-    {
-        for (auto ge : elements)
-        {
-            SDL_RenderCopy(renderer, ge->tex, NULL, &ge->quad);
-        }
-    }
-
-    void DrawAt(SDL_Renderer* renderer, const SDL_Point pos)
-    {
-        for (auto ge : elements)
-        {
-            SDL_Rect quad = { ge->quad.x + pos.x, ge->quad.y + pos.y, ge->quad.w, ge->quad.h };
-            SDL_RenderCopy(renderer, ge->tex, NULL, &quad);
-        }
-    }
-
-    void Clear()
-    {
-        for (auto ge : elements)
-        {
-            SDL_DestroyTexture(ge->tex);
-            delete ge;
-        }
-        elements.clear();
-    }
 };
+
+
+
