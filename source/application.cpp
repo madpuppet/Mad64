@@ -23,19 +23,8 @@ Application::Application()
     else
     {
         m_settings = new AppSettings();
-        m_settings->lineHeight = 24;
-        m_settings->fontSize = 16;
-        m_settings->whiteSpaceWidth = m_settings->fontSize;
-        m_settings->tabWidth = m_settings->whiteSpaceWidth * 4;
-        m_settings->textXMargin = 8;
-        m_settings->textYMargin = 4;
-        m_settings->textColor = { 0, 255, 255, 255 };
-        m_settings->commentColor = { 0, 255, 64, 255 };
-        m_settings->opCodeColor = { 255, 200, 50, 255 };
-
-        m_settings->xPosDecode = 100;
-        m_settings->xPosText = 300;
-        m_settings->xPosContextHelp = 1600;
+        if (!m_settings->Load())
+            m_settings->Save();
 
         TTF_Init();
         m_font = TTF_OpenFont("data/font.ttf", m_settings->fontSize);
@@ -96,10 +85,13 @@ void Application::HandleEvent(SDL_Event *e)
         m_quit = true;
         break;
     case SDL_MOUSEBUTTONDOWN:
+        m_editWindow->OnMouseDown(e);
         break;
     case SDL_MOUSEBUTTONUP:
+        m_editWindow->OnMouseUp(e);
         break;
     case SDL_MOUSEMOTION:
+        m_editWindow->OnMouseMotion(e);
         break;
     case SDL_MOUSEWHEEL:
         m_editWindow->OnMouseWheel(e);

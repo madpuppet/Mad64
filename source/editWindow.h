@@ -10,12 +10,15 @@ public:
 
 	void OnResize();
 	void OnEvent(SDL_Event* e);
-	void OnMouseWheel(SDL_Event* e);
 	void OnKeyDown(SDL_Event* e);
-	void OnKeyUp(SDL_Event* e);
+	void OnMouseDown(SDL_Event* e);
+	void OnMouseUp(SDL_Event* e);
+	void OnMouseMotion(SDL_Event* e);
+	void OnMouseWheel(SDL_Event* e);
 
 	void OnFileLoaded(SourceFile *file);
 	void OnFileClosed(SourceFile* file);
+	void SetActiveFile(SourceFile* file);
 
 protected:
 	void ClampTargetScroll();
@@ -24,6 +27,8 @@ protected:
 	void CursorLeft(bool marking);
 	void CursorRight(bool marking);
 	void CursorDown(bool marking);
+	void CursorStart(bool marking);
+	void CursorEnd(bool marking);
 	void MakeActiveLineVisible();
 	bool CheckLineMarked(int lineNmbr, int& startCol, int& endCol);
 
@@ -45,6 +50,16 @@ protected:
 	int m_markStartColumn;
 	int m_markEndLine;
 	int m_markEndColumn;
+
+	enum DragMode
+	{
+		DRAG_None,
+		DRAG_DivideDecode,
+		DRAG_DivideText,
+		DRAG_DivideContext
+	};
+	DragMode m_dragMode;
+	int m_dragOffset;
 
 	void LayoutTabs();
 

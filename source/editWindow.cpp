@@ -17,7 +17,8 @@ EditWindow::EditWindow()
 
 	m_activeSourceFileItem = nullptr;
 	m_cursorAnimTime = 0.0f;
-	m_overwriteMode = true;
+	m_overwriteMode = false;
+	m_dragMode = DRAG_None;
 
 	CalcRects();
 }
@@ -217,6 +218,18 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 	m_activeSourceFileItem = sfi;
 }
 
+void EditWindow::SetActiveFile(SourceFile* file)
+{
+	for (auto sfi : m_fileTabs)
+	{
+		if (sfi->file == file)
+		{
+			m_activeSourceFileItem = sfi;
+			return;
+		}
+	}
+}
+
 void EditWindow::LayoutTabs()
 {
 	auto settings = gApp->GetSettings();
@@ -274,6 +287,64 @@ void EditWindow::Update()
 	}
 }
 
+bool Contains(const SDL_Rect& rect, int x, int y)
+{
+	return (x >= rect.x && x < (rect.x + rect.w) && y >= rect.y && y < (rect.y + rect.h));
+}
+
+void EditWindow::OnMouseDown(SDL_Event* e)
+{
+	auto settings = gApp->GetSettings();
+	if (e->button.button == 1)
+	{
+		// LEFT button
+		if (Contains(m_titleTabsRect, e->button.x, e->button.y))
+		{
+			// title tabs...
+			for (auto sfi : m_fileTabs)
+			{
+				if (Contains(sfi->geText->GetRect(), e->button.x, e->button.y))
+				{
+					if (sfi != m_activeSourceFileItem)
+					{
+						SetActiveFile(sfi->file);
+					}
+				}
+			}
+		}
+		else if (e->button.x - settings->xPosDecode)
+		{
+			// drag first divide
+			m_dragMode = DRAG_DivideDecode;
+			m_dragOffset = e->button.x - settings->xPosDecode;
+		}
+		else if (e->button.x - settings->xPosText)
+		{
+			// drag second divide
+			m_dragMode = DRAG_DivideText;
+			m_dragOffset = e->button.x - settings->xPosText;
+		}
+		else if (e->button.x - settings->xPosContextHelp)
+		{
+			// drag third divide
+			m_dragMode = DRAG_DivideContext;
+			m_dragOffset = e->button.x - settings->xPosContextHelp;
+		}
+		else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
+		{
+
+		}
+	}
+}
+void EditWindow::OnMouseUp(SDL_Event* e)
+{
+
+}
+void EditWindow::OnMouseMotion(SDL_Event* e)
+{
+
+}
+
 void EditWindow::OnKeyDown(SDL_Event* e)
 {
 	bool shiftHeld = e->key.keysym.mod & KMOD_SHIFT;
@@ -299,6 +370,12 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 	case SDLK_RIGHT:
 		CursorRight(shiftHeld);
 		return;
+	case SDLK_END:
+		CursorEnd(shiftHeld);
+		return;
+	case SDLK_HOME:
+		CursorStart(shiftHeld);
+		break;
 	}
 }
 
@@ -453,6 +530,62 @@ void EditWindow::CursorRight(bool marking)
 	}
 }
 
+void EditWindow::CursorStart(bool marking)
+{
+	if (m_activeSourceFileItem)
+	{
+		if (marking && !m_marking)
+		{
+			m_markStartLine = m_activeSourceFileItem->activeLine;
+			m_markStartColumn = m_activeSourceFileItem->activeColumn;
+			m_marking = true;
+		}
+
+		auto file = m_activeSourceFileItem->file;
+		m_activeSourceFileItem->activeColumn = 0;
+
+		int x1, x2;
+		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
+		m_activeSourceFileItem->activeTargetX = x1 + 1;
+		m_cursorAnimTime = 0;
+
+		if (marking)
+		{
+			m_markEndLine = m_activeSourceFileItem->activeLine;
+			m_markEndColumn = m_activeSourceFileItem->activeColumn;
+		}
+		m_marking = marking;
+	}
+}
+
+void EditWindow::CursorEnd(bool marking)
+{
+	if (m_activeSourceFileItem)
+	{
+		if (marking && !m_marking)
+		{
+			m_markStartLine = m_activeSourceFileItem->activeLine;
+			m_markStartColumn = m_activeSourceFileItem->activeColumn;
+			m_marking = true;
+		}
+
+		auto file = m_activeSourceFileItem->file;
+		m_activeSourceFileItem->activeColumn = (int)file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars().size();
+
+		int x1, x2;
+		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
+		m_activeSourceFileItem->activeTargetX = x1 + 1;
+		m_cursorAnimTime = 0;
+
+		if (marking)
+		{
+			m_markEndLine = m_activeSourceFileItem->activeLine;
+			m_markEndColumn = m_activeSourceFileItem->activeColumn;
+		}
+		m_marking = marking;
+	}
+}
+
 bool EditWindow::CheckLineMarked(int lineNmbr, int& startCol, int& endCol)
 {
 	if (m_activeSourceFileItem && m_marking)
@@ -465,13 +598,14 @@ bool EditWindow::CheckLineMarked(int lineNmbr, int& startCol, int& endCol)
 			l2 = m_markStartLine;
 			c2 = m_markStartColumn;
 
-			// step l1/c1 right once
-			if ((c1 < m_activeSourceFileItem->file->GetLines()[l1]->GetChars().size()) || (l1 < m_activeSourceFileItem->file->GetLines().size() - 1))
+			// step l2/c2 left once
+			if (c2 > 0 || l2 > 0)
 			{
-				c1++;
-				if (c1 > m_activeSourceFileItem->file->GetLines()[l1]->GetChars().size())
+				c2--;
+				if (c2 < 0)
 				{
-					l1++; c1 = 0;
+					l2--;
+					c2 = (int)m_activeSourceFileItem->file->GetLines()[l2]->GetChars().size();
 				}
 			}
 		}
