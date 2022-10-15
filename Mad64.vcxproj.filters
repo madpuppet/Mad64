@@ -21,13 +21,16 @@
     <ClCompile Include="source\application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\uiManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\graphicChunk.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\sourcefile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\editWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\compiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -311,11 +314,14 @@
     <ClInclude Include="include\SDL_vulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\uiManager.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\DMFastDelegate.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\editWindow.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\compiler.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

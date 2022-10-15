@@ -10,23 +10,6 @@ const int SCREEN_HEIGHT = 1080;
 
 Application *gApp;
 
-GraphicChunk* FontDemo(TTF_Font* font, const char* msg)
-{
-    GraphicChunk* gc = new GraphicChunk();
-    for (int x = 0; x < 10; x++)
-    {
-        for (int y = 0; y < 50; y++)
-        {
-            u8 r = (rand() & 127) + 128;
-            u8 g = (rand() & 127) + 128;
-            u8 b = (rand() & 127) + 128;
-            SDL_Color col = { r,g,b,255 };
-            gc->Add(GraphicElement::CreateFromText(font, msg, col, x * 200, y * 20));
-        }
-    }
-    return gc;
-}
-
 Application::Application()
 {
     gApp = this;
@@ -39,8 +22,23 @@ Application::Application()
     }
     else
     {
+        m_settings = new AppSettings();
+        m_settings->lineHeight = 24;
+        m_settings->fontSize = 16;
+        m_settings->whiteSpaceWidth = m_settings->fontSize;
+        m_settings->tabWidth = m_settings->whiteSpaceWidth * 4;
+        m_settings->textXMargin = 8;
+        m_settings->textYMargin = 4;
+        m_settings->textColor = { 0, 255, 255, 255 };
+        m_settings->commentColor = { 0, 255, 64, 255 };
+        m_settings->opCodeColor = { 255, 200, 50, 255 };
+
+        m_settings->xPosDecode = 100;
+        m_settings->xPosText = 300;
+        m_settings->xPosContextHelp = 1600;
+
         TTF_Init();
-        m_font = TTF_OpenFont("data/C64_Pro-STYLE.ttf", 16);
+        m_font = TTF_OpenFont("data/font.ttf", m_settings->fontSize);
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
         SDL_RenderSetVSync(m_renderer, 1);
 
@@ -49,25 +47,8 @@ Application::Application()
         SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x60));
         SDL_UpdateWindowSurface(m_window);
 
-        m_ui = new UIManager();
-
-        m_tempGC = FontDemo(m_font, "HELLO WORLD");
-
-        SDL_Event e;
-        float time = 0.0f;
-        while (!m_quit)
-        {
-            time += 0.01f;
-
-            SDL_SetRenderDrawColor(m_renderer, 0, 0, 100, 255);
-            SDL_RenderFillRect(m_renderer, NULL);
-
-            m_tempGC->DrawAt((int)(sinf(time) * 500.0f), 100);
-            SDL_RenderPresent(m_renderer);
-
-            if (SDL_PollEvent(&e))
-                HandleEvent(&e);
-        }
+        m_editWindow = new EditWindow();
+        m_compiler = new Compiler();
     }
 }
 
@@ -88,17 +69,22 @@ int Application::MainLoop()
         if (SDL_PollEvent(&e))
             HandleEvent(&e);
 
-        m_time += 0.01f;
+        Update();
         Draw();
     }
     return 0;
+}
+
+void Application::Update()
+{
+    m_editWindow->Update();
 }
 
 void Application::Draw()
 {
     SDL_SetRenderDrawColor(m_renderer, 0, 0, 100, 255);
     SDL_RenderFillRect(m_renderer, NULL);
-    m_tempGC->DrawAt((int)(sinf(m_time) * 500.0f), 0);
+    m_editWindow->Draw();
     SDL_RenderPresent(m_renderer);
 }
 
@@ -115,6 +101,9 @@ void Application::HandleEvent(SDL_Event *e)
         break;
     case SDL_MOUSEMOTION:
         break;
+    case SDL_MOUSEWHEEL:
+        m_editWindow->OnMouseWheel(e);
+        break;
     case SDL_KEYDOWN:
         OnKeyDown(e);
         break;
@@ -126,13 +115,13 @@ void Application::HandleEvent(SDL_Event *e)
 void Application::LoadFile()
 {
     OPENFILENAMEA ofn;
-    char szFile[] = "pork";
+    char buffer[256];
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL;
-    ofn.lpstrFile = szFile;
+    ofn.lpstrFile = buffer;
     ofn.lpstrFile[0] = '\0';
-    ofn.nMaxFile = sizeof(szFile);
+    ofn.nMaxFile = sizeof(buffer);
     ofn.lpstrFilter = "All\0*.*\0Asm\0*.asm\0Basic\0*.bas";
     ofn.nFilterIndex = 2;
     ofn.lpstrFileTitle = NULL;
@@ -145,6 +134,9 @@ void Application::LoadFile()
         if (source->Load())
         {
             m_sourceFiles.push_back(source);
+
+            // alert renderer of update
+            m_editWindow->OnFileLoaded(source);
         }
         else
         {
@@ -153,25 +145,33 @@ void Application::LoadFile()
     }
 }
 
+void Application::SaveFile()
+{
+
+}
+
 void Application::CreateNewFile()
 {
     OPENFILENAMEA ofn;
-    char szFile[] = "pork";
+    char buffer[256];
     ZeroMemory(&ofn, sizeof(ofn));
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = NULL;
-    ofn.lpstrFile = szFile;
+    ofn.lpstrFile = buffer;
     ofn.lpstrFile[0] = '\0';
-    ofn.nMaxFile = sizeof(szFile);
+    ofn.nMaxFile = sizeof(buffer);
     ofn.lpstrFilter = "All\0*.*\0Asm\0*.asm\0Basic\0*.bas";
     ofn.nFilterIndex = 2;
     ofn.lpstrFileTitle = NULL;
     ofn.nMaxFileTitle = 0;
     ofn.lpstrInitialDir = NULL;
     ofn.Flags = 0;
-    if (GetOpenFileNameA(&ofn))
+    if (GetSaveFileNameA(&ofn))
     {
-        m_sourceFiles.push_back(new SourceFile(ofn.lpstrFile));
+        auto source = new SourceFile(ofn.lpstrFile);
+        m_sourceFiles.push_back(source);
+
+        m_editWindow->OnFileLoaded(source);
     }
 }
 
@@ -182,22 +182,29 @@ void Application::OnKeyDown(SDL_Event* e)
     case SDLK_l:
         if (e->key.keysym.mod & KMOD_CTRL)
         {
-            LoadFile();
+            if (!e->key.repeat)
+                LoadFile();
+            return;
         }
         break;
     case SDLK_n:
         if (e->key.keysym.mod & KMOD_CTRL)
         {
-            // CREATE A NEW FILE
-            CreateNewFile();
+            if (!e->key.repeat)
+                CreateNewFile();
+            return;
         }
         break;
     case SDLK_s:
         if (e->key.keysym.mod & KMOD_CTRL)
         {
-            // SAVE A FILE
+            if (!e->key.repeat)
+                SaveFile();
+            return;
         }
         break;
     }
+
+    m_editWindow->OnKeyDown(e);
 }
 

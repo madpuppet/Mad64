@@ -14,6 +14,7 @@ public:
     void SetText(TTF_Font* font, const char* text, const SDL_Color& col);
     void SetTexture(SDL_Texture *tex, bool ownTexture);
 
+    void SetEnabled(bool enabled) { m_enabled = enabled; }
     bool IsEnabled() { return m_enabled; }
     const SDL_Rect& GetRect() { return m_quad; }
     SDL_Texture* GetTexture() { return m_tex; }
@@ -32,7 +33,7 @@ public:
     void Add(GraphicElement* e) { elements.push_back(e); }
     void Draw();
     void DrawAt(i32 x, i32 y);
-
+    void Clear();
     ~GraphicChunk();
 
 protected:

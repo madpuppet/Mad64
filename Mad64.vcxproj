@@ -150,6 +150,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\application.cpp" />
+    <ClCompile Include="source\compiler.cpp" />
+    <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
     <ClCompile Include="source\main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -158,7 +160,6 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">common.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="source\sourcefile.cpp" />
-    <ClCompile Include="source\uiManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\begin_code.h" />
@@ -253,9 +254,10 @@
     <ClInclude Include="include\SDL_vulkan.h" />
     <ClInclude Include="source\application.h" />
     <ClInclude Include="source\common.h" />
+    <ClInclude Include="source\compiler.h" />
+    <ClInclude Include="source\editWindow.h" />
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\sourceFile.h" />
-    <ClInclude Include="source\uiManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\SDL_config.h.cmake" />

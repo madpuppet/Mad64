@@ -19,9 +19,14 @@ using namespace std;
 
 #include "graphicChunk.h"
 #include "sourceFile.h"
-#include "uimanager.h"
 #include "application.h"
 
 extern class Application* gApp;		// manages general application highlevel control
 
+// useful functions
+inline int max(int x, int y) { return x > y ? x : y;  }
+inline int min(int x, int y) { return x < y ? x : y; }
+inline int sign(int x) { return (x==0) ? 0 : (x < 0 ? -1 : 1); }
+
+#define TIMEDELTA (1.0f/60.0f)
 

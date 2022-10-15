@@ -89,7 +89,13 @@ void GraphicChunk::DrawAt(i32 x, i32 y)
 
 GraphicChunk::~GraphicChunk()
 {
+    Clear();
+}
+
+void GraphicChunk::Clear()
+{
     for (auto ge : elements)
         delete ge;
+    elements.clear();
 }
 
