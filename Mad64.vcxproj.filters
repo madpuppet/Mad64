@@ -36,6 +36,9 @@
     <ClCompile Include="source\appSettings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\cmdManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -327,6 +330,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\appSettings.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\cmdManager.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

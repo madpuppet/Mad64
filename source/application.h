@@ -4,6 +4,7 @@
 #include "graphicChunk.h"
 #include "editWindow.h"
 #include "compiler.h"
+#include "cmdManager.h"
 #include "AppSettings.h"
 
 class Application
@@ -19,6 +20,19 @@ public:
     SDL_Window* GetWindow() { return m_window; }
     AppSettings* GetSettings() { return m_settings; }
     Compiler* GetCompiler() { return m_compiler; }
+    SourceCopyBuffer* GetCopyBuffer() { return m_copyBuffer; }
+    EditWindow* GetEditWindow() { return m_editWindow; }
+
+    // COMMANDS - undo'able
+    void Cmd_InsertChar(char ch);
+    void Cmd_BackspaceChar();
+
+    void Cmd_DeleteChar(SourceFile* file, int line, int column);
+    void Cmd_OverwriteChar(SourceFile* file, int line, int column, char ch);
+    void Cmd_InsertNewLine(SourceFile* file, int line, int column);
+    void Cmd_DeleteArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn, bool toCopyBuffer);
+    void Cmd_CopyArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn);
+    void Cmd_PasteArea(SourceFile* file, int startLine, int startColumn);
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -27,8 +41,10 @@ protected:
     void Update();
     void Draw();
     void LoadFile();
+    void LoadFile(const char* path);
     void SaveFile();
     void CreateNewFile();
+    void CloseFile();
 
     // EVENTS
     void HandleEvent(SDL_Event* e);
@@ -40,6 +56,7 @@ protected:
     SDL_Renderer* m_renderer;
     EditWindow* m_editWindow;
     Compiler* m_compiler;
+    SourceCopyBuffer* m_copyBuffer;
     bool m_quit;
     bool m_repaint;
     AppSettings* m_settings;

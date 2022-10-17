@@ -42,6 +42,14 @@ SourceFile::SourceFile(const char* path)
 {
     m_path = path;
     m_name = basename(path);
+    m_cmdManager = new CmdManager(this);
+}
+
+SourceFile::~SourceFile()
+{
+    delete m_cmdManager;
+    for (auto l : m_lines)
+        delete l;
 }
 
 bool SourceFile::Load()
@@ -212,6 +220,7 @@ void SourceLine::VisualizeText()
         m_gcText = nullptr;
     }
 
+    m_charXOffset.clear();
     m_charXOffset.push_back(0);
     if (!m_tokens.empty())
     {
@@ -272,4 +281,10 @@ void SourceLine::VisualizeText()
     }
 }
 
+void SourceCopyBuffer::Clear()
+{
+    for (auto l : m_lines)
+        delete l;
+    m_lines.clear();
+}
 

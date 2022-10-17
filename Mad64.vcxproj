@@ -150,6 +150,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\application.cpp" />
+    <ClCompile Include="source\cmdManager.cpp" />
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
@@ -254,6 +255,7 @@
     <ClInclude Include="include\SDL_video.h" />
     <ClInclude Include="include\SDL_vulkan.h" />
     <ClInclude Include="source\application.h" />
+    <ClInclude Include="source\cmdManager.h" />
     <ClInclude Include="source\common.h" />
     <ClInclude Include="source\compiler.h" />
     <ClInclude Include="source\editWindow.h" />

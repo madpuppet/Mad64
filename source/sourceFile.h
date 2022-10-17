@@ -35,6 +35,13 @@ public:
             m_chars.push_back(*start++);
         }
     }
+    SourceLine()
+    {
+        m_compileInfo = nullptr;
+        m_gcText = nullptr;
+        m_gcMemAddr = nullptr;
+        m_gcDecode = nullptr;
+    }
 
     vector<char>& GetChars() { return m_chars; }
     int GetLineWidth() { return m_charXOffset.back(); }
@@ -66,10 +73,32 @@ protected:
     void FreeTokens();
 };
 
+class SourceCopyBufferLine
+{
+public:
+    vector<char>& GetChars() { return m_chars; }
+
+protected:
+    vector<char> m_chars;
+};
+
+class SourceCopyBuffer
+{
+public:
+    void Clear();
+    vector<SourceCopyBufferLine*> &GetLines() { return m_lines; }
+
+protected:
+    vector<SourceCopyBufferLine*> m_lines;
+};
+
 class SourceFile
 {
 public:
     SourceFile(const char* path);
+    ~SourceFile();
+
+    class CmdManager* GetCmdManager() { return m_cmdManager; }
     bool Load();
     const char* GetName() { return m_name.c_str(); }
     const char* GetPath() { return m_path.c_str(); }
@@ -79,4 +108,5 @@ protected:
     string m_name;
     string m_path;
     vector<SourceLine *> m_lines;
+    class CmdManager* m_cmdManager;
 };

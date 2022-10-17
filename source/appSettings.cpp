@@ -30,39 +30,32 @@ bool ReadLine(char * &src, char *end, char* token, char* value)
     *value++ = 0;
     return true;
 }
-bool ReadColor(char* src, u8 &red, u8 &green, u8 &blue)
+string MakeString(char* src, char* end)
 {
-    char r[256];
-    char g[256];
-    char b[256];
-    char* out;
-
-    while (*src && (*src == 0xa || *src == 0xd || *src == ' ' || *src == '\t'))
-        src++;
-
-    out = r;
-    while (*src && *src != ',')
-        *out++ = *src++;
-    *out++ = 0;
-    if (*src)
-        src++;
-
-    out = g;
-    while (*src && *src != ',')
-        *out++ = *src++;
-    *out++ = 0;
-    if (*src)
-        src++;
-
-    out = b;
-    while (*src)
-        *out++ = *src++;
-    *out++ = 0;
-
-    red = (u8)atoi(r);
-    green = (u8)atoi(g);
-    blue = (u8)atoi(b);
-    return r[0] && g[0] && b[0];
+    int len = (int)(end - src);
+    char* temp = (char*)malloc(len + 1);
+    memcpy(temp, src, len);
+    temp[len] = 0;
+    return string(temp);
+}
+void ReadStringArray(char* src, vector<string>& arr)
+{
+    char* next;
+    while (next = strchr(src, ','))
+    {
+        arr.push_back(MakeString(src, next));
+        src = next + 1;
+    }
+    arr.push_back(string(src));
+}
+bool ReadColor(char* src, u8& red, u8& green, u8& blue)
+{
+    vector<string> cols;
+    ReadStringArray(src, cols);
+    red = cols.size() > 0 ? atoi(cols[0].c_str()) : 255;
+    green = cols.size() > 1 ? atoi(cols[1].c_str()) : 255;
+    blue = cols.size() > 2 ? atoi(cols[2].c_str()) : 255;
+    return cols.size() == 2;
 }
 
 AppSettings::AppSettings()
@@ -79,6 +72,7 @@ AppSettings::AppSettings()
     xPosDecode = 100;
     xPosText = 300;
     xPosContextHelp = 1600;
+    scrollBarWidth = 20;
 }
 
 bool AppSettings::Load()
@@ -125,6 +119,10 @@ bool AppSettings::Load()
                 {
                     textYMargin = val;
                 }
+                else if (SDL_strcasecmp(token, "scrollBarWidth") == 0)
+                {
+                    scrollBarWidth = val;
+                }
                 else if (SDL_strcasecmp(token, "xPosDecode") == 0)
                 {
                     xPosDecode = val;
@@ -154,6 +152,14 @@ bool AppSettings::Load()
                     u8 r, g, b;
                     ReadColor(value, r, g, b);
                     commentColor = { r, g, b, 255 };
+                }
+                else if (SDL_strcasecmp(token, "loadedFilePaths") == 0)
+                {
+                    ReadStringArray(value, loadedFilePaths);
+                }
+                else if (SDL_strcasecmp(token, "activeFilePath") == 0)
+                {
+                    activeFilePath = value;
                 }
             }
         }
@@ -197,12 +203,23 @@ bool AppSettings::Save()
         fprintf(fh, "tabWidth=%d\n", tabWidth);
         fprintf(fh, "textXMargin=%d\n", textXMargin);
         fprintf(fh, "textYMargin=%d\n", textYMargin);
+        fprintf(fh, "scrollBarWidth=%d\n", scrollBarWidth);
         fprintf(fh, "xPosDecode=%d\n", xPosDecode);
         fprintf(fh, "xPosText=%d\n", xPosText);
         fprintf(fh, "xPosContextHelp=%d\n", xPosContextHelp);
         fprintf(fh, "textColor=%d,%d,%d\n", textColor.r, textColor.g, textColor.b);
         fprintf(fh, "opCodeColor=%d,%d,%d\n", opCodeColor.r, opCodeColor.g, opCodeColor.b);
         fprintf(fh, "commentColor=%d,%d,%d\n", commentColor.r, commentColor.g, commentColor.b);
+        if (!loadedFilePaths.empty())
+        {
+            fprintf(fh, "loadedFilePaths=%s", loadedFilePaths[0].c_str());
+            for (int i=1; i<loadedFilePaths.size(); i++)
+                fprintf(fh, ",%s", loadedFilePaths[i].c_str());
+            fprintf(fh, "\n");
+        }
+        if (!activeFilePath.empty())
+            fprintf(fh, "activeFilePath=%s\n", activeFilePath.c_str());
+
         fclose(fh);
         return true;
     }

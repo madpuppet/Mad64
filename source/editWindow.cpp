@@ -19,8 +19,21 @@ EditWindow::EditWindow()
 	m_cursorAnimTime = 0.0f;
 	m_overwriteMode = false;
 	m_dragMode = DRAG_None;
+	m_autoScroll = 0;
+	m_autoScroll_mouseX = 0;
+	m_autoScroll_mouseY = 0;
+	m_marked = false;
+	m_keyMarking = false;
+	m_mouseMarking = false;
+
+	m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+	m_cursorIBeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+	m_cursorHoriz = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+	m_cursorVert = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+	m_cursorHand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
 	CalcRects();
+	InitStatus();
 }
 
 void DrawColouredLine(int x, int y1, int y2, bool highlighted)
@@ -90,15 +103,24 @@ void EditWindow::Draw()
 			auto line = file->GetLines()[i];
 			int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			int lineWidth = line->GetLineWidth() + settings->textXMargin;
-			SDL_Rect lineQuad1 = { settings->xPosText, y, lineWidth, settings->lineHeight };
-			SDL_Rect lineQuad2 = { settings->xPosText + lineWidth, y, m_sourceEditRect.w - lineWidth, settings->lineHeight };
 
-			SDL_SetRenderDrawColor(r, 0, 0, 128 - ((i & 1) ? 16 : 0), 255);
-			SDL_RenderFillRect(r, &lineQuad1);
-			if (lineWidth < m_sourceEditRect.w)
+			if (line->GetChars().empty())
 			{
-				SDL_SetRenderDrawColor(r, 0, 0, 80 - ((i & 1) ? 16 : 0), 255);
-				SDL_RenderFillRect(r, &lineQuad2);
+				SDL_Rect lineQuad = { settings->xPosText, y, m_sourceEditRect.w, settings->lineHeight };
+				SDL_SetRenderDrawColor(r, 0, 0, 80 - ((i & 1) ? 8 : 0), 255);
+				SDL_RenderFillRect(r, &lineQuad);
+			}
+			else
+			{
+				SDL_Rect lineQuad1 = { settings->xPosText, y, lineWidth, settings->lineHeight };
+				SDL_Rect lineQuad2 = { settings->xPosText + lineWidth, y, m_sourceEditRect.w - lineWidth, settings->lineHeight };
+				SDL_SetRenderDrawColor(r, 0, 0, 128 - ((i & 1) ? 16 : 0), 255);
+				SDL_RenderFillRect(r, &lineQuad1);
+				if (lineWidth < m_sourceEditRect.w)
+				{
+					SDL_SetRenderDrawColor(r, 0, 0, 80 - ((i & 1) ? 8 : 0), 255);
+					SDL_RenderFillRect(r, &lineQuad2);
+				}
 			}
 
 			// draw marking
@@ -138,11 +160,18 @@ void EditWindow::Draw()
 		int barY1, barY2;
 		CalcScrollBar(barY1, barY2);
 
-		SDL_Rect BarBack = { settings->xPosContextHelp - 16, m_sourceEditRect.y, 16, m_sourceEditRect.h };
-		SDL_Rect Bar = { settings->xPosContextHelp - 16, barY1, 16, barY2-barY1 };
+		SDL_Rect BarBack = { settings->xPosContextHelp - settings->scrollBarWidth, m_sourceEditRect.y, settings->scrollBarWidth, m_sourceEditRect.h };
+		SDL_Rect Bar = { settings->xPosContextHelp - settings->scrollBarWidth + 1, barY1, settings->scrollBarWidth - 2, barY2-barY1 };
 		SDL_SetRenderDrawColor(r, 0, 0, 32, 255);
 		SDL_RenderFillRect(r, &BarBack);
-		SDL_SetRenderDrawColor(r, 64, 64, 255, 255);
+		if (m_dragMode == DRAG_EditVertScroll)
+		{
+			SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
+		}
+		else
+		{
+			SDL_SetRenderDrawColor(r, 64, 64, 255, 255);
+		}
 		SDL_RenderFillRect(r, &Bar);
 	}
 
@@ -151,8 +180,7 @@ void EditWindow::Draw()
 	// - context help
 
 	// draw status bar
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-	SDL_RenderFillRect(r, &m_statusRect);
+	DrawStatus();
 
 	// draw separator bars
 	DrawColouredLine(settings->xPosDecode, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
@@ -246,17 +274,27 @@ void EditWindow::LayoutTabs()
 void EditWindow::OnFileClosed(SourceFile* file)
 {
 	// if this was the active file,  make a different file active
-
-
-	// remove file tab
-
+	for (auto it = m_fileTabs.begin(); it != m_fileTabs.end(); it++)
+	{
+		auto sfi = *it;
+		if (sfi->file == file)
+		{
+			delete sfi->geText;
+			m_fileTabs.erase(it);
+			if (m_fileTabs.empty())
+				m_activeSourceFileItem = nullptr;
+			else
+				m_activeSourceFileItem = m_fileTabs.back();
+			return;
+		}
+	}
 }
 
 void EditWindow::OnMouseWheel(SDL_Event* e)
 {
 	if (m_activeSourceFileItem)
 	{
-		m_activeSourceFileItem->targetScroll += (int)(e->wheel.preciseY * -80);
+		m_activeSourceFileItem->targetScroll += (e->wheel.preciseY * -80.0f);
 		ClampTargetScroll();
 	}
 }
@@ -267,7 +305,7 @@ void EditWindow::ClampTargetScroll()
 	{
 		int fileHeight = gApp->GetSettings()->lineHeight * (int)m_activeSourceFileItem->file->GetLines().size();
 		int maxScroll = max(0, fileHeight - m_sourceEditRect.h);
-		m_activeSourceFileItem->targetScroll = SDL_clamp(m_activeSourceFileItem->targetScroll, 0, maxScroll);
+		m_activeSourceFileItem->targetScroll = SDL_clamp(m_activeSourceFileItem->targetScroll, 0.0f, (float)maxScroll);
 	}
 }
 
@@ -275,16 +313,21 @@ void EditWindow::Update()
 {
 	m_cursorAnimTime += TIMEDELTA * 10.0f;
 
+	if (m_autoScroll)
+	{
+		m_activeSourceFileItem->targetScroll += TIMEDELTA * m_autoScroll;
+		ClampTargetScroll();
+
+		ProcessMouseMarking(m_autoScroll_mouseX, m_autoScroll_mouseY);
+	}
+
 	auto s = gApp->GetSettings();
 	if (m_activeSourceFileItem)
 	{
-		int dy = m_activeSourceFileItem->targetScroll - m_activeSourceFileItem->scroll;
-		int signDy = sign(dy);
-		int amount = dy / 4;
-		if (amount == 0)
-			amount = signDy;
-		m_activeSourceFileItem->scroll += amount;
+		m_activeSourceFileItem->scroll += (int)((m_activeSourceFileItem->targetScroll - (float)m_activeSourceFileItem->scroll) * 0.25f);
 	}
+
+	UpdateStatus();
 }
 
 bool Contains(const SDL_Rect& rect, int x, int y)
@@ -312,19 +355,19 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 				}
 			}
 		}
-		else if (e->button.x - settings->xPosDecode)
+		else if (abs(e->button.x - settings->xPosDecode) < 2)
 		{
 			// drag first divide
 			m_dragMode = DRAG_DivideDecode;
 			m_dragOffset = e->button.x - settings->xPosDecode;
 		}
-		else if (e->button.x - settings->xPosText)
+		else if (abs(e->button.x - settings->xPosText) < 2)
 		{
 			// drag second divide
 			m_dragMode = DRAG_DivideText;
 			m_dragOffset = e->button.x - settings->xPosText;
 		}
-		else if (e->button.x - settings->xPosContextHelp)
+		else if (abs(e->button.x - settings->xPosContextHelp) < 2)
 		{
 			// drag third divide
 			m_dragMode = DRAG_DivideContext;
@@ -332,50 +375,301 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 		}
 		else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
 		{
+			if (e->button.x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
+			{
+				m_dragMode = DRAG_EditVertScroll;
+				SnapScrollBarToMouseY(e->button.y);
+			}
+			else
+			{
+				int line, col;
+				if (MouseToRowCol(e->button.x, e->button.y, line, col))
+				{
+					m_activeSourceFileItem->activeLine = line;
+					m_activeSourceFileItem->activeColumn = col;
+					m_activeSourceFileItem->activeTargetX = e->button.x - m_sourceEditRect.x;
 
+					m_marked = m_mouseMarking = true;
+					m_markStartColumn = col;
+					m_markEndColumn = col;
+					m_markStartLine = line;
+					m_markEndLine = line;
+				}
+			}
 		}
 	}
 }
+void EditWindow::SnapScrollBarToMouseY(int y)
+{
+	if (m_activeSourceFileItem)
+	{
+		float rel = (float)(y - m_sourceEditRect.y) / (float)m_sourceEditRect.h;
+		int fileHeight = (int)m_activeSourceFileItem->file->GetLines().size() * gApp->GetSettings()->lineHeight;
+		m_activeSourceFileItem->targetScroll = fileHeight * rel - m_sourceEditRect.h * 0.5f;
+		ClampTargetScroll();
+	}
+}
+
 void EditWindow::OnMouseUp(SDL_Event* e)
 {
-
+	m_autoScroll = 0;
+	m_marked = m_mouseMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+	m_mouseMarking = false;
+	m_dragMode = DRAG_None;
 }
+
+void EditWindow::ProcessMouseMarking(int x, int y)
+{
+	int line, col;
+	if (MouseToRowCol(x, y, line, col))
+	{
+		m_activeSourceFileItem->activeLine = line;
+		m_activeSourceFileItem->activeColumn = col;
+		m_activeSourceFileItem->activeTargetX = x - m_sourceEditRect.x;
+		m_markEndColumn = col;
+		m_markEndLine = line;
+
+		// autoScroll
+		m_autoScroll_mouseX = x;
+		m_autoScroll_mouseY = y;
+		int topDx = SDL_clamp(y - (m_sourceEditRect.y + 40), -40, 0);
+		int bottomDx = SDL_clamp(y - (m_sourceEditRect.y + m_sourceEditRect.h - 40), 0, 40);
+		if (topDx < 0)
+			m_autoScroll = 40 * topDx;
+		else if (bottomDx > 0)
+			m_autoScroll = 40 * bottomDx;
+		else
+			m_autoScroll = 0;
+	}
+}
+
 void EditWindow::OnMouseMotion(SDL_Event* e)
 {
-
+	auto settings = gApp->GetSettings();
+	if (m_mouseMarking)
+	{
+		ProcessMouseMarking(e->button.x, e->button.y);
+	}
+	else if (m_dragMode != DRAG_None)
+	{
+		switch (m_dragMode)
+		{
+		case DRAG_DivideContext:
+			break;
+		case DRAG_DivideDecode:
+			break;
+		case DRAG_DivideText:
+			break;
+		case DRAG_EditVertScroll:
+			SnapScrollBarToMouseY(e->button.y);
+			break;
+		}
+	}
+	else
+	{
+		SelectCursor(e->button.x, e->button.y);
+	}
 }
+
+void EditWindow::SelectCursor(int x, int y)
+{
+	auto settings = gApp->GetSettings();
+	if (Contains(m_titleTabsRect, x, y))
+	{
+		for (auto sfi : m_fileTabs)
+		{
+			if (Contains(sfi->geText->GetRect(), x, y))
+			{
+				SDL_SetCursor(m_cursorHand);
+				return;
+			}
+		}
+	}
+	else if (abs(x - settings->xPosDecode) < 2)
+	{
+		SDL_SetCursor(m_cursorHoriz);
+		return;
+	}
+	else if (abs(x - settings->xPosText) < 2)
+	{
+		SDL_SetCursor(m_cursorHoriz);
+		return;
+	}
+	else if (abs(x - settings->xPosContextHelp) < 2)
+	{
+		SDL_SetCursor(m_cursorHoriz);
+		return;
+	}
+	else if (Contains(m_sourceEditRect, x, y))
+	{
+		if (x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
+		{
+			SDL_SetCursor(m_cursorVert);
+		}
+		else
+		{
+			SDL_SetCursor(m_cursorIBeam);
+		}
+		return;
+	}
+	SDL_SetCursor(m_cursorArrow);
+}
+
+bool EditWindow::MouseToRowCol(int x, int y, int& row, int& col)
+{
+	if (m_activeSourceFileItem)
+	{
+		auto file = m_activeSourceFileItem->file;
+		auto settings = gApp->GetSettings();
+		int localX = x - m_sourceEditRect.x - settings->textXMargin;
+		int localY = y - m_sourceEditRect.y + m_activeSourceFileItem->scroll;
+		row = SDL_clamp(localY / settings->lineHeight, 0, (int)(file->GetLines().size() - 1));
+		auto line = file->GetLines()[row];
+		col = line->GetColumnAtX(localX);
+		return true;
+	}
+
+	row = 0;
+	col = 0;
+	return false;
+}
+
+char s_shifted[128] =
+{
+	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//00
+	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//10
+	46,  46, 46, 46, 46, 46, 46, 34, 46, 46, 46, 46,  60,  95,  62, 63,		//20
+	41,  33, 64, 35, 36, 37, 94, 38, 42, 40, 46, 58,  46,  43,  46, 46,		//30
+	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//40
+	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 123, 124, 125, 46, 46,		//50
+	126, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,  76,  77,  78, 79,		//60
+	80,  81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 46,  46,  46,  46, 46 		//70
+};
 
 void EditWindow::OnKeyDown(SDL_Event* e)
 {
-	bool shiftHeld = e->key.keysym.mod & KMOD_SHIFT;
-	switch (e->key.keysym.sym)
+	// Don't need a file for these keys
+	if (e->key.keysym.sym == SDLK_INSERT)
 	{
-	case SDLK_PAGEUP:
-		for (int i = 0; i < 20; i++)
+		m_overwriteMode = !m_overwriteMode;
+		return;
+	}
+
+	if (m_activeSourceFileItem)
+	{
+		bool shiftHeld = e->key.keysym.mod & KMOD_SHIFT;
+		switch (e->key.keysym.sym)
+		{
+		case SDLK_z:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				if (e->key.keysym.mod & KMOD_SHIFT)
+					m_activeSourceFileItem->file->GetCmdManager()->Redo();
+				else
+					m_activeSourceFileItem->file->GetCmdManager()->Undo();
+				return;
+			}
+			break;
+		case SDLK_PAGEUP:
+			for (int i = 0; i < 20; i++)
+				CursorUp(shiftHeld);
+			return;
+		case SDLK_PAGEDOWN:
+			for (int i = 0; i < 20; i++)
+				CursorDown(shiftHeld);
+			return;
+		case SDLK_UP:
 			CursorUp(shiftHeld);
-		return;
-	case SDLK_PAGEDOWN:
-		for (int i = 0; i < 20; i++)
+			return;
+		case SDLK_DOWN:
 			CursorDown(shiftHeld);
-		return;
-	case SDLK_UP:
-		CursorUp(shiftHeld);
-		return;
-	case SDLK_DOWN:
-		CursorDown(shiftHeld);
-		return;
-	case SDLK_LEFT:
-		CursorLeft(shiftHeld);
-		return;
-	case SDLK_RIGHT:
-		CursorRight(shiftHeld);
-		return;
-	case SDLK_END:
-		CursorEnd(shiftHeld);
-		return;
-	case SDLK_HOME:
-		CursorStart(shiftHeld);
-		break;
+			return;
+		case SDLK_LEFT:
+			CursorLeft(shiftHeld);
+			return;
+		case SDLK_RIGHT:
+			CursorRight(shiftHeld);
+			return;
+		case SDLK_END:
+			CursorEnd(shiftHeld);
+			return;
+		case SDLK_HOME:
+			CursorStart(shiftHeld);
+			return;
+		case SDLK_x:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				if (m_marked)
+				{
+					gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, true);
+				}
+				return;
+			}
+			break;
+		case SDLK_c:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				if (m_marked)
+				{
+					gApp->Cmd_CopyArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn);
+				}
+				return;
+			}
+			break;
+		case SDLK_v:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				if (m_marked)
+				{
+					gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
+				}
+				gApp->Cmd_PasteArea(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine, m_activeSourceFileItem->activeColumn);
+				return;
+			}
+			break;
+		case SDLK_BACKSPACE:
+			if (m_marked)
+			{
+				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
+			}
+			else
+			{
+				gApp->Cmd_BackspaceChar();
+			}
+			return;
+		case SDLK_DELETE:
+			if (m_marked)
+			{
+				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
+			}
+			else
+			{
+				gApp->Cmd_DeleteChar(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine, m_activeSourceFileItem->activeColumn);
+			}
+			return;
+		case SDLK_RETURN:
+			if (m_marked)
+			{
+				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndColumn, m_markEndColumn, false);
+			}
+			gApp->Cmd_InsertNewLine(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine, m_activeSourceFileItem->activeColumn);
+			return;
+		}
+
+		char ch = e->key.keysym.sym;
+		if (ch >= SDLK_SPACE && ch <= SDLK_z)
+		{
+			printf("SYM %d (%x)\n", e->key.keysym.sym, e->key.keysym.sym);
+
+			if (e->key.keysym.mod & KMOD_SHIFT)
+				ch = s_shifted[ch];
+
+			if (m_marked)
+			{
+				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
+			}
+			gApp->Cmd_InsertChar(ch);
+		}
 	}
 }
 
@@ -385,13 +679,13 @@ void EditWindow::MakeActiveLineVisible()
 	{
 		auto settings = gApp->GetSettings();
 		auto file = m_activeSourceFileItem->file;
-		int viewY1 = m_activeSourceFileItem->targetScroll;
-		int viewY2 = m_activeSourceFileItem->targetScroll + m_sourceEditRect.h;
+		int viewY1 = (int)m_activeSourceFileItem->targetScroll;
+		int viewY2 = (int)m_activeSourceFileItem->targetScroll + m_sourceEditRect.h;
 		int y = m_activeSourceFileItem->activeLine * settings->lineHeight;
 		if (y < viewY1)
-			m_activeSourceFileItem->targetScroll = y - settings->lineHeight * 4;
+			m_activeSourceFileItem->targetScroll = (float)(y - settings->lineHeight * 4);
 		if (y >= viewY2)
-			m_activeSourceFileItem->targetScroll = y - m_sourceEditRect.h + settings->lineHeight * 4;
+			m_activeSourceFileItem->targetScroll = (float)(y - m_sourceEditRect.h + settings->lineHeight * 4);
 		ClampTargetScroll();
 	}
 }
@@ -400,7 +694,7 @@ void EditWindow::CursorUp(bool marking)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_marking)
+		if (marking && !m_keyMarking)
 		{
 			m_markStartLine = m_activeSourceFileItem->activeLine;
 			m_markStartColumn = m_activeSourceFileItem->activeColumn;
@@ -423,19 +717,21 @@ void EditWindow::CursorUp(bool marking)
 			m_markEndLine = m_activeSourceFileItem->activeLine;
 			m_markEndColumn = m_activeSourceFileItem->activeColumn;
 		}
-		m_marking = marking;
+		m_keyMarking = marking;
+		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	}
+	m_mouseMarking = false;
 }
 
 void EditWindow::CursorDown(bool marking)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_marking)
+		if (marking && !m_keyMarking)
 		{
 			m_markStartLine = m_activeSourceFileItem->activeLine;
 			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_marking = true;
+			m_keyMarking = true;
 		}
 
 		auto file = m_activeSourceFileItem->file;
@@ -455,19 +751,21 @@ void EditWindow::CursorDown(bool marking)
 			m_markEndLine = m_activeSourceFileItem->activeLine;
 			m_markEndColumn = m_activeSourceFileItem->activeColumn;
 		}
-		m_marking = marking;
+		m_keyMarking = marking;
+		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	}
+	m_mouseMarking = false;
 }
 
 void EditWindow::CursorLeft(bool marking)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_marking)
+		if (marking && !m_keyMarking)
 		{
 			m_markStartLine = m_activeSourceFileItem->activeLine;
 			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_marking = true;
+			m_keyMarking = true;
 		}
 
 		auto file = m_activeSourceFileItem->file;
@@ -491,19 +789,21 @@ void EditWindow::CursorLeft(bool marking)
 			m_markEndLine = m_activeSourceFileItem->activeLine;
 			m_markEndColumn = m_activeSourceFileItem->activeColumn;
 		}
-		m_marking = marking;
+		m_keyMarking = marking;
+		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	}
+	m_mouseMarking = false;
 }
 
 void EditWindow::CursorRight(bool marking)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_marking)
+		if (marking && !m_keyMarking)
 		{
 			m_markStartLine = m_activeSourceFileItem->activeLine;
 			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_marking = true;
+			m_keyMarking = true;
 		}
 
 		auto file = m_activeSourceFileItem->file;
@@ -526,19 +826,21 @@ void EditWindow::CursorRight(bool marking)
 			m_markEndLine = m_activeSourceFileItem->activeLine;
 			m_markEndColumn = m_activeSourceFileItem->activeColumn;
 		}
-		m_marking = marking;
+		m_keyMarking = marking;
+		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	}
+	m_mouseMarking = false;
 }
 
 void EditWindow::CursorStart(bool marking)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_marking)
+		if (marking && !m_keyMarking)
 		{
 			m_markStartLine = m_activeSourceFileItem->activeLine;
 			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_marking = true;
+			m_keyMarking = true;
 		}
 
 		auto file = m_activeSourceFileItem->file;
@@ -554,19 +856,21 @@ void EditWindow::CursorStart(bool marking)
 			m_markEndLine = m_activeSourceFileItem->activeLine;
 			m_markEndColumn = m_activeSourceFileItem->activeColumn;
 		}
-		m_marking = marking;
+		m_keyMarking = marking;
+		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	}
+	m_mouseMarking = false;
 }
 
 void EditWindow::CursorEnd(bool marking)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_marking)
+		if (marking && !m_keyMarking)
 		{
 			m_markStartLine = m_activeSourceFileItem->activeLine;
 			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_marking = true;
+			m_keyMarking = true;
 		}
 
 		auto file = m_activeSourceFileItem->file;
@@ -582,13 +886,14 @@ void EditWindow::CursorEnd(bool marking)
 			m_markEndLine = m_activeSourceFileItem->activeLine;
 			m_markEndColumn = m_activeSourceFileItem->activeColumn;
 		}
-		m_marking = marking;
+		m_keyMarking = marking;
+		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	}
 }
 
 bool EditWindow::CheckLineMarked(int lineNmbr, int& startCol, int& endCol)
 {
-	if (m_activeSourceFileItem && m_marking)
+	if (m_activeSourceFileItem && m_marked && ((m_markStartLine != m_markEndLine) || (m_markStartColumn != m_markEndColumn)))
 	{
 		int l1, c1, l2, c2;
 		if (m_markEndLine < m_markStartLine || (m_markEndLine == m_markStartLine && m_markEndColumn < m_markStartColumn))
@@ -648,4 +953,116 @@ bool EditWindow::CheckLineMarked(int lineNmbr, int& startCol, int& endCol)
 }
 
 
+// status bar
+struct StatusInfo
+{
+	bool insertMode;
+	int line;
+	int column;
+	int totalLines;
 
+	GraphicElement* m_geInsertMode;
+	GraphicElement* m_geLine;
+	GraphicElement* m_geColumn;
+	GraphicElement* m_geTotalLines;
+	GraphicChunk* m_gc;
+} m_status;
+
+void EditWindow::InitStatus()
+{
+	m_status.overwriteMode = m_overwriteMode;
+	if (m_activeSourceFileItem)
+	{
+		m_status.line = m_activeSourceFileItem->activeLine;
+		m_status.column = m_activeSourceFileItem->activeColumn;
+		m_status.totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
+	}
+	else
+	{
+		m_status.line = 0;
+		m_status.column = 0;
+		m_status.totalLines = 0;
+	}
+
+	m_status.m_geOverwriteMode = nullptr;
+	m_status.m_geLine = nullptr;
+	m_status.m_geColumn = nullptr;
+}
+void EditWindow::UpdateStatus()
+{
+	SDL_Color col = { 0,255,255,255 };
+	if (!m_status.m_geOverwriteMode || m_status.overwriteMode != m_overwriteMode)
+	{
+		delete m_status.m_geOverwriteMode;
+		m_status.overwriteMode = m_overwriteMode;
+		m_status.m_geOverwriteMode = GraphicElement::CreateFromText(gApp->GetFont(), m_status.overwriteMode ? "OVR" : "INS", col, 0, 0);
+	};
+
+	if (m_activeSourceFileItem)
+	{
+		auto file = m_activeSourceFileItem->file;
+		auto line = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine];
+		if (!m_status.m_geLine || m_status.line != m_activeSourceFileItem->activeLine || m_status.totalLines != (int)file->GetLines().size())
+		{
+			delete m_status.m_geLine;
+			m_status.line = m_activeSourceFileItem->activeLine;
+			m_status.totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
+			char temp[256];
+			sprintf(temp, "LINE: %d/%d", m_status.line+1, m_status.totalLines);
+			m_status.m_geLine = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
+		}
+
+		if (!m_status.m_geColumn || m_status.column != m_activeSourceFileItem->activeColumn || m_status.totalColumns != (int)line->GetChars().size())
+		{
+			delete m_status.m_geColumn;
+			m_status.column = m_activeSourceFileItem->activeColumn;
+			char temp[256];
+			sprintf(temp, "COL: %d/%d", m_status.column+1, (int)line->GetChars().size());
+			m_status.m_geColumn = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
+		}
+	}
+}
+void EditWindow::DrawStatus()
+{
+	auto r = gApp->GetRenderer();
+	auto settings = gApp->GetSettings();
+	int charW = settings->fontSize;
+
+	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+	SDL_RenderFillRect(r, &m_statusRect);
+
+	if (m_status.m_geOverwriteMode)
+	{
+		SDL_Rect rect = { m_statusRect.w - charW * 50, m_statusRect.y + settings->textYMargin, m_status.m_geOverwriteMode->GetRect().w, m_status.m_geOverwriteMode->GetRect().h };
+		SDL_RenderCopy(r, m_status.m_geOverwriteMode->GetTexture(), NULL, &rect);
+	}
+	if (m_status.m_geLine && m_status.m_geColumn)
+	{
+		int lineW = m_status.m_geLine->GetRect().w;
+		int colW = m_status.m_geColumn->GetRect().w;
+
+		SDL_Rect lineRect = { m_statusRect.w - lineW - 20, m_statusRect.y + settings->textYMargin, lineW, m_status.m_geLine->GetRect().h };
+		SDL_Rect colRect = { m_statusRect.w - colW - charW * 20, m_statusRect.y + settings->textYMargin, colW, m_status.m_geLine->GetRect().h };
+
+		SDL_RenderCopy(r, m_status.m_geColumn->GetTexture(), NULL, &colRect);
+		SDL_RenderCopy(r, m_status.m_geLine->GetTexture(), NULL, &lineRect);
+	}
+}
+
+void EditWindow::GotoLineCol(int ln, int col)
+{
+	if (m_activeSourceFileItem)
+	{
+		auto file = m_activeSourceFileItem->file;
+
+		m_activeSourceFileItem->activeLine = ln;
+		m_activeSourceFileItem->activeColumn = col;
+
+		int x1, x2;
+		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
+		m_activeSourceFileItem->activeTargetX = x1 + 1;
+		m_cursorAnimTime = 0;
+
+		MakeActiveLineVisible();
+	}
+}
