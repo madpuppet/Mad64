@@ -26,13 +26,14 @@ public:
     // COMMANDS - undo'able
     void Cmd_InsertChar(char ch);
     void Cmd_BackspaceChar();
+    void Cmd_DeleteChar();
+    void Cmd_InsertNewLine();
 
-    void Cmd_DeleteChar(SourceFile* file, int line, int column);
     void Cmd_OverwriteChar(SourceFile* file, int line, int column, char ch);
-    void Cmd_InsertNewLine(SourceFile* file, int line, int column);
+
     void Cmd_DeleteArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn, bool toCopyBuffer);
     void Cmd_CopyArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn);
-    void Cmd_PasteArea(SourceFile* file, int startLine, int startColumn);
+    void Cmd_PasteArea(SourceFile* file);
 
 protected:
     vector<SourceFile*> m_sourceFiles;

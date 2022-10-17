@@ -15,7 +15,7 @@ Application::Application()
     gApp = this;
 
     //Create window
-    m_window = SDL_CreateWindow("MAD64", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    m_window = SDL_CreateWindow("MAD64", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
     {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -67,6 +67,10 @@ int Application::MainLoop()
         Update();
         Draw();
     }
+
+    for (auto file : m_sourceFiles)
+        file->Save();
+
     return 0;
 }
 
@@ -106,6 +110,9 @@ void Application::HandleEvent(SDL_Event *e)
         OnKeyDown(e);
         break;
     case SDL_KEYUP:
+        break;
+    case SDL_WINDOWEVENT:
+        m_editWindow->OnResize();
         break;
     }
 }
@@ -174,7 +181,11 @@ void Application::LoadFile(const char* path)
 
 void Application::SaveFile()
 {
-
+    auto activeFile = m_editWindow->GetActiveFile();
+    if (activeFile)
+    {
+        activeFile->Save();
+    }
 }
 
 void Application::CloseFile()
@@ -329,35 +340,50 @@ void Application::Cmd_BackspaceChar()
         }
     }
 }
-void Application::Cmd_DeleteChar(SourceFile* file, int ln, int col)
+
+void Application::Cmd_DeleteChar()
 {
-    auto line = file->GetLines()[ln];
-    if (col == line->GetChars().size())
+    SourceFile* file = m_editWindow->GetActiveFile();
+    if (file)
     {
-        // remove cr, so concat this line with prev
-        if (ln < file->GetLines().size()-1)
+        int oldActiveLine = m_editWindow->GetActiveLine();
+        int oldActiveCol = m_editWindow->GetActiveCol();
+
+        // do nothing if at bottom of file
+        if (oldActiveLine == (file->GetLines().size()-1) && (oldActiveCol == file->GetLines().back()->GetChars().size()))
+            return;
+
+        auto line = file->GetLines()[oldActiveLine];
+        if (oldActiveCol < line->GetChars().size())
         {
-            auto line = file->GetLines()[ln];
-            auto nextLine = file->GetLines()[ln+1];
+            // just remove the next character
             auto& chars = line->GetChars();
-            auto& nextChars = nextLine->GetChars();
+            auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
 
-            // add line to previous line
-            chars.insert(chars.end(), nextChars.begin(), nextChars.end());
-            file->GetLines().erase(file->GetLines().begin() + ln + 1);
-            delete nextLine;
+            auto copy = chars;
+            copy.erase(copy.begin() + oldActiveCol);
 
-            line->Tokenize();
-            line->VisualizeText();
+            cmd->PushReplace(oldActiveLine, copy);
+            file->GetCmdManager()->PushCmd(cmd);
+            cmd->Do();
         }
-    }
-    else
-    {
-        auto line = file->GetLines()[ln];
-        auto& chars = line->GetChars();
-        chars.erase(chars.begin() + col);
-        line->Tokenize();
-        line->VisualizeText();
+        else
+        {
+            // need to remove CR, so concat next line onto this one
+            auto line = file->GetLines()[oldActiveLine];
+            auto nextline = file->GetLines()[oldActiveLine + 1];
+            auto& chars = line->GetChars();
+            auto& nextChars = nextline->GetChars();
+            auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+
+            auto copy = chars;
+            copy.insert(copy.end(), nextChars.begin(), nextChars.end());
+            cmd->PushReplace(oldActiveLine, copy);
+            cmd->PushRemove(oldActiveLine+1);
+
+            file->GetCmdManager()->PushCmd(cmd);
+            cmd->Do();
+        }
     }
 }
 void Application::Cmd_DeleteArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn, bool toCopyBuffer)
@@ -377,6 +403,7 @@ void Application::Cmd_DeleteArea(SourceFile* file, int startLine, int startColum
         ec = startColumn;
     }
 
+    // copy deleted section to the copy buffer
     if (toCopyBuffer)
     {
         m_copyBuffer->Clear();
@@ -409,41 +436,46 @@ void Application::Cmd_DeleteArea(SourceFile* file, int startLine, int startColum
         }
     }
 
+    int oldActiveLine = m_editWindow->GetActiveLine();
+    int oldActiveCol = m_editWindow->GetActiveCol();
+    auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+
     if (sl == el)
     {
         auto line = file->GetLines()[sl];
         auto& chars = line->GetChars();
-        chars.erase(chars.begin() + sc, chars.begin() + ec);
-        line->Tokenize();
-        line->VisualizeText();
+
+        auto copy = chars;
+        copy.erase(copy.begin() + sc, copy.begin() + ec);
+        cmd->PushReplace(sl, copy);
+        cmd->SetNewActiveLineCol(sl, sc);
     }
     else
     {
-        // remove middle lines
-        if ((startLine + 1) < endLine)
+        // need to apply bottom to top so that cmds record the correct information
+        // any Remove puts everything below it out of sync
+        // join end line to start line
+        auto firstLine = file->GetLines()[sl];
+        auto lastLine = file->GetLines()[el];
+        auto& firstChars = firstLine->GetChars();
+        auto& lastChars = lastLine->GetChars();
+        auto copy = firstChars;
+        copy.erase(copy.begin() + sc, copy.end());
+        copy.insert(copy.end(), lastChars.begin() + ec, lastChars.end());
+
+        // remove lines button up
+        for (int ln = el; ln > sl; ln--)
         {
-            for (int ln = sl + 1; ln < el; ln++)
-            {
-                delete file->GetLines()[ln];
-            }
-            file->GetLines().erase(file->GetLines().begin() + sl + 1, file->GetLines().begin() + el);
+            cmd->PushRemove(ln);
         }
 
-        // join end line to start line
-        auto line = file->GetLines()[sl];
-        auto nextLine = file->GetLines()[sl+1];
-        auto& chars = line->GetChars();
-        auto& nextChars = nextLine->GetChars();
-        chars.erase(chars.begin() + sc, chars.end());
-        chars.insert(chars.end(), nextChars.begin() + ec, nextChars.end());
-        delete nextLine;
-        file->GetLines().erase(file->GetLines().begin() + sl + 1);
-        line->Tokenize();
-        line->VisualizeText();
+        cmd->PushReplace(sl, copy);
+        cmd->SetNewActiveLineCol(sl, sc);
     }
+    file->GetCmdManager()->PushCmd(cmd);
+    cmd->Do();
 
     m_editWindow->ClearMarking();
-    m_editWindow->GotoLineCol(sl, sc);
 }
 
 void Application::Cmd_CopyArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn)
@@ -490,24 +522,57 @@ void Application::Cmd_CopyArea(SourceFile* file, int startLine, int startColumn,
     }
 }
 
-void Application::Cmd_PasteArea(SourceFile* file, int startLine, int startColumn)
+void Application::Cmd_PasteArea(SourceFile* file)
 {
     if (!m_copyBuffer->GetLines().empty())
     {
-        if (m_copyBuffer->GetLines().size() == 1)
+        SourceFile* file = m_editWindow->GetActiveFile();
+        if (file)
         {
-            auto line = file->GetLines()[startLine];
-            auto& chars = line->GetChars();
-            auto cbLine = m_copyBuffer->GetLines()[0];
-            auto& cbChars = cbLine->GetChars();
-            chars.insert(chars.begin() + startColumn, cbChars.begin(), cbChars.end());
-            m_editWindow->GotoLineCol(startLine, startColumn + (int)cbChars.size());
-            line->Tokenize();
-            line->VisualizeText();
-        }
-        else
-        {
+            int oldActiveLine = m_editWindow->GetActiveLine();
+            int oldActiveCol = m_editWindow->GetActiveCol();
 
+            auto line = file->GetLines()[oldActiveLine];
+            auto& chars = line->GetChars();
+
+            auto copyStart = chars;
+            copyStart.erase(copyStart.begin() + oldActiveCol, copyStart.end());
+            auto copyEnd = chars;
+            copyEnd.erase(copyEnd.begin(), copyEnd.begin() + oldActiveCol);
+
+            int startMarkingCol = (int)copyStart.size();
+            int startMarkingLine = oldActiveLine;
+            int endMarkingLine = oldActiveLine + (int)m_copyBuffer->GetLines().size() - 1;
+            int endMarkingCol = (int)m_copyBuffer->GetLines().back()->GetChars().size();
+
+            vector<char> out;
+            auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+            for (int i = 0; i < m_copyBuffer->GetLines().size(); i++)
+            {
+                auto cbLine = m_copyBuffer->GetLines()[i];
+
+                out.clear();
+                if (i == 0)
+                    out = copyStart;
+                out.insert(out.end(), cbLine->GetChars().begin(), cbLine->GetChars().end());
+
+                if (i == m_copyBuffer->GetLines().size() - 1)
+                {
+                    endMarkingCol = (int)out.size();
+                    out.insert(out.end(), copyEnd.begin(), copyEnd.end());
+                }
+
+                if (i == 0)
+                    cmd->PushReplace(oldActiveLine, out);
+                else
+                    cmd->PushAdd(oldActiveLine+i, out);
+            }
+
+            cmd->SetNewActiveLineCol(endMarkingLine, endMarkingCol);
+            cmd->SetPostMarking(startMarkingLine, startMarkingCol, endMarkingLine, endMarkingCol);
+
+            file->GetCmdManager()->PushCmd(cmd);
+            cmd->Do();
         }
     }
 }
@@ -516,33 +581,32 @@ void Application::Cmd_OverwriteChar(SourceFile* file, int ln, int col, char ch)
 {
 
 }
-void Application::Cmd_InsertNewLine(SourceFile* file, int ln, int col)
+void Application::Cmd_InsertNewLine()
 {
-    auto line = file->GetLines()[ln];
-    auto& chars = line->GetChars();
+    SourceFile* file = m_editWindow->GetActiveFile();
+    if (file)
+    {
+        int oldActiveLine = m_editWindow->GetActiveLine();
+        int oldActiveCol = m_editWindow->GetActiveCol();
 
-    auto newLine = new SourceLine();
-    auto& newChars = newLine->GetChars();
+        auto line = file->GetLines()[oldActiveLine];
+        auto& chars = line->GetChars();
 
-    newChars.insert(newChars.begin(), chars.begin() + col, chars.end());
-    chars.erase(chars.begin() + col, chars.end());
+        auto copy = chars;
+        copy.erase(copy.begin() + oldActiveCol, copy.end());
 
-    file->GetLines().insert(file->GetLines().begin() + ln + 1, newLine);
+        auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+        cmd->PushReplace(oldActiveLine, copy);
 
-    line->Tokenize();
-    line->VisualizeText();
+        copy = chars;
+        copy.erase(copy.begin(), copy.begin() + oldActiveCol);
+        cmd->PushAdd(oldActiveLine + 1, copy);
 
-    newLine->Tokenize();
-    newLine->VisualizeText();
-    m_editWindow->GotoLineCol(ln + 1, 0);
-}
+        cmd->SetNewActiveLineCol(oldActiveLine + 1, 0);
 
-void Cmd_CopyArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn)
-{
+        file->GetCmdManager()->PushCmd(cmd);
+        cmd->Do();
 
-}
-
-void Cmd_PasteArea(SourceFile* file, int startLine, int startColumn)
-{
-
+        m_editWindow->ClearMarking();
+    }
 }

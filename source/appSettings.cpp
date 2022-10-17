@@ -68,6 +68,7 @@ AppSettings::AppSettings()
     textYMargin = 4;
     textColor = { 0, 255, 255, 255 };
     commentColor = { 0, 255, 64, 255 };
+    numericColor = { 200, 255, 50, 255 };
     opCodeColor = { 255, 200, 50, 255 };
     xPosDecode = 100;
     xPosText = 300;
@@ -153,6 +154,12 @@ bool AppSettings::Load()
                     ReadColor(value, r, g, b);
                     commentColor = { r, g, b, 255 };
                 }
+                else if (SDL_strcasecmp(token, "numericColor") == 0)
+                {
+                    u8 r, g, b;
+                    ReadColor(value, r, g, b);
+                    numericColor = { r, g, b, 255 };
+                }
                 else if (SDL_strcasecmp(token, "loadedFilePaths") == 0)
                 {
                     ReadStringArray(value, loadedFilePaths);
@@ -210,6 +217,7 @@ bool AppSettings::Save()
         fprintf(fh, "textColor=%d,%d,%d\n", textColor.r, textColor.g, textColor.b);
         fprintf(fh, "opCodeColor=%d,%d,%d\n", opCodeColor.r, opCodeColor.g, opCodeColor.b);
         fprintf(fh, "commentColor=%d,%d,%d\n", commentColor.r, commentColor.g, commentColor.b);
+        fprintf(fh, "numericColor=%d,%d,%d\n", numericColor.r, numericColor.g, numericColor.b);
         if (!loadedFilePaths.empty())
         {
             fprintf(fh, "loadedFilePaths=%s", loadedFilePaths[0].c_str());

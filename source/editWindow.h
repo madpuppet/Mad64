@@ -1,5 +1,12 @@
 #pragma once
 
+enum MarkingType
+{
+	MARK_None,
+	MARK_Key,
+	MARK_Mouse
+};
+
 class EditWindow
 {
 public:
@@ -23,18 +30,29 @@ public:
 	int GetActiveLine() { return m_activeSourceFileItem ? m_activeSourceFileItem->activeLine : 0; }
 	int GetActiveCol() { return m_activeSourceFileItem ? m_activeSourceFileItem->activeColumn : 0; }
 
-	void CursorUp(bool marking);
-	void CursorLeft(bool marking);
-	void CursorRight(bool marking);
-	void CursorDown(bool marking);
-	void GotoLineCol(int ln, int col);
-	void ClearMarking() { m_marked = false; }
+	void CursorUp(MarkingType marking);
+	void CursorLeft(MarkingType marking);
+	void CursorRight(MarkingType marking);
+	void CursorDown(MarkingType marking);
+	void CursorStart(MarkingType marking);
+	void CursorEnd(MarkingType marking);
+	void CursorTopOfFile(MarkingType marking);
+	void CursorBottomOfFile(MarkingType marking);
+
+	void GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos);
+	void ClearMarking() { m_marked = false; m_keyMarking = false; m_mouseMarking = false; }
+	void SetMarking(int startLine, int startColumn, int endLine, int endColumn)
+	{
+		m_marked = true;
+		m_markStartLine = startLine;
+		m_markStartColumn = startColumn;
+		m_markEndLine = endLine;
+		m_markEndColumn = endColumn;
+	}
 
 protected:
 	void ClampTargetScroll();
 	void CalcScrollBar(int& start, int& end);
-	void CursorStart(bool marking);
-	void CursorEnd(bool marking);
 	void SelectCursor(int x, int y);
 	void MakeActiveLineVisible();
 	bool CheckLineMarked(int lineNmbr, int& startCol, int& endCol);
@@ -49,6 +67,7 @@ protected:
 		int scroll;
 		float targetScroll;
 		int activeLine, activeColumn, activeTargetX;
+		bool modified;
 	};
 	vector<SourceFileItem*> m_fileTabs;
 	SourceFileItem* m_activeSourceFileItem;
@@ -107,10 +126,13 @@ protected:
 		int column;
 		int totalLines;
 		int totalColumns;
+		int undo;
+		int totalUndo;
 
 		GraphicElement* m_geOverwriteMode;
 		GraphicElement* m_geLine;
 		GraphicElement* m_geColumn;
+		GraphicElement* m_geUndo;
 	} m_status;
 	void InitStatus();
 	void UpdateStatus();

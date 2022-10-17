@@ -86,6 +86,7 @@ class SourceCopyBuffer
 {
 public:
     void Clear();
+    void Dump();
     vector<SourceCopyBufferLine*> &GetLines() { return m_lines; }
 
 protected:
@@ -100,11 +101,17 @@ public:
 
     class CmdManager* GetCmdManager() { return m_cmdManager; }
     bool Load();
+    bool Save();
     const char* GetName() { return m_name.c_str(); }
     const char* GetPath() { return m_path.c_str(); }
     vector<SourceLine*> &GetLines() { return m_lines; }
 
+    void UpdateDirty(int amount) { m_dirtyCount += amount; }
+    bool IsDirty() { return m_dirtyCount != 0; }
+
 protected:
+    int m_dirtyCount;
+
     string m_name;
     string m_path;
     vector<SourceLine *> m_lines;

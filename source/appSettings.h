@@ -21,6 +21,7 @@ public:
     SDL_Color textColor;
     SDL_Color opCodeColor;
     SDL_Color commentColor;
+    SDL_Color numericColor;
 
     vector<string> loadedFilePaths;
     string activeFilePath;

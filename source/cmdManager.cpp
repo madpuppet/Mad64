@@ -65,8 +65,18 @@ void CmdManager::Redo()
 	}
 }
 
+void CmdManager::Dump()
+{
+	printf("CMD BUFFER:\n");
+	for (auto cmd : m_items)
+	{
+		cmd->Dump();
+	}
+}
+
 void CmdChangeLines::Do()
 {
+	gApp->GetEditWindow()->ClearMarking();
 	for (auto c : m_changes)
 	{
 		switch (c->type)
@@ -99,11 +109,19 @@ void CmdChangeLines::Do()
 	}
 
 	gApp->GetEditWindow()->SetActiveFile(m_file);
-	gApp->GetEditWindow()->GotoLineCol(m_newActiveLine, m_newActiveColumn);
+	gApp->GetEditWindow()->GotoLineCol(m_newActiveLine, m_newActiveColumn, MARK_None, true);
+
+	if (m_changeMarking)
+	{
+		gApp->GetEditWindow()->SetMarking(m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn);
+	}
+
+	m_file->UpdateDirty(1);
 }
 
 void CmdChangeLines::Undo()
 {
+	gApp->GetEditWindow()->ClearMarking();
 	for (auto it = m_changes.rbegin(); it != m_changes.rend(); ++it)
 	{
 		auto c = (*it);
@@ -141,7 +159,9 @@ void CmdChangeLines::Undo()
 	}
 
 	gApp->GetEditWindow()->SetActiveFile(m_file);
-	gApp->GetEditWindow()->GotoLineCol(m_oldActiveLine, m_oldActiveColumn);
+	gApp->GetEditWindow()->GotoLineCol(m_oldActiveLine, m_oldActiveColumn, MARK_None, true);
+
+	m_file->UpdateDirty(-1);
 }
 
 void CmdChangeLines::PushAdd(int line, vector<char>& chars)
@@ -171,5 +191,18 @@ void CmdChangeLines::PushReplace(int line, vector<char>& chars)
 	change->newLine = chars;
 	m_changes.push_back(change);
 }
+
+void CmdChangeLines::Dump()
+{
+	const char* cmdName[] = { "REMOVE", "ADD", "REPLACE" };
+	printf("CMD: ChangeLines\n");
+	for (auto c : m_changes)
+	{
+		string oldLine((char*)c->oldLine.data(), c->oldLine.size());
+		string newLine((char*)c->newLine.data(), c->newLine.size());
+		printf("   %s : %d |%s| => |%s|\n", cmdName[c->type], c->line, oldLine.c_str(), newLine.c_str());
+	}
+}
+
 
 

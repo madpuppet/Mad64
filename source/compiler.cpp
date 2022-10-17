@@ -5,7 +5,7 @@ Compiler::Compiler()
 {
 }
 
-const char* ops[] = { "inx", "iny", "lda", "sta", "rts", "inc", "dec", "ror", "lsr", "asl", "bcc", "bcs", "jmp", "jsr", "tay", "tya", "tax", "txa", "pha", "pla" };
+const char* ops[] = { "ldy", "ldx", "inx", "iny", "lda", "sta", "rts", "inc", "dec", "ror", "lsr", "asl", "bcc", "bcs", "jmp", "jsr", "tay", "tya", "tax", "txa", "pha", "pla" };
 
 int Compiler::FindOpCode(const char* text)
 {

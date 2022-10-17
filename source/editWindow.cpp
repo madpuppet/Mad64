@@ -74,12 +74,18 @@ void EditWindow::Draw()
 		if (sfi == m_activeSourceFileItem)
 		{
 			back = { 64,64,128,255 };
-			fore = { 255,255,255,255 };
+			if (sfi->file->IsDirty())
+				fore = { 255,100,100,255 };
+			else
+				fore = { 255,255,255,255 };
 		}
 		else
 		{
 			back = { 32,32,64,255 };
-			fore = { 96,96,96,255 };
+			if (sfi->file->IsDirty())
+				fore = { 128,64,64,255 };
+			else
+				fore = { 96,96,96,255 };
 		}
 		SDL_Rect border = sfi->geText->GetRect();
 		SDL_SetRenderDrawColor(r, back.r, back.g, back.b, back.a);
@@ -234,6 +240,7 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 {
 	// add new file tab
 	auto sfi = new SourceFileItem();
+	sfi->modified = false;
 	sfi->file = file;
 	sfi->geText = GraphicElement::CreateFromText(gApp->GetFont(), file->GetName(), { 255,255,255,255 }, 0, 0);
 	sfi->activeColumn = 0;
@@ -445,6 +452,9 @@ void EditWindow::ProcessMouseMarking(int x, int y)
 
 void EditWindow::OnMouseMotion(SDL_Event* e)
 {
+	int windowWidth;
+	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, 0);
+
 	auto settings = gApp->GetSettings();
 	if (m_mouseMarking)
 	{
@@ -454,12 +464,33 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 	{
 		switch (m_dragMode)
 		{
-		case DRAG_DivideContext:
-			break;
 		case DRAG_DivideDecode:
-			break;
+			{
+				int newLoc = SDL_clamp(e->button.x + m_dragOffset, 16, windowWidth - 48);
+				settings->xPosDecode = newLoc;
+				settings->xPosText = max(settings->xPosText, newLoc+16);
+				settings->xPosContextHelp = max(settings->xPosContextHelp, newLoc+32);
+				CalcRects();
+			}
+			return;
 		case DRAG_DivideText:
-			break;
+			{
+				int newLoc = SDL_clamp(e->button.x + m_dragOffset, 32, windowWidth - 32);
+				settings->xPosDecode = min(settings->xPosDecode, newLoc-16);
+				settings->xPosText = newLoc;
+				settings->xPosContextHelp = max(settings->xPosContextHelp, newLoc+16);
+				CalcRects();
+			}
+			return;
+		case DRAG_DivideContext:
+			{
+				int newLoc = SDL_clamp(e->button.x + m_dragOffset, 48, windowWidth-16);
+				settings->xPosDecode = min(settings->xPosDecode, newLoc-32);
+				settings->xPosText = min(settings->xPosText, newLoc-16);
+				settings->xPosContextHelp = newLoc;
+				CalcRects();
+			}
+			return;
 		case DRAG_EditVertScroll:
 			SnapScrollBarToMouseY(e->button.y);
 			break;
@@ -538,7 +569,7 @@ char s_shifted[128] =
 {
 	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//00
 	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//10
-	46,  46, 46, 46, 46, 46, 46, 34, 46, 46, 46, 46,  60,  95,  62, 63,		//20
+	32,  46, 46, 46, 46, 46, 46, 34, 46, 46, 46, 46,  60,  95,  62, 63,		//20
 	41,  33, 64, 35, 36, 37, 94, 38, 42, 40, 46, 58,  46,  43,  46, 46,		//30
 	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//40
 	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 123, 124, 125, 46, 46,		//50
@@ -557,7 +588,7 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 
 	if (m_activeSourceFileItem)
 	{
-		bool shiftHeld = e->key.keysym.mod & KMOD_SHIFT;
+		MarkingType markingType = e->key.keysym.mod & KMOD_SHIFT ? MARK_Key : MARK_None;
 		switch (e->key.keysym.sym)
 		{
 		case SDLK_z:
@@ -572,29 +603,43 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			break;
 		case SDLK_PAGEUP:
 			for (int i = 0; i < 20; i++)
-				CursorUp(shiftHeld);
+				CursorUp(markingType);
 			return;
 		case SDLK_PAGEDOWN:
 			for (int i = 0; i < 20; i++)
-				CursorDown(shiftHeld);
+				CursorDown(markingType);
 			return;
 		case SDLK_UP:
-			CursorUp(shiftHeld);
+			CursorUp(markingType);
 			return;
 		case SDLK_DOWN:
-			CursorDown(shiftHeld);
+			CursorDown(markingType);
 			return;
 		case SDLK_LEFT:
-			CursorLeft(shiftHeld);
+			CursorLeft(markingType);
 			return;
 		case SDLK_RIGHT:
-			CursorRight(shiftHeld);
+			CursorRight(markingType);
 			return;
 		case SDLK_END:
-			CursorEnd(shiftHeld);
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				CursorBottomOfFile(markingType);
+			}
+			else
+			{
+				CursorEnd(markingType);
+			}
 			return;
 		case SDLK_HOME:
-			CursorStart(shiftHeld);
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				CursorTopOfFile(markingType);
+			}
+			else
+			{
+				CursorStart(markingType);
+			}
 			return;
 		case SDLK_x:
 			if (e->key.keysym.mod & KMOD_CTRL)
@@ -623,7 +668,7 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 				{
 					gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
 				}
-				gApp->Cmd_PasteArea(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine, m_activeSourceFileItem->activeColumn);
+				gApp->Cmd_PasteArea(m_activeSourceFileItem->file);
 				return;
 			}
 			break;
@@ -644,7 +689,7 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			}
 			else
 			{
-				gApp->Cmd_DeleteChar(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine, m_activeSourceFileItem->activeColumn);
+				gApp->Cmd_DeleteChar();
 			}
 			return;
 		case SDLK_RETURN:
@@ -652,15 +697,13 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			{
 				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndColumn, m_markEndColumn, false);
 			}
-			gApp->Cmd_InsertNewLine(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine, m_activeSourceFileItem->activeColumn);
+			gApp->Cmd_InsertNewLine();
 			return;
 		}
 
 		char ch = e->key.keysym.sym;
 		if (ch >= SDLK_SPACE && ch <= SDLK_z)
 		{
-			printf("SYM %d (%x)\n", e->key.keysym.sym, e->key.keysym.sym);
-
 			if (e->key.keysym.mod & KMOD_SHIFT)
 				ch = s_shifted[ch];
 
@@ -690,204 +733,120 @@ void EditWindow::MakeActiveLineVisible()
 	}
 }
 
-void EditWindow::CursorUp(bool marking)
+void EditWindow::CursorUp(MarkingType mark)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_keyMarking)
-		{
-			m_markStartLine = m_activeSourceFileItem->activeLine;
-			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-		}
-
 		auto file = m_activeSourceFileItem->file;
+		int gotoLine = m_activeSourceFileItem->activeLine;
+		int gotoColumn = m_activeSourceFileItem->activeColumn;
+
 		if (m_activeSourceFileItem->activeLine > 0)
 		{
-			auto oldLine = file->GetLines()[m_activeSourceFileItem->activeLine];
-			m_activeSourceFileItem->activeLine--;
-			auto newLine = file->GetLines()[m_activeSourceFileItem->activeLine];
-			m_activeSourceFileItem->activeColumn = newLine->GetColumnAtX(m_activeSourceFileItem->activeTargetX);
-
-			MakeActiveLineVisible();
+			gotoLine--;
+			m_activeSourceFileItem->activeColumn = file->GetLines()[gotoLine]->GetColumnAtX(m_activeSourceFileItem->activeTargetX);
 		}
-		m_cursorAnimTime = 0;
-
-		if (marking)
-		{
-			m_markEndLine = m_activeSourceFileItem->activeLine;
-			m_markEndColumn = m_activeSourceFileItem->activeColumn;
-		}
-		m_keyMarking = marking;
-		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+		GotoLineCol(gotoLine, gotoColumn, mark, false);
 	}
-	m_mouseMarking = false;
 }
 
-void EditWindow::CursorDown(bool marking)
+void EditWindow::CursorDown(MarkingType mark)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_keyMarking)
-		{
-			m_markStartLine = m_activeSourceFileItem->activeLine;
-			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_keyMarking = true;
-		}
-
 		auto file = m_activeSourceFileItem->file;
-		if (m_activeSourceFileItem->activeLine < file->GetLines().size() - 1)
-		{
-			auto oldLine = file->GetLines()[m_activeSourceFileItem->activeLine];
-			m_activeSourceFileItem->activeLine++;
-			auto newLine = file->GetLines()[m_activeSourceFileItem->activeLine];
-			m_activeSourceFileItem->activeColumn = newLine->GetColumnAtX(m_activeSourceFileItem->activeTargetX);
+		int gotoLine = m_activeSourceFileItem->activeLine;
+		int gotoColumn = m_activeSourceFileItem->activeColumn;
 
-			MakeActiveLineVisible();
-		}
-		m_cursorAnimTime = 0;
-
-		if (marking)
+		if (gotoLine < file->GetLines().size() - 1)
 		{
-			m_markEndLine = m_activeSourceFileItem->activeLine;
-			m_markEndColumn = m_activeSourceFileItem->activeColumn;
+			gotoLine++;
+			gotoColumn = file->GetLines()[gotoLine]->GetColumnAtX(m_activeSourceFileItem->activeTargetX);
 		}
-		m_keyMarking = marking;
-		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+		GotoLineCol(gotoLine, gotoColumn, mark, false);
 	}
-	m_mouseMarking = false;
 }
 
-void EditWindow::CursorLeft(bool marking)
+void EditWindow::CursorLeft(MarkingType mark)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_keyMarking)
-		{
-			m_markStartLine = m_activeSourceFileItem->activeLine;
-			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_keyMarking = true;
-		}
-
 		auto file = m_activeSourceFileItem->file;
-		if (m_activeSourceFileItem->activeColumn > 0)
-			m_activeSourceFileItem->activeColumn--;
-		else if (m_activeSourceFileItem->activeLine > 0)
-		{
-			m_activeSourceFileItem->activeLine--;
-			auto line = file->GetLines()[m_activeSourceFileItem->activeLine];
-			m_activeSourceFileItem->activeColumn = (int)line->GetChars().size();
-			MakeActiveLineVisible();
-		}
+		int gotoLine = m_activeSourceFileItem->activeLine;
+		int gotoColumn = m_activeSourceFileItem->activeColumn;
 
-		int x1, x2;
-		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
-		m_activeSourceFileItem->activeTargetX = x1 + 1;
-		m_cursorAnimTime = 0;
-
-		if (marking)
+		if (gotoColumn > 0)
+			gotoColumn--;
+		else if (gotoLine > 0)
 		{
-			m_markEndLine = m_activeSourceFileItem->activeLine;
-			m_markEndColumn = m_activeSourceFileItem->activeColumn;
+			gotoLine--;
+			auto line = file->GetLines()[gotoLine];
+			gotoColumn = (int)line->GetChars().size();
 		}
-		m_keyMarking = marking;
-		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+		GotoLineCol(gotoLine, gotoColumn, mark, true);
 	}
-	m_mouseMarking = false;
 }
 
-void EditWindow::CursorRight(bool marking)
+void EditWindow::CursorRight(MarkingType mark)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_keyMarking)
-		{
-			m_markStartLine = m_activeSourceFileItem->activeLine;
-			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_keyMarking = true;
-		}
-
 		auto file = m_activeSourceFileItem->file;
-		if (m_activeSourceFileItem->activeColumn < (file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars().size()))
-			m_activeSourceFileItem->activeColumn++;
-		else if (m_activeSourceFileItem->activeLine < file->GetLines().size()-1)
-		{
-			m_activeSourceFileItem->activeLine++;
-			m_activeSourceFileItem->activeColumn = 0;
-			MakeActiveLineVisible();
-		}
+		int gotoLine = m_activeSourceFileItem->activeLine;
+		int gotoColumn = m_activeSourceFileItem->activeColumn;
 
-		int x1, x2;
-		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
-		m_activeSourceFileItem->activeTargetX = x1 + 1;
-		m_cursorAnimTime = 0;
-
-		if (marking)
+		if (gotoColumn < (file->GetLines()[gotoLine]->GetChars().size()))
+			gotoColumn++;
+		else if (gotoLine < file->GetLines().size() - 1)
 		{
-			m_markEndLine = m_activeSourceFileItem->activeLine;
-			m_markEndColumn = m_activeSourceFileItem->activeColumn;
+			gotoLine++;
+			gotoColumn = 0;
 		}
-		m_keyMarking = marking;
-		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+		GotoLineCol(gotoLine, gotoColumn, mark, true);
 	}
-	m_mouseMarking = false;
 }
 
-void EditWindow::CursorStart(bool marking)
+void EditWindow::CursorStart(MarkingType mark)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_keyMarking)
-		{
-			m_markStartLine = m_activeSourceFileItem->activeLine;
-			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_keyMarking = true;
-		}
-
 		auto file = m_activeSourceFileItem->file;
-		m_activeSourceFileItem->activeColumn = 0;
-
-		int x1, x2;
-		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
-		m_activeSourceFileItem->activeTargetX = x1 + 1;
-		m_cursorAnimTime = 0;
-
-		if (marking)
-		{
-			m_markEndLine = m_activeSourceFileItem->activeLine;
-			m_markEndColumn = m_activeSourceFileItem->activeColumn;
-		}
-		m_keyMarking = marking;
-		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+		int gotoLine = m_activeSourceFileItem->activeLine;
+		int gotoColumn = 0;
+		GotoLineCol(gotoLine, gotoColumn, mark, true);
 	}
-	m_mouseMarking = false;
 }
 
-void EditWindow::CursorEnd(bool marking)
+void EditWindow::CursorTopOfFile(MarkingType mark)
 {
 	if (m_activeSourceFileItem)
 	{
-		if (marking && !m_keyMarking)
-		{
-			m_markStartLine = m_activeSourceFileItem->activeLine;
-			m_markStartColumn = m_activeSourceFileItem->activeColumn;
-			m_keyMarking = true;
-		}
-
 		auto file = m_activeSourceFileItem->file;
-		m_activeSourceFileItem->activeColumn = (int)file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars().size();
+		int gotoLine = 0;
+		int gotoColumn = 0;
+		GotoLineCol(gotoLine, gotoColumn, mark, true);
+	}
+}
 
-		int x1, x2;
-		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
-		m_activeSourceFileItem->activeTargetX = x1 + 1;
-		m_cursorAnimTime = 0;
+void EditWindow::CursorEnd(MarkingType mark)
+{
+	if (m_activeSourceFileItem)
+	{
+		auto file = m_activeSourceFileItem->file;
+		int gotoLine = m_activeSourceFileItem->activeLine;
+		int gotoColumn = (int)file->GetLines()[gotoLine]->GetChars().size();
+		GotoLineCol(gotoLine, gotoColumn, mark, true);
+	}
+}
 
-		if (marking)
-		{
-			m_markEndLine = m_activeSourceFileItem->activeLine;
-			m_markEndColumn = m_activeSourceFileItem->activeColumn;
-		}
-		m_keyMarking = marking;
-		m_marked = m_keyMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
+void EditWindow::CursorBottomOfFile(MarkingType mark)
+{
+	if (m_activeSourceFileItem)
+	{
+		auto file = m_activeSourceFileItem->file;
+		int gotoLine = (int)m_activeSourceFileItem->file->GetLines().size()-1;
+		int gotoColumn = (int)m_activeSourceFileItem->file->GetLines().back()->GetChars().size();
+		GotoLineCol(gotoLine, gotoColumn, mark, true);
 	}
 }
 
@@ -987,6 +946,7 @@ void EditWindow::InitStatus()
 	m_status.m_geOverwriteMode = nullptr;
 	m_status.m_geLine = nullptr;
 	m_status.m_geColumn = nullptr;
+	m_status.m_geUndo = nullptr;
 }
 void EditWindow::UpdateStatus()
 {
@@ -1007,6 +967,7 @@ void EditWindow::UpdateStatus()
 			delete m_status.m_geLine;
 			m_status.line = m_activeSourceFileItem->activeLine;
 			m_status.totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
+
 			char temp[256];
 			sprintf(temp, "LINE: %d/%d", m_status.line+1, m_status.totalLines);
 			m_status.m_geLine = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
@@ -1016,9 +977,25 @@ void EditWindow::UpdateStatus()
 		{
 			delete m_status.m_geColumn;
 			m_status.column = m_activeSourceFileItem->activeColumn;
+			m_status.totalColumns = (int)line->GetChars().size();
+
 			char temp[256];
 			sprintf(temp, "COL: %d/%d", m_status.column+1, (int)line->GetChars().size());
 			m_status.m_geColumn = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
+		}
+
+		auto cmdMgr = m_activeSourceFileItem->file->GetCmdManager();
+		int totalCmds = cmdMgr->GetTotalCmds();
+		int currentCmd = cmdMgr->GetCurrentCmdIndex();
+		if (!m_status.m_geUndo || m_status.undo != currentCmd || m_status.totalUndo != totalCmds)
+		{
+			delete m_status.m_geUndo;
+			m_status.undo = currentCmd;
+			m_status.totalUndo = totalCmds;
+
+			char temp[256];
+			sprintf(temp, "CMD: %d/%d", currentCmd, totalCmds);
+			m_status.m_geUndo = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
 		}
 	}
 }
@@ -1033,35 +1010,73 @@ void EditWindow::DrawStatus()
 
 	if (m_status.m_geOverwriteMode)
 	{
-		SDL_Rect rect = { m_statusRect.w - charW * 50, m_statusRect.y + settings->textYMargin, m_status.m_geOverwriteMode->GetRect().w, m_status.m_geOverwriteMode->GetRect().h };
+		SDL_Rect rect = { m_statusRect.w - charW * 60, m_statusRect.y + settings->textYMargin, m_status.m_geOverwriteMode->GetRect().w, m_status.m_geOverwriteMode->GetRect().h };
 		SDL_RenderCopy(r, m_status.m_geOverwriteMode->GetTexture(), NULL, &rect);
 	}
-	if (m_status.m_geLine && m_status.m_geColumn)
+	if (m_status.m_geLine && m_status.m_geColumn && m_status.m_geUndo)
 	{
 		int lineW = m_status.m_geLine->GetRect().w;
 		int colW = m_status.m_geColumn->GetRect().w;
+		int undoW = m_status.m_geUndo->GetRect().w;
 
-		SDL_Rect lineRect = { m_statusRect.w - lineW - 20, m_statusRect.y + settings->textYMargin, lineW, m_status.m_geLine->GetRect().h };
-		SDL_Rect colRect = { m_statusRect.w - colW - charW * 20, m_statusRect.y + settings->textYMargin, colW, m_status.m_geLine->GetRect().h };
+		SDL_Rect lineRect = { m_statusRect.w - lineW - 15, m_statusRect.y + settings->textYMargin, lineW, m_status.m_geLine->GetRect().h };
+		SDL_Rect colRect = { m_statusRect.w - colW - charW * 20 - 15, m_statusRect.y + settings->textYMargin, colW, m_status.m_geLine->GetRect().h };
+		SDL_Rect undoRect = { m_statusRect.w - undoW - charW * 40 - 15, m_statusRect.y + settings->textYMargin, undoW, m_status.m_geLine->GetRect().h };
 
 		SDL_RenderCopy(r, m_status.m_geColumn->GetTexture(), NULL, &colRect);
 		SDL_RenderCopy(r, m_status.m_geLine->GetTexture(), NULL, &lineRect);
+		SDL_RenderCopy(r, m_status.m_geUndo->GetTexture(), NULL, &undoRect);
 	}
 }
 
-void EditWindow::GotoLineCol(int ln, int col)
+void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)
 {
 	if (m_activeSourceFileItem)
 	{
 		auto file = m_activeSourceFileItem->file;
 
+		if ((mark == MARK_Key && !m_keyMarking) || (mark == MARK_Mouse && !m_mouseMarking))
+		{
+			m_markStartLine = m_activeSourceFileItem->activeLine;
+			m_markStartColumn = m_activeSourceFileItem->activeColumn;
+			m_keyMarking = true;
+		}
+
 		m_activeSourceFileItem->activeLine = ln;
 		m_activeSourceFileItem->activeColumn = col;
 
-		int x1, x2;
-		file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
-		m_activeSourceFileItem->activeTargetX = x1 + 1;
+		if (trackXPos)
+		{
+			int x1, x2;
+			file->GetLines()[m_activeSourceFileItem->activeLine]->GetCharX(m_activeSourceFileItem->activeColumn, x1, x2);
+			m_activeSourceFileItem->activeTargetX = x1 + 1;
+		}
+
 		m_cursorAnimTime = 0;
+
+		switch (mark)
+		{
+			case MARK_None:
+				m_keyMarking = false;
+				m_mouseMarking = false;
+				break;
+			case MARK_Key:
+				m_keyMarking = true;
+				m_mouseMarking = false;
+				break;
+			case MARK_Mouse:
+				m_keyMarking = false;
+				m_mouseMarking = true;
+				break;
+		}
+
+		if (mark != MARK_None)
+		{
+			m_markEndLine = m_activeSourceFileItem->activeLine;
+			m_markEndColumn = m_activeSourceFileItem->activeColumn;
+		}
+
+		m_marked = (m_keyMarking || m_mouseMarking) && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 
 		MakeActiveLineVisible();
 	}

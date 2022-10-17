@@ -8,6 +8,8 @@ public:
 	virtual void Undo() = 0;
 	virtual bool IsGroupStart() { return false; }
 	virtual bool IsGroupEnd() { return false; }
+
+	virtual void Dump() {}
 };
 
 class CmdItemGroupStart : public CmdItem
@@ -38,6 +40,7 @@ public:
 		m_oldActiveColumn = oldColumn;
 		m_newActiveLine = oldLine;
 		m_newActiveColumn = oldColumn;
+		m_changeMarking = false;
 	}
 
 	~CmdChangeLines()
@@ -48,6 +51,7 @@ public:
 
 	void Do();
 	void Undo();
+	void Dump();
 
 	void SetFile(class SourceFile* file)
 	{
@@ -61,6 +65,15 @@ public:
 	void PushAdd(int line, vector<char>& chars);
 	void PushRemove(int line);
 	void PushReplace(int line, vector<char>& chars);
+
+	void SetPostMarking(int startLine, int startColumn, int endLine, int endColumn)
+	{
+		m_changeMarking = true;
+		m_markStartLine = startLine;
+		m_markStartColumn = startColumn;
+		m_markEndLine = endLine;
+		m_markEndColumn = endColumn;
+	}
 
 protected:
 	struct Change
@@ -83,6 +96,12 @@ protected:
 	int m_oldActiveColumn;
 	int m_newActiveLine;
 	int m_newActiveColumn;
+
+	bool m_changeMarking;
+	int m_markStartLine;
+	int m_markStartColumn;
+	int m_markEndLine;
+	int m_markEndColumn;
 };
 
 class CmdManager
@@ -95,6 +114,11 @@ public:
 	void PushCmd(CmdItem *item);
 	void Undo();
 	void Redo();
+
+	void Dump();
+
+	int GetTotalCmds() { return (int)m_items.size(); }
+	int GetCurrentCmdIndex() { return m_current; }
 
 	class SourceFile* GetFile() { return m_file; }
 

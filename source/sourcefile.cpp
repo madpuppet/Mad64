@@ -40,6 +40,7 @@ const char* basename(const char* path)
 
 SourceFile::SourceFile(const char* path)
 {
+    m_dirtyCount = 0;
     m_path = path;
     m_name = basename(path);
     m_cmdManager = new CmdManager(this);
@@ -85,6 +86,28 @@ bool SourceFile::Load()
     {
         return false;
     }
+}
+
+bool SourceFile::Save()
+{
+    FILE* fh = fopen(m_path.c_str(), "w");
+    if (fh)
+    {
+        for (int i=0; i<m_lines.size(); i++)
+        {
+            auto line = m_lines[i];
+            string str(line->GetChars().data(), line->GetChars().size());
+            if (i == m_lines.size()-1)
+                fprintf(fh, "%s", str.c_str());
+            else
+                fprintf(fh, "%s\n", str.c_str());
+
+        }
+        m_dirtyCount = 0;
+        fclose(fh);
+        return true;
+    }
+    return false;
 }
 
 bool CharInStr(char ch, const char* str)
@@ -272,6 +295,8 @@ void SourceLine::VisualizeText()
                     col = settings->commentColor;
                 else if (gApp->GetCompiler()->FindOpCode(token) != -1)
                     col = settings->opCodeColor;
+                else if (token[0] == '$' || (token[0] >= '0' && token[0] <= '9'))
+                    col = settings->numericColor;
 
                 m_gcText->Add(GraphicElement::CreateFromText(gApp->GetFont(), token, col, xLoc, 0));
                 xLoc += textWidth;
@@ -286,5 +311,15 @@ void SourceCopyBuffer::Clear()
     for (auto l : m_lines)
         delete l;
     m_lines.clear();
+}
+
+void SourceCopyBuffer::Dump()
+{
+    printf("** DUMP **\n");
+    for (auto l : m_lines)
+    {
+        string pork((char*)l->GetChars().data(), l->GetChars().size());
+        printf("|%s|\n", pork.c_str());
+    }
 }
 
