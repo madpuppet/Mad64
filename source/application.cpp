@@ -288,6 +288,34 @@ void Application::Cmd_InsertChar(char ch)
     }
 }
 
+void Application::Cmd_InsertSpaces(int count)
+{
+    SourceFile* file = m_editWindow->GetActiveFile();
+    if (file)
+    {
+        int oldActiveLine = m_editWindow->GetActiveLine();
+        int oldActiveCol = m_editWindow->GetActiveCol();
+        auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+
+        auto line = file->GetLines()[oldActiveLine];
+        auto& chars = line->GetChars();
+
+        auto copy = chars;
+        for (int i = 0; i < count; i++)
+        {
+            int pos = i + oldActiveCol;
+            if (pos >= copy.size())
+                copy.push_back(' ');
+            else
+                copy[pos] = ' ';
+        }
+        cmd->SetNewActiveLineCol(oldActiveLine, oldActiveCol + count);
+
+        cmd->PushReplace(oldActiveLine, copy);
+        file->GetCmdManager()->PushCmd(cmd);
+        cmd->Do();
+    }
+}
 void Application::Cmd_BackspaceChar()
 {
     SourceFile* file = m_editWindow->GetActiveFile();
@@ -581,8 +609,10 @@ void Application::Cmd_OverwriteChar(SourceFile* file, int ln, int col, char ch)
 {
 
 }
+
 void Application::Cmd_InsertNewLine()
 {
+    auto settings = gApp->GetSettings();
     SourceFile* file = m_editWindow->GetActiveFile();
     if (file)
     {
@@ -600,9 +630,41 @@ void Application::Cmd_InsertNewLine()
 
         copy = chars;
         copy.erase(copy.begin(), copy.begin() + oldActiveCol);
-        cmd->PushAdd(oldActiveLine + 1, copy);
 
-        cmd->SetNewActiveLineCol(oldActiveLine + 1, 0);
+        int tab = 0;
+        if (settings->autoIndent)
+        {
+            // count indent in spaces...
+            int countSpaces = 0;
+            for (int i = 0; i < chars.size() && (chars[i] == ' ' || chars[i] == '\t'); i++)
+            {
+                if (chars[i] == ' ')
+                    countSpaces++;
+                else if (chars[i] == '\t')
+                    countSpaces += (settings->tabWidth - (countSpaces % settings->tabWidth));
+            }
+
+            if (countSpaces > 0)
+            {
+                // now insert either spaces or tabs
+                if (settings->tabsToSpaces)
+                {
+                    for (int i = 0; i < countSpaces; i++)
+                        copy.insert(copy.begin(), ' ');
+                    tab = countSpaces;
+                }
+                else
+                {
+                    int insertTabs = max(1, countSpaces / settings->tabWidth);
+                    for (int i=0; i < insertTabs; i++)
+                        copy.insert(copy.begin(), '\t');
+                    tab = insertTabs;
+                }
+            }
+        }
+
+        cmd->PushAdd(oldActiveLine + 1, copy);
+        cmd->SetNewActiveLineCol(oldActiveLine + 1, tab);
 
         file->GetCmdManager()->PushCmd(cmd);
         cmd->Do();

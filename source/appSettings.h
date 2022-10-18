@@ -5,6 +5,10 @@ class AppSettings
 public:
     AppSettings();
 
+    bool tabsToSpaces;    // convert tabs to spaces
+    bool overwriteMode;  // overwrite or insert
+    bool autoIndent;     // on return, do we indent the next line
+
     int fontSize;        // point size of font
     int lineHeight;      // pixel height of a line of text
     int whiteSpaceWidth; // pixel size of a space character

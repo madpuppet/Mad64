@@ -60,10 +60,14 @@ bool ReadColor(char* src, u8& red, u8& green, u8& blue)
 
 AppSettings::AppSettings()
 {
+    tabsToSpaces = true;
+    overwriteMode = false;
+    autoIndent = true;
+
     lineHeight = 24;
     fontSize = 16;
     whiteSpaceWidth = fontSize;
-    tabWidth = whiteSpaceWidth * 4;
+    tabWidth = 4;
     textXMargin = 8;
     textYMargin = 4;
     textColor = { 0, 255, 255, 255 };
@@ -96,7 +100,19 @@ bool AppSettings::Load()
             if (token[0] && value[0])
             {
                 int val = atoi(value);
-                if (SDL_strcasecmp(token, "FontSize") == 0)
+                if (SDL_strcasecmp(token, "tabsToSpaces") == 0)
+                {
+                    tabsToSpaces = val ? true : false;
+                }
+                else if (SDL_strcasecmp(token, "overwriteMode") == 0)
+                {
+                    overwriteMode = val ? true : false;
+                }
+                else if (SDL_strcasecmp(token, "autoIndent") == 0)
+                {
+                    autoIndent = val ? true : false;
+                }
+                else if (SDL_strcasecmp(token, "FontSize") == 0)
                 {
                     fontSize = val;
                 }
@@ -204,6 +220,9 @@ bool AppSettings::Save()
     FILE* fh = fopen(path.c_str(), "w");
     if (fh)
     {
+        fprintf(fh, "tabsToSpaces=%d\n", tabsToSpaces ? 1 : 0);
+        fprintf(fh, "overwriteMode=%d\n", overwriteMode ? 1 : 0);
+        fprintf(fh, "autoIndent=%d\n", autoIndent ? 1 : 0);
         fprintf(fh, "fontSize=%d\n", fontSize);
         fprintf(fh, "lineHeight=%d\n", lineHeight);
         fprintf(fh, "whiteSpaceWidth=%d\n", whiteSpaceWidth);

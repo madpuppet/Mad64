@@ -28,12 +28,12 @@ public:
     void Cmd_BackspaceChar();
     void Cmd_DeleteChar();
     void Cmd_InsertNewLine();
-
-    void Cmd_OverwriteChar(SourceFile* file, int line, int column, char ch);
-
+    void Cmd_InsertSpaces(int count);
     void Cmd_DeleteArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn, bool toCopyBuffer);
     void Cmd_CopyArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn);
     void Cmd_PasteArea(SourceFile* file);
+
+    void Cmd_OverwriteChar(SourceFile* file, int line, int column, char ch);
 
 protected:
     vector<SourceFile*> m_sourceFiles;

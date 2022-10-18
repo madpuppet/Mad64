@@ -269,8 +269,8 @@ void SourceLine::VisualizeText()
             {
                 for (int i = 0; i < len; i++)
                 {
-                    int tabFwd = xLoc + 1 + settings->tabWidth;
-                    xLoc = tabFwd - (tabFwd % settings->tabWidth);
+                    int tabFwd = xLoc + 1 + (settings->tabWidth * settings->whiteSpaceWidth);
+                    xLoc = tabFwd - (tabFwd % (settings->tabWidth * settings->whiteSpaceWidth));
                     m_charXOffset.push_back(xLoc);
                 }
             }

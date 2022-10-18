@@ -72,7 +72,6 @@ protected:
 	vector<SourceFileItem*> m_fileTabs;
 	SourceFileItem* m_activeSourceFileItem;
 	float m_cursorAnimTime;
-	bool m_overwriteMode;
 
 	bool m_keyMarking;
 	bool m_mouseMarking;
@@ -122,6 +121,9 @@ protected:
 	struct StatusInfo
 	{
 		bool overwriteMode;
+		bool tabsToSpaces;
+		bool autoIndent;
+
 		int line;
 		int column;
 		int totalLines;
@@ -129,7 +131,7 @@ protected:
 		int undo;
 		int totalUndo;
 
-		GraphicElement* m_geOverwriteMode;
+		GraphicElement* m_geModes;
 		GraphicElement* m_geLine;
 		GraphicElement* m_geColumn;
 		GraphicElement* m_geUndo;

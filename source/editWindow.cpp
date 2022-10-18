@@ -17,7 +17,6 @@ EditWindow::EditWindow()
 
 	m_activeSourceFileItem = nullptr;
 	m_cursorAnimTime = 0.0f;
-	m_overwriteMode = false;
 	m_dragMode = DRAG_None;
 	m_autoScroll = 0;
 	m_autoScroll_mouseX = 0;
@@ -148,7 +147,7 @@ void EditWindow::Draw()
 				line->GetCharX(m_activeSourceFileItem->activeColumn, cursorX1, cursorX2);
 				int cursorY = m_sourceEditRect.y + m_activeSourceFileItem->activeLine * settings->lineHeight - m_activeSourceFileItem->scroll;
 				int brightness = max(0, (int)(100 + cosf(m_cursorAnimTime) * 128));
-				SDL_Rect cursorRect = { m_sourceEditRect.x + settings->textXMargin + cursorX1, cursorY, m_overwriteMode ? (cursorX2-cursorX1) : 4, settings->lineHeight };
+				SDL_Rect cursorRect = { m_sourceEditRect.x + settings->textXMargin + cursorX1, cursorY, settings->overwriteMode ? (cursorX2-cursorX1) : 4, settings->lineHeight };
 				SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 				SDL_SetRenderDrawColor(r, 255, 255, 255, brightness);
 				SDL_RenderFillRect(r, &cursorRect);
@@ -579,10 +578,17 @@ char s_shifted[128] =
 
 void EditWindow::OnKeyDown(SDL_Event* e)
 {
+	auto settings = gApp->GetSettings();
+
 	// Don't need a file for these keys
 	if (e->key.keysym.sym == SDLK_INSERT)
 	{
-		m_overwriteMode = !m_overwriteMode;
+		if (e->key.keysym.mod & KMOD_SHIFT)
+			settings->autoIndent = !settings->autoIndent;
+		else if (e->key.keysym.mod & KMOD_CTRL)
+			settings->tabsToSpaces = !settings->tabsToSpaces;
+		else
+			settings->overwriteMode = !settings->overwriteMode;
 		return;
 	}
 
@@ -651,6 +657,18 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 				return;
 			}
 			break;
+		case SDLK_a:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				m_marked = true;
+				m_markStartLine = 0;
+				m_markStartColumn = 0;
+				m_markEndLine = m_activeSourceFileItem->file->GetLines().size() - 1;
+				m_markEndColumn - m_activeSourceFileItem->file->GetLines().back()->GetChars().size();
+				return;
+			}
+			break;
+
 		case SDLK_c:
 			if (e->key.keysym.mod & KMOD_CTRL)
 			{
@@ -699,6 +717,17 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			}
 			gApp->Cmd_InsertNewLine();
 			return;
+		case SDLK_TAB:
+			if (m_marked)
+			{
+				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndColumn, m_markEndColumn, false);
+			}
+
+			int tabsToInsert = settings->tabWidth - (m_activeSourceFileItem->activeColumn % settings->tabWidth);
+			if (settings->tabsToSpaces)
+				gApp->Cmd_InsertSpaces(tabsToInsert);
+			else
+				gApp->Cmd_InsertChar('\t');
 		}
 
 		char ch = e->key.keysym.sym;
@@ -741,10 +770,10 @@ void EditWindow::CursorUp(MarkingType mark)
 		int gotoLine = m_activeSourceFileItem->activeLine;
 		int gotoColumn = m_activeSourceFileItem->activeColumn;
 
-		if (m_activeSourceFileItem->activeLine > 0)
+		if (gotoLine > 0)
 		{
 			gotoLine--;
-			m_activeSourceFileItem->activeColumn = file->GetLines()[gotoLine]->GetColumnAtX(m_activeSourceFileItem->activeTargetX);
+			gotoColumn = file->GetLines()[gotoLine]->GetColumnAtX(m_activeSourceFileItem->activeTargetX);
 		}
 		GotoLineCol(gotoLine, gotoColumn, mark, false);
 	}
@@ -929,7 +958,12 @@ struct StatusInfo
 
 void EditWindow::InitStatus()
 {
-	m_status.overwriteMode = m_overwriteMode;
+	auto settings = gApp->GetSettings();
+
+	m_status.overwriteMode = settings->overwriteMode;
+	m_status.autoIndent = settings->autoIndent;
+	m_status.tabsToSpaces = settings->tabsToSpaces;
+
 	if (m_activeSourceFileItem)
 	{
 		m_status.line = m_activeSourceFileItem->activeLine;
@@ -943,19 +977,26 @@ void EditWindow::InitStatus()
 		m_status.totalLines = 0;
 	}
 
-	m_status.m_geOverwriteMode = nullptr;
+	m_status.m_geModes = nullptr;
 	m_status.m_geLine = nullptr;
 	m_status.m_geColumn = nullptr;
 	m_status.m_geUndo = nullptr;
 }
 void EditWindow::UpdateStatus()
 {
+	auto settings = gApp->GetSettings();
+
 	SDL_Color col = { 0,255,255,255 };
-	if (!m_status.m_geOverwriteMode || m_status.overwriteMode != m_overwriteMode)
+	if (!m_status.m_geModes || m_status.overwriteMode != settings->overwriteMode || m_status.autoIndent != settings->autoIndent || m_status.tabsToSpaces != settings->tabsToSpaces)
 	{
-		delete m_status.m_geOverwriteMode;
-		m_status.overwriteMode = m_overwriteMode;
-		m_status.m_geOverwriteMode = GraphicElement::CreateFromText(gApp->GetFont(), m_status.overwriteMode ? "OVR" : "INS", col, 0, 0);
+		delete m_status.m_geModes;
+		m_status.overwriteMode = settings->overwriteMode;
+		m_status.autoIndent = settings->autoIndent;
+		m_status.tabsToSpaces = settings->tabsToSpaces;
+
+		char text[64];
+		sprintf(text, "%s %s %s", settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "AUT" : "---", settings->tabsToSpaces ? "SPC" : "TAB");
+		m_status.m_geModes = GraphicElement::CreateFromText(gApp->GetFont(), text, col, 0, 0);
 	};
 
 	if (m_activeSourceFileItem)
@@ -1008,10 +1049,10 @@ void EditWindow::DrawStatus()
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &m_statusRect);
 
-	if (m_status.m_geOverwriteMode)
+	if (m_status.m_geModes)
 	{
-		SDL_Rect rect = { m_statusRect.w - charW * 60, m_statusRect.y + settings->textYMargin, m_status.m_geOverwriteMode->GetRect().w, m_status.m_geOverwriteMode->GetRect().h };
-		SDL_RenderCopy(r, m_status.m_geOverwriteMode->GetTexture(), NULL, &rect);
+		SDL_Rect rect = { m_statusRect.w - charW * 70, m_statusRect.y + settings->textYMargin, m_status.m_geModes->GetRect().w, m_status.m_geModes->GetRect().h };
+		SDL_RenderCopy(r, m_status.m_geModes->GetTexture(), NULL, &rect);
 	}
 	if (m_status.m_geLine && m_status.m_geColumn && m_status.m_geUndo)
 	{
