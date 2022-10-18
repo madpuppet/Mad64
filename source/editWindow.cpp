@@ -112,7 +112,7 @@ void EditWindow::Draw()
 				SDL_Rect lineQuad = { 0, y, m_memAddrRect.w, settings->lineHeight };
 				SDL_SetRenderDrawColor(r, 0, 80 - ((i & 1) ? 8 : 0), 0, 255);
 				SDL_RenderFillRect(r, &lineQuad);
-				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y);
+				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
 		}
 

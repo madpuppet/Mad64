@@ -109,6 +109,8 @@ public:
 	// return opcode index or -1 if not an opcode
 	bool IsOpCode(const char* text);
 
+    CompilerOpcode* FindOpcode(const char* name, AddressingMode am);
+
     GraphicChunk* GetMemAddrGC(class SourceFile* file, int line, int sourceVersion);
     GraphicChunk* GetDecodeGC(class SourceFile* file, int line, int sourceVersion);
 

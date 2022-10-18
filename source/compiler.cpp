@@ -217,6 +217,7 @@ Compiler::Compiler()
     memset(m_ram, 0, sizeof(m_ram));
     memset(s_opcodes, 0, sizeof(s_opcodes));
 
+    // copy opcode data to indexed table - we'll need this for fast emulation
     int cnt = sizeof(s_opcodesRaw) / sizeof(CompilerOpcode);
     for (int i = 0; i < cnt; i++)
     {
@@ -237,6 +238,20 @@ bool Compiler::IsOpCode(const char* text)
     return false;
 }
 
+CompilerOpcode* Compiler::FindOpcode(const char* name, AddressingMode am)
+{
+    int cnt = sizeof(s_opcodesRaw) / sizeof(CompilerOpcode);
+    for (int i = 0; i < cnt; i++)
+    {
+        if (StrEqual(name, s_opcodesRaw[i].name) && s_opcodesRaw[i].addressMode == am)
+        {
+            return &s_opcodesRaw[i];
+        }
+    }
+    return nullptr;;
+}
+
+
 bool IsEqual(string &s1, const char* s2)
 {
     return (SDL_strcasecmp(s1.c_str(), s2) == 0); 
@@ -255,6 +270,14 @@ struct TokenFifo
         SkipSpaces();
         return (result < (int)m_tokens.size()) ? m_tokens[result] : m_end;
     }
+
+    string& PopNoComments()
+    {
+        int result = m_index++;
+        SkipSpacesAndComments();
+        return (result < (int)m_tokens.size()) ? m_tokens[result] : m_end;
+    }
+
     string& Peek()
     {
         return (m_index < (int)m_tokens.size()) ? m_tokens[m_index] : m_end;
@@ -275,6 +298,8 @@ struct TokenFifo
 
     bool PopNumber(int& value)
     {
+        SkipSpacesAndComments();
+
         string& str = Peek();
         if (str.empty())
             return false;
@@ -290,6 +315,7 @@ struct TokenFifo
                 char ch = toupper(str[i]);
                 value += (ch >= 'A' && ch <= 'F') ? ch - 'A' + 10 : ch - '0';
             }
+            Pop();
             return value;
         }
         else if (ch >= '0' && ch <= '9')
@@ -300,6 +326,7 @@ struct TokenFifo
             {
                 value = value * 10 + str[i] - '0';
             }
+            Pop();
             return value;
         }
         return false;
@@ -308,6 +335,11 @@ struct TokenFifo
     void SkipSpaces()
     {
         while (m_index < (int)m_tokens.size() && (m_tokens[m_index][0] == ' ' || m_tokens[m_index][0] == '\t'))
+            m_index++;
+    }
+    void SkipSpacesAndComments()
+    {
+        while (m_index < (int)m_tokens.size() && (m_tokens[m_index][0] == ' ' || m_tokens[m_index][0] == '\t' || m_tokens[m_index][0] == ';'))
             m_index++;
     }
 
@@ -368,6 +400,94 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, ve
     {
         // decode the opcode
         li->type = LT_Instruction;
+
+        AddressingMode addressMode = AM_Implied;
+
+        string tok1 = fifo.PopNoComments();
+        if (tok1.empty())
+        {
+            // implied..
+            auto opcode = FindOpcode(token.c_str(), AM_Implied);
+            if (!opcode)
+            {
+                Error("ERR Ln:%d) cannot find opcode %s with addressmode Implied", context.lineNmbr, token.c_str());
+                return;
+            }
+        }
+        else if (tok1[0] == '#')
+        {
+            // immediate
+            int operandValue;
+            if (fifo.PopNumber(operandValue))
+            {
+
+            }
+            else
+            {
+                string operandLabel = fifo.Pop();
+
+            }
+            string operand = fifo.PopNoComments();
+            if (operand.empty())
+            {
+                Error("ERR Ln:%d) immediate operand missing token", context.lineNmbr);
+                return;
+            }
+        }
+        else if (tok1[0] == '(')
+        {
+            // indirect, indirectX, indirectY
+            string operand = fifo.PopNoComments();
+            string tok2 = fifo.PopNoComments();
+            if (tok2.empty())
+            {
+                Error("Error %d",__LINE__);
+                return;
+            }
+            if (tok2[0] == ',')
+            {
+                // indirectX
+                tok2 = fifo.PopNoComments();
+                if (tok2.empty() || !IsEqual((const char*)tok2.data(), "x"))
+                {
+                    Error("Error %d", __LINE__);
+                    return;
+                }
+
+            }
+            else if (tok2[0] == ')')
+            {
+                // indirect, indirectY
+                string tok3 = fifo.PopNoComments();
+
+            }
+            else
+            {
+                Error("Error %d", __LINE__);
+            }
+        }
+        else
+        {
+            // zeroPage, zeroPageX, zeroPageY, Absolute, AbsoluteX, AbsoluteY, Relative
+
+        }
+
+
+        AM_Implied,              // operand
+            AM_Immediate,            // operand #value
+            AM_ZeroPage,             // operand value
+            AM_ZeroPageX,            // operand value,x
+            AM_ZeroPageY,            // operand value,y
+            AM_Absolute,             // operand value
+            AM_AbsoluteX,            // operand value,x
+            AM_AbsoluteY,            // operand value,y
+            AM_Indirect,             // operand (value)
+            AM_IndirectX,            // operand (value, x)
+            AM_IndirectY,            // operand (value), y
+            AM_Relative              // operand value
+
+
+
     }
     else if (token.back() == ':')
     {
