@@ -19,6 +19,9 @@ CmdManager::~CmdManager()
 void CmdManager::PushCmd(CmdItem *item)
 {
 	// clip off the end of the list
+	if ((u32)m_items.size() > m_current)
+		m_file->SetForceDirty(true);
+
 	while (m_items.size() > m_current)
 	{
 		delete m_items.back();

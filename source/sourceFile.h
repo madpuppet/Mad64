@@ -1,34 +1,11 @@
 #pragma once
 
-enum LineType
-{
-    LT_Unknown,
-    LT_Comment,
-    LT_Include,
-    LT_Address,
-    LT_Label,
-    LT_DataBytes,
-    LT_Instruction
-};
-
-struct CompileInfo
-{
-    LineType type;
-    int memAddr;
-    int memSize;
-    std::vector<u8> data;
-    GraphicChunk* addr;
-};
-
 class SourceLine
 {
 public:
     SourceLine(const char* start, const char* end)
     {
-        m_compileInfo = nullptr;
-        m_gcText = nullptr;
-        m_gcMemAddr = nullptr;
-        m_gcDecode = nullptr;
+        m_gcText = new GraphicChunk();
 
         while (start != end)
         {
@@ -37,40 +14,26 @@ public:
     }
     SourceLine()
     {
-        m_compileInfo = nullptr;
-        m_gcText = nullptr;
-        m_gcMemAddr = nullptr;
-        m_gcDecode = nullptr;
+        delete m_gcText;
     }
 
     vector<char>& GetChars() { return m_chars; }
+    vector<string>& GetTokens() { return m_tokens; }
     int GetLineWidth() { return m_charXOffset.back(); }
-    CompileInfo* GetCompileInfo() { return m_compileInfo; }
     void GetCharX(int column, int& xStart, int& xEnd);
     int GetColumnAtX(int x);
 
     GraphicChunk* GetGCText() { return m_gcText; }
-    GraphicChunk* GetGCMemAddr() { return m_gcMemAddr; }
-    GraphicChunk* GetGCDecode() { return m_gcDecode; }
 
     void Tokenize();
     void VisualizeText();
-    void Compile();
-    void VisualizeMemAddr();
-    void VisualizeDecode();
 
 protected:
     GraphicChunk* m_gcText;         // graphic chunk for text
-    GraphicChunk* m_gcMemAddr;      // graphic chunk for memory address
-    GraphicChunk* m_gcDecode;       // graphic chunk for decode
 
     vector<char> m_chars;
-    vector<char*> m_tokens;
+    vector<string> m_tokens;
     vector<int> m_charXOffset;
-
-    CompileInfo* m_compileInfo;
-
-    void FreeTokens();
 };
 
 class SourceCopyBufferLine
@@ -106,14 +69,22 @@ public:
     const char* GetPath() { return m_path.c_str(); }
     vector<SourceLine*> &GetLines() { return m_lines; }
 
-    void UpdateDirty(int amount) { m_dirtyCount += amount; }
-    bool IsDirty() { return m_dirtyCount != 0; }
+    void UpdateDirty(int amount) { m_dirtyCount += amount; m_sourceVersion++; }
+    bool IsDirty() { return m_forceDirty || m_dirtyCount != 0; }
+    void SetForceDirty(bool enable) { m_forceDirty = enable; }
+
+    class CompilerSourceInfo* GetCompileInfo();
+    void SetCompileInfo(class CompilerSourceInfo* info);
+    int GetSourceVersion() { return m_sourceVersion; };
 
 protected:
+    bool m_forceDirty;
     int m_dirtyCount;
+    int m_sourceVersion;
 
     string m_name;
     string m_path;
     vector<SourceLine *> m_lines;
     class CmdManager* m_cmdManager;
+    class CompilerSourceInfo* m_compileInfo;
 };

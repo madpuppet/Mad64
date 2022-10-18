@@ -71,6 +71,8 @@ int Application::MainLoop()
     for (auto file : m_sourceFiles)
         file->Save();
 
+    m_settings->Save();
+
     return 0;
 }
 

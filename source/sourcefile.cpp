@@ -79,7 +79,7 @@ bool SourceFile::Load()
         }
 
         // compile & vizualize compiled elements
-
+        gApp->GetCompiler()->Compile(this);
         return true;
     }
     else
@@ -104,6 +104,7 @@ bool SourceFile::Save()
 
         }
         m_dirtyCount = 0;
+        m_forceDirty = false;
         fclose(fh);
         return true;
     }
@@ -121,7 +122,7 @@ bool CharInStr(char ch, const char* str)
     return false;
 }
 
-#define SINGLE_CHAR_TOKENS "[]()<>*/#+-"
+#define SINGLE_CHAR_TOKENS "[]()<>=*/#+-"
 #define WHITE_SPACE_TOKENS " \t"
 
 const char* ScanToken(const char *src, const char *end)
@@ -170,13 +171,14 @@ const char* ScanToken(const char *src, const char *end)
     }
 
     // normal text
-    while (src < end && !CharInStr(*src, "[]()<>*/#+-") && !CharInStr(*src, WHITE_SPACE_TOKENS))
+    while (src < end && !CharInStr(*src, SINGLE_CHAR_TOKENS) && !CharInStr(*src, WHITE_SPACE_TOKENS))
         src++;
     return src;
 }
 
 void SourceLine::Tokenize()
 {
+    // clear memory from old tokens
     m_tokens.clear();
     if (!m_chars.empty())
     {
@@ -192,21 +194,10 @@ void SourceLine::Tokenize()
         const char* end = src + m_chars.size();
         while (tokenEnd = ScanToken(src, end))
         {
-            int len = (int)(tokenEnd - src);
-            char* token = (char *)SDL_malloc((size_t)(len+1));
-            memcpy(token, src, len);
-            token[len] = 0;
-            m_tokens.push_back(token);
+            m_tokens.push_back(string(src, (size_t)(tokenEnd - src)));
             src = tokenEnd;
         }
     }
-}
-
-void SourceLine::FreeTokens()
-{
-    for (auto token : m_tokens)
-        SDL_free(token);
-    m_tokens.clear();
 }
 
 void SourceLine::GetCharX(int column, int& xStart, int& xEnd)
@@ -237,12 +228,7 @@ void SourceLine::VisualizeText()
 {
     auto settings = gApp->GetSettings();
 
-    if (m_gcText)
-    {
-        delete m_gcText;
-        m_gcText = nullptr;
-    }
-
+    m_gcText->Clear();
     m_charXOffset.clear();
     m_charXOffset.push_back(0);
     if (!m_tokens.empty())
@@ -251,10 +237,10 @@ void SourceLine::VisualizeText()
 
         int xLoc = 0;
         int charIdx = 0;
-        for (auto token : m_tokens)
+        for (auto &token : m_tokens)
         {
             // process token
-            int len = (int)SDL_strlen(token);
+            int len = (int)token.size();
             if (token[0] == ' ')
             {
                 // skip white space
@@ -276,7 +262,7 @@ void SourceLine::VisualizeText()
             }
             else
             {
-                int textWidth, textHeight;
+                int textWidth = 0, textHeight = 0;
 
                 // calculate the length at the end of each character
                 char* buffer = (char*)SDL_malloc((size_t)(len + 1));
@@ -293,12 +279,12 @@ void SourceLine::VisualizeText()
                 SDL_Color col = settings->textColor;
                 if (token[0] == ';')
                     col = settings->commentColor;
-                else if (gApp->GetCompiler()->FindOpCode(token) != -1)
+                else if (gApp->GetCompiler()->IsOpCode(token.c_str()))
                     col = settings->opCodeColor;
                 else if (token[0] == '$' || (token[0] >= '0' && token[0] <= '9'))
                     col = settings->numericColor;
 
-                m_gcText->Add(GraphicElement::CreateFromText(gApp->GetFont(), token, col, xLoc, 0));
+                m_gcText->Add(GraphicElement::CreateFromText(gApp->GetFont(), token.c_str(), col, xLoc, 0));
                 xLoc += textWidth;
             }
             charIdx += len;
@@ -322,4 +308,18 @@ void SourceCopyBuffer::Dump()
         printf("|%s|\n", pork.c_str());
     }
 }
+
+CompilerSourceInfo* SourceFile::GetCompileInfo()
+{
+    return m_compileInfo;
+}
+
+void SourceFile::SetCompileInfo(CompilerSourceInfo* info)
+{
+    if (m_compileInfo)
+        delete m_compileInfo;
+    m_compileInfo = info;
+}
+
+
 

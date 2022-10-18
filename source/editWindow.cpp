@@ -100,6 +100,22 @@ void EditWindow::Draw()
 		int startLine = max(0, m_activeSourceFileItem->scroll / settings->lineHeight);
 		int endLine = min((m_sourceEditRect.h + m_activeSourceFileItem->scroll) / settings->lineHeight + 1, (int)file->GetLines().size());
 
+		// draw addresses
+		SDL_RenderSetClipRect(r, &m_memAddrRect);
+		int sourceVersion = file->GetSourceVersion();
+		for (int i = startLine; i < endLine; i++)
+		{
+			auto gc = gApp->GetCompiler()->GetMemAddrGC(file, i, sourceVersion);
+			if (gc)
+			{
+				int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
+				SDL_Rect lineQuad = { 0, y, m_memAddrRect.w, settings->lineHeight };
+				SDL_SetRenderDrawColor(r, 0, 80 - ((i & 1) ? 8 : 0), 0, 255);
+				SDL_RenderFillRect(r, &lineQuad);
+				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y);
+			}
+		}
+
 		// draw text
 		SDL_RenderSetClipRect(r, &m_sourceEditRect);
 
@@ -291,6 +307,7 @@ void EditWindow::OnFileClosed(SourceFile* file)
 				m_activeSourceFileItem = nullptr;
 			else
 				m_activeSourceFileItem = m_fileTabs.back();
+			LayoutTabs();
 			return;
 		}
 	}
@@ -663,8 +680,8 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 				m_marked = true;
 				m_markStartLine = 0;
 				m_markStartColumn = 0;
-				m_markEndLine = m_activeSourceFileItem->file->GetLines().size() - 1;
-				m_markEndColumn - m_activeSourceFileItem->file->GetLines().back()->GetChars().size();
+				m_markEndLine = (int)m_activeSourceFileItem->file->GetLines().size() - 1;
+				m_markEndColumn = (int)m_activeSourceFileItem->file->GetLines().back()->GetChars().size();
 				return;
 			}
 			break;

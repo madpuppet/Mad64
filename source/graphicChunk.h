@@ -34,6 +34,7 @@ public:
     void Draw();
     void DrawAt(i32 x, i32 y);
     void Clear();
+    bool IsEmpty() { return elements.empty(); }
     ~GraphicChunk();
 
 protected:
