@@ -995,7 +995,7 @@ void EditWindow::UpdateStatus()
 		m_status.tabsToSpaces = settings->tabsToSpaces;
 
 		char text[64];
-		sprintf(text, "%s %s %s", settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "AUT" : "---", settings->tabsToSpaces ? "SPC" : "TAB");
+		sprintf(text, "%s %s %s", settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "IND" : "---", settings->tabsToSpaces ? "SPC" : "TAB");
 		m_status.m_geModes = GraphicElement::CreateFromText(gApp->GetFont(), text, col, 0, 0);
 	};
 

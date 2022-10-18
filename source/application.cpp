@@ -279,7 +279,12 @@ void Application::Cmd_InsertChar(char ch)
         auto& chars = line->GetChars();
 
         auto copy = chars;
-        copy.insert(copy.begin() + oldActiveCol, ch);
+
+        if (m_settings->overwriteMode && oldActiveCol < copy.size())
+            copy[oldActiveCol] = ch;
+        else
+            copy.insert(copy.begin() + oldActiveCol, ch);
+
         cmd->SetNewActiveLineCol(oldActiveLine, oldActiveCol + 1);
 
         cmd->PushReplace(oldActiveLine, copy);
@@ -301,13 +306,22 @@ void Application::Cmd_InsertSpaces(int count)
         auto& chars = line->GetChars();
 
         auto copy = chars;
-        for (int i = 0; i < count; i++)
+        if (m_settings->overwriteMode)
         {
-            int pos = i + oldActiveCol;
-            if (pos >= copy.size())
-                copy.push_back(' ');
-            else
-                copy[pos] = ' ';
+            for (int i = 0; i < count; i++)
+            {
+                if ((oldActiveCol + i) < copy.size())
+                    copy[oldActiveCol + i] = ' ';
+                else
+                    copy.push_back(' ');
+            }
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
+            {
+                copy.insert(copy.begin() + oldActiveCol, ' ');
+            }
         }
         cmd->SetNewActiveLineCol(oldActiveLine, oldActiveCol + count);
 
