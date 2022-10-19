@@ -65,6 +65,7 @@ public:
 	void PushAdd(int line, vector<char>& chars);
 	void PushRemove(int line);
 	void PushReplace(int line, vector<char>& chars);
+	int Size() { return (int)m_changes.size(); }
 
 	void SetPostMarking(int startLine, int startColumn, int endLine, int endColumn)
 	{

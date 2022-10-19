@@ -27,7 +27,8 @@ Application::Application()
             m_settings->Save();
 
         TTF_Init();
-        m_font = TTF_OpenFont("data/font.ttf", m_settings->fontSize);
+        m_font = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
+        TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
         SDL_RenderSetVSync(m_renderer, 1);
 
@@ -44,6 +45,24 @@ Application::Application()
         {
             LoadFile(p.c_str());
         }
+    }
+}
+
+void Application::ReloadFont()
+{
+    TTF_Font *newFont = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
+    if (newFont)
+    {
+        TTF_CloseFont(m_font);
+        m_font = newFont;
+        TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
+    }
+
+    for (auto f : m_sourceFiles)
+    {
+        f->Visualize();
+        if (f->GetCompileInfo())
+            f->GetCompileInfo()->ClearVisuals();
     }
 }
 
@@ -141,15 +160,26 @@ void Application::LoadFile()
     }
 }
 
-void Application::LoadFile(const char* path)
+SourceFile *Application::FindFile(const char* path)
 {
     // check file isn't already loaded
     for (auto f : m_sourceFiles)
     {
-        if (SDL_strcasecmp(path, f->GetPath())==0)
+        if (SDL_strcasecmp(path, f->GetPath()) == 0)
         {
-            return;
+            return f;
         }
+    }
+    return nullptr;
+}
+
+void Application::LoadFile(const char* path)
+{
+    auto file = FindFile(path);
+    if (file)
+    {
+        m_editWindow->SetActiveFile(file);
+        return;
     }
 
     auto source = new SourceFile(path);
@@ -186,7 +216,19 @@ void Application::SaveFile()
     auto activeFile = m_editWindow->GetActiveFile();
     if (activeFile)
     {
-        activeFile->Save();
+        string settingsPath = m_settings->GetFilePath();
+        if (StrEqual(settingsPath, activeFile->GetPath()))
+        {
+            vector<string> loadedFiles = m_settings->loadedFilePaths;
+            activeFile->Save();
+            m_settings->Load();
+            m_settings->loadedFilePaths = loadedFiles;
+            ReloadFont();
+        }
+        else
+        {
+            activeFile->Save();
+        }
     }
 }
 
@@ -251,7 +293,9 @@ void Application::OnKeyDown(SDL_Event* e)
         if (e->key.keysym.mod & KMOD_CTRL)
         {
             if (!e->key.repeat)
+            {
                 SaveFile();
+            }
             return;
         }
         break;
@@ -263,9 +307,127 @@ void Application::OnKeyDown(SDL_Event* e)
             return;
         }
         break;
+    case SDLK_F1:
+        {
+            string path = m_settings->GetFilePath();
+            auto file = FindFile(path.c_str());
+            if (file)
+            {
+                m_editWindow->SetActiveFile(file);
+            }
+            else
+            {
+                m_settings->Save();
+                LoadFile(path.c_str());
+            }
+            return;
+        }
+        break;
     }
 
     m_editWindow->OnKeyDown(e);
+}
+
+int Application::GetCurrentIndent(vector<char>& chars)
+{
+    int indent = 0;
+    for (int i = 0; i<chars.size(); i++)
+    {
+        if (chars[i] == ' ')
+            indent++;
+        else if (chars[i] == '/t')
+            indent += (m_settings->tabWidth - (indent % m_settings->tabWidth));
+        else
+            break;
+    }
+    return indent;
+}
+
+void Application::ReplaceIndent(vector<char>& chars, int newIndent)
+{
+    int lastIndent = 0;
+    while (lastIndent < chars.size() && (chars[lastIndent] == ' ' || chars[lastIndent] == '\t'))
+        lastIndent++;
+
+    chars.erase(chars.begin(), chars.begin() + lastIndent);
+
+    if (m_settings->tabsToSpaces)
+    {
+        for (int i=0; i<newIndent; i++)
+            chars.insert(chars.begin(), ' ');
+    }
+    else
+    {
+        int tabs = newIndent / m_settings->tabWidth;
+        for (int i = 0; i < tabs; i++)
+            chars.insert(chars.begin(), '\t');
+    }
+}
+
+void Application::Cmd_IndentLines(int startLine, int endLine)
+{
+    SourceFile* file = m_editWindow->GetActiveFile();
+    if (file)
+    {
+        int oldActiveLine = m_editWindow->GetActiveLine();
+        int oldActiveCol = m_editWindow->GetActiveCol();
+        auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+        for (int l = startLine; l <= endLine; l++)
+        {
+            auto line = file->GetLines()[l];
+            auto& chars = line->GetChars();
+            auto copy = chars;
+            int indent = GetCurrentIndent(copy);
+            indent = ((((indent + m_settings->tabWidth - 1) / m_settings->tabWidth) + 1) * m_settings->tabWidth);
+            ReplaceIndent(copy, indent);
+            cmd->PushReplace(l, copy);
+        }
+
+        bool isMarked;
+        int markStartLine, markStartColumn, markEndLine, markEndColumn;
+        m_editWindow->GetMarking(isMarked, markStartLine, markStartColumn, markEndLine, markEndColumn);
+        cmd->SetPostMarking(markStartLine, markStartColumn, markEndLine, markEndColumn);
+
+        file->GetCmdManager()->PushCmd(cmd);
+        cmd->Do();
+    }
+}
+
+void Application::Cmd_UndentLines(int startLine, int endLine)
+{
+    SourceFile* file = m_editWindow->GetActiveFile();
+    if (file)
+    {
+        int oldActiveLine = m_editWindow->GetActiveLine();
+        int oldActiveCol = m_editWindow->GetActiveCol();
+        auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+        for (int l = startLine; l <= endLine; l++)
+        {
+            auto line = file->GetLines()[l];
+            auto& chars = line->GetChars();
+            auto copy = chars;
+            int indent = GetCurrentIndent(copy);
+            int newIndent = max(0, ((((indent + m_settings->tabWidth - 1) / m_settings->tabWidth) - 1) * m_settings->tabWidth));
+            if (indent != newIndent)
+            {
+                ReplaceIndent(copy, newIndent);
+                cmd->PushReplace(l, copy);
+            }
+        }
+
+        if (cmd->Size() > 0)
+        {
+            bool isMarked;
+            int markStartLine, markStartColumn, markEndLine, markEndColumn;
+            m_editWindow->GetMarking(isMarked, markStartLine, markStartColumn, markEndLine, markEndColumn);
+            cmd->SetPostMarking(markStartLine, markStartColumn, markEndLine, markEndColumn);
+
+            file->GetCmdManager()->PushCmd(cmd);
+            cmd->Do();
+        }
+        else
+            delete cmd;
+    }
 }
 
 void Application::Cmd_InsertChar(char ch)
@@ -457,6 +619,7 @@ void Application::Cmd_DeleteArea(SourceFile* file, int startLine, int startColum
             auto cbLine = new SourceCopyBufferLine();
             cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin() + sc, line->GetChars().begin() + ec);
             m_copyBuffer->GetLines().push_back(cbLine);
+            m_copyBuffer->CopyToClipboard();
         }
         else
         {
@@ -477,6 +640,7 @@ void Application::Cmd_DeleteArea(SourceFile* file, int startLine, int startColum
             cbLine = new SourceCopyBufferLine();
             cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin(), line->GetChars().begin() + ec);
             m_copyBuffer->GetLines().push_back(cbLine);
+            m_copyBuffer->CopyToClipboard();
         }
     }
 
@@ -543,6 +707,7 @@ void Application::Cmd_CopyArea(SourceFile* file, int startLine, int startColumn,
         auto cbLine = new SourceCopyBufferLine();
         cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin() + sc, line->GetChars().begin() + ec);
         m_copyBuffer->GetLines().push_back(cbLine);
+        m_copyBuffer->CopyToClipboard();
     }
     else
     {
@@ -563,6 +728,7 @@ void Application::Cmd_CopyArea(SourceFile* file, int startLine, int startColumn,
         cbLine = new SourceCopyBufferLine();
         cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin(), line->GetChars().begin() + ec);
         m_copyBuffer->GetLines().push_back(cbLine);
+        m_copyBuffer->CopyToClipboard();
     }
 }
 
@@ -621,11 +787,6 @@ void Application::Cmd_PasteArea(SourceFile* file)
     }
 }
 
-void Application::Cmd_OverwriteChar(SourceFile* file, int ln, int col, char ch)
-{
-
-}
-
 void Application::Cmd_InsertNewLine()
 {
     auto settings = gApp->GetSettings();
@@ -648,18 +809,10 @@ void Application::Cmd_InsertNewLine()
         copy.erase(copy.begin(), copy.begin() + oldActiveCol);
 
         int tab = 0;
-        if (settings->autoIndent)
+        if (settings->autoIndent && (m_editWindow->GetActiveCol() != 0))
         {
             // count indent in spaces...
-            int countSpaces = 0;
-            for (int i = 0; i < chars.size() && (chars[i] == ' ' || chars[i] == '\t'); i++)
-            {
-                if (chars[i] == ' ')
-                    countSpaces++;
-                else if (chars[i] == '\t')
-                    countSpaces += (settings->tabWidth - (countSpaces % settings->tabWidth));
-            }
-
+            int countSpaces = GetCurrentIndent(chars);
             if (countSpaces > 0)
             {
                 // now insert either spaces or tabs

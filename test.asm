@@ -1,12 +1,18 @@
 ; Test Compiler
 
-*=$1000
+forecol = $d020
+backcol = $d021
 
-	lda #10
-	sta $d020
-	ldx #5
+    * = $1000
+
+    ldy #$ff
+outerLoop:
+    ldx #$ff
 loop:
-    stx $d021
+    stx forecol
+    stx backcol
     dex
     bne loop
+    dey
+    bne outerLoop
     rts

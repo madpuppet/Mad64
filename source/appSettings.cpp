@@ -65,8 +65,8 @@ AppSettings::AppSettings()
     autoIndent = true;
 
     lineHeight = 24;
+    fontPath = "data/CodeNewRoman.otf";
     fontSize = 16;
-    whiteSpaceWidth = fontSize;
     tabWidth = 4;
     textXMargin = 8;
     textYMargin = 4;
@@ -116,13 +116,13 @@ bool AppSettings::Load()
                 {
                     fontSize = val;
                 }
+                else if (SDL_strcasecmp(token, "FontPath") == 0)
+                {
+                    fontPath = value;
+                }
                 else if (SDL_strcasecmp(token, "LineHeight") == 0)
                 {
                     lineHeight = val;
-                }
-                else if (SDL_strcasecmp(token, "whiteSpaceWidth") == 0)
-                {
-                    whiteSpaceWidth = val;
                 }
                 else if (SDL_strcasecmp(token, "tabWidth") == 0)
                 {
@@ -201,6 +201,13 @@ void CreateDir(const char* path)
     CreateDirectoryA(path, attr);
 }
 
+string AppSettings::GetFilePath()
+{
+    string path = SDL_GetPrefPath("madpuppet", "mad64");
+    path = path + "settings.ini";
+    return path;
+}
+
 bool AppSettings::Save()
 {
     char* pref = SDL_GetPrefPath("madpuppet", "mad64");
@@ -223,9 +230,9 @@ bool AppSettings::Save()
         fprintf(fh, "tabsToSpaces=%d\n", tabsToSpaces ? 1 : 0);
         fprintf(fh, "overwriteMode=%d\n", overwriteMode ? 1 : 0);
         fprintf(fh, "autoIndent=%d\n", autoIndent ? 1 : 0);
+        fprintf(fh, "fontPath=%s\n", fontPath.c_str());
         fprintf(fh, "fontSize=%d\n", fontSize);
         fprintf(fh, "lineHeight=%d\n", lineHeight);
-        fprintf(fh, "whiteSpaceWidth=%d\n", whiteSpaceWidth);
         fprintf(fh, "tabWidth=%d\n", tabWidth);
         fprintf(fh, "textXMargin=%d\n", textXMargin);
         fprintf(fh, "textYMargin=%d\n", textYMargin);

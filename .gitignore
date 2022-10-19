@@ -4,3 +4,7 @@
 Mad64.vcxproj.user
 
 x64/
+
+builds/
+
+*.prg

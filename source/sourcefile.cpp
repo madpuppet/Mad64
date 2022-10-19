@@ -79,12 +79,21 @@ bool SourceFile::Load()
         }
 
         // compile & vizualize compiled elements
-        gApp->GetCompiler()->Compile(this);
+        if (HasExtension(m_path.c_str(), ".asm"))
+            gApp->GetCompiler()->Compile(this);
         return true;
     }
     else
     {
         return false;
+    }
+}
+
+void SourceFile::Visualize()
+{
+    for (auto line : m_lines)
+    {
+        line->VisualizeText();
     }
 }
 
@@ -106,6 +115,14 @@ bool SourceFile::Save()
         m_dirtyCount = 0;
         m_forceDirty = false;
         fclose(fh);
+
+        if (m_compileInfo)
+        {
+            size_t lastindex = m_path.find_last_of(".");
+            string prgname = m_path.substr(0, lastindex) + ".prg";
+            m_compileInfo->SavePrg(prgname.c_str());
+        }
+
         return true;
     }
     return false;
@@ -176,6 +193,24 @@ const char* ScanToken(const char *src, const char *end)
     return src;
 }
 
+SourceLine::SourceLine(const char* start, const char* end)
+{
+    m_gcText = new GraphicChunk();
+    while (start != end)
+    {
+        m_chars.push_back(*start++);
+    }
+}
+SourceLine::SourceLine()
+{
+    m_gcText = new GraphicChunk();
+}
+
+SourceLine::~SourceLine()
+{
+    delete m_gcText;
+}
+
 void SourceLine::Tokenize()
 {
     // clear memory from old tokens
@@ -227,14 +262,12 @@ int SourceLine::GetColumnAtX(int x)
 void SourceLine::VisualizeText()
 {
     auto settings = gApp->GetSettings();
-
+    int whiteSpaceWidth = gApp->GetWhiteSpaceWidth();
     m_gcText->Clear();
     m_charXOffset.clear();
     m_charXOffset.push_back(0);
     if (!m_tokens.empty())
     {
-        m_gcText = new GraphicChunk();
-
         int xLoc = 0;
         int charIdx = 0;
         for (auto &token : m_tokens)
@@ -244,10 +277,10 @@ void SourceLine::VisualizeText()
             if (token[0] == ' ')
             {
                 // skip white space
-                int skip = settings->whiteSpaceWidth * len;
+                int skip = whiteSpaceWidth * len;
                 for (int i = 0; i < len; i++)
                 {
-                    xLoc += settings->whiteSpaceWidth;
+                    xLoc += whiteSpaceWidth;
                     m_charXOffset.push_back(xLoc);
                 }
             }
@@ -255,8 +288,8 @@ void SourceLine::VisualizeText()
             {
                 for (int i = 0; i < len; i++)
                 {
-                    int tabFwd = xLoc + 1 + (settings->tabWidth * settings->whiteSpaceWidth);
-                    xLoc = tabFwd - (tabFwd % (settings->tabWidth * settings->whiteSpaceWidth));
+                    int tabFwd = xLoc + 1 + (settings->tabWidth * whiteSpaceWidth);
+                    xLoc = tabFwd - (tabFwd % (settings->tabWidth * whiteSpaceWidth));
                     m_charXOffset.push_back(xLoc);
                 }
             }
@@ -297,6 +330,20 @@ void SourceCopyBuffer::Clear()
     for (auto l : m_lines)
         delete l;
     m_lines.clear();
+}
+
+void SourceCopyBuffer::CopyToClipboard()
+{
+    string text = "";
+    for (auto l : m_lines)
+    {
+        if (!l->GetChars().empty())
+            text += string(l->GetChars().data(), l->GetChars().size());
+
+        if (l != m_lines.back())
+            text += "\n";
+    }
+    SDL_SetClipboardText(text.c_str());
 }
 
 void SourceCopyBuffer::Dump()

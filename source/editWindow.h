@@ -49,10 +49,40 @@ public:
 		m_markEndLine = endLine;
 		m_markEndColumn = endColumn;
 	}
+	void GetMarking(bool &isMarked, int &startLine, int &startColumn, int &endLine, int &endColumn)
+	{
+		isMarked = m_marked;
+		startLine = m_markStartLine;
+		startColumn = m_markStartColumn;
+		endLine = m_markEndLine;
+		endColumn = m_markEndColumn;
+	}
+	void GetSortedMarking(bool& isMarked, int& startLine, int& startColumn, int& endLine, int& endColumn)
+	{
+		isMarked = m_marked;
+		if ((m_markStartLine > m_markEndLine) || ((m_markStartLine == m_markEndLine) && (m_markStartColumn > m_markEndColumn)))
+		{
+			startLine = m_markEndLine;
+			startColumn = m_markEndColumn;
+			endLine = m_markStartLine;
+			endColumn = m_markStartColumn;
+		}
+		else
+		{
+			startLine = m_markStartLine;
+			startColumn = m_markStartColumn;
+			endLine = m_markEndLine;
+			endColumn = m_markEndColumn;
+		}
+
+	}
 
 protected:
 	void ClampTargetScroll();
-	void CalcScrollBar(int& start, int& end);
+
+	// calculate scroll bar top and bottom screenspace coords
+	// returns true if scrollbar needs to render (ie. the start/end is not full screen)
+	bool CalcScrollBar(int& start, int& end);
 	void SelectCursor(int x, int y);
 	void MakeActiveLineVisible();
 	bool CheckLineMarked(int lineNmbr, int& startCol, int& endCol);

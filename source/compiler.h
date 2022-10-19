@@ -20,49 +20,6 @@ enum CompilerLineType
     LT_Instruction
 };
 
-class CompilerLineInfo
-{
-public:
-    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0) 
-    {
-        gcMemAddr = new GraphicChunk();
-        gcDecode = new GraphicChunk();
-    }
-    ~CompilerLineInfo()
-    {
-        delete gcMemAddr;
-        delete gcDecode;
-    }
-
-    CompilerLineType type;
-    int memAddr;
-    int opcode;
-    int operand;
-    string label;
-    std::vector<u8> data;
-
-    GraphicChunk* gcMemAddr;
-    GraphicChunk* gcDecode;
-};
-
-class CompilerSourceInfo
-{
-public:
-    bool DoesLabelExist(const char* label);
-
-    // this much match current source stamp or compile is invalid
-    int m_sourceVersion;
-
-    vector<CompilerLabel*> m_labels;
-    vector<CompilerLineInfo*> m_lines;
-};
-
-struct CompileContext
-{
-    int currentMemAddr;
-    int lineNmbr;
-};
-
 // OPERANDS
 enum AddressingMode
 {
@@ -81,6 +38,52 @@ enum AddressingMode
 };
 extern int gAddressingModeSize[];
 
+class CompilerLineInfo
+{
+public:
+    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0) 
+    {
+        gcMemAddr = new GraphicChunk();
+        gcDecode = new GraphicChunk();
+    }
+    ~CompilerLineInfo()
+    {
+        delete gcMemAddr;
+        delete gcDecode;
+    }
+
+    int lineNmbr;
+    CompilerLineType type;
+    u32 memAddr;
+    int opcode;
+    int operand;
+    AddressingMode addressMode;
+    string label;
+    bool labelNeedsResolve;
+    std::vector<u8> data;
+
+    GraphicChunk* gcMemAddr;
+    GraphicChunk* gcDecode;
+};
+
+class CompilerSourceInfo
+{
+public:
+    bool DoesLabelExist(const char* label);
+
+    // save as PRG
+    void SavePrg(const char* path);
+
+    // clear all visualizations
+    void ClearVisuals();
+
+    // this much match current source stamp or compile is invalid
+    int m_sourceVersion;
+
+    vector<CompilerLabel*> m_labels;
+    vector<CompilerLineInfo*> m_lines;
+};
+
 struct CompilerOpcode
 {
     const char* name;
@@ -91,6 +94,8 @@ struct CompilerOpcode
     bool extraCycleOnPageBoundary;
     bool extraCycleOnBranch;
 };
+
+#define ERR(...)  { Error(__VA_ARGS__); return; }
 
 class Compiler
 {
@@ -103,13 +108,16 @@ public:
     // compile a single line
     // pass one builds up all the source code and labels,  but leaves markers for forward referenced labels since we don't know where they are yet
     // pass two fills in label address operands
-    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, vector<string>& tokens, CompileContext &context);
+    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, vector<string>& tokens, int &currentMemAddr);
     void CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li);
 
 	// return opcode index or -1 if not an opcode
 	bool IsOpCode(const char* text);
 
-    CompilerOpcode* FindOpcode(const char* name, AddressingMode am);
+    CompilerOpcode* FindOpcode(string &name, AddressingMode am);
+    CompilerLabel* FindLabel(CompilerSourceInfo* si, string& name);
+    bool ParseImmediateOperand(string& token, CompilerLineInfo* li);
+    bool ParseOperand(string& token, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo* li);
 
     GraphicChunk* GetMemAddrGC(class SourceFile* file, int line, int sourceVersion);
     GraphicChunk* GetDecodeGC(class SourceFile* file, int line, int sourceVersion);
@@ -117,7 +125,6 @@ public:
 	// 64k of ram
 	u8 m_ram[65536];
 
-    vector<CompilerLabel*> m_systemLabels;
     vector<string> m_errors;
     void Error(const char* pFormat, ...);
 };

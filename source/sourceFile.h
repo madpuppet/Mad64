@@ -3,19 +3,9 @@
 class SourceLine
 {
 public:
-    SourceLine(const char* start, const char* end)
-    {
-        m_gcText = new GraphicChunk();
-
-        while (start != end)
-        {
-            m_chars.push_back(*start++);
-        }
-    }
-    SourceLine()
-    {
-        delete m_gcText;
-    }
+    SourceLine();
+    SourceLine(const char* start, const char* end);
+    ~SourceLine();
 
     vector<char>& GetChars() { return m_chars; }
     vector<string>& GetTokens() { return m_tokens; }
@@ -50,6 +40,7 @@ class SourceCopyBuffer
 public:
     void Clear();
     void Dump();
+    void CopyToClipboard();
     vector<SourceCopyBufferLine*> &GetLines() { return m_lines; }
 
 protected:
@@ -76,6 +67,8 @@ public:
     class CompilerSourceInfo* GetCompileInfo();
     void SetCompileInfo(class CompilerSourceInfo* info);
     int GetSourceVersion() { return m_sourceVersion; };
+
+    void Visualize();
 
 protected:
     bool m_forceDirty;

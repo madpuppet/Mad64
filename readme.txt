@@ -15,3 +15,6 @@ CTRL-A         Select All
 CTRL-X         Cut selection to copy buffer
 CTRL-C         Copy selection to copy buffer
 CTRL-V         Paste copy buffer
+
+F1             Open Settings File
+CTRL-F5        Assemble

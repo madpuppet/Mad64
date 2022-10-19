@@ -212,6 +212,45 @@ CompilerOpcode s_opcodesRaw[] =
 
 CompilerOpcode s_opcodes[256];
 
+bool ConvertToNumber(string& token, int& value)
+{
+    value = 0;
+    char ch = token[0];
+    if (ch == '$')
+    {
+        // HEX
+        for (int i = 1; i < (int)token.size(); i++)
+        {
+            value = value * 16;
+            char ch = toupper(token[i]);
+            value += (ch >= 'A' && ch <= 'F') ? ch - 'A' + 10 : ch - '0';
+        }
+        return true;
+    }
+    else
+    {
+        int idx = 0;
+        int sign = 1;
+        if (ch == '-')
+        {
+            sign = -1;
+            idx = 1;
+            ch = token[1];
+        }
+
+        // DEC
+        for (int i = idx; i < token.size(); i++)
+        {
+            ch = token[i];
+            if (ch < '0' || ch > '9')
+                return false;
+            value = value * 10 + ch - '0';
+        }
+        return true;
+    }
+    return false;
+}
+
 Compiler::Compiler()
 {
     memset(m_ram, 0, sizeof(m_ram));
@@ -238,7 +277,7 @@ bool Compiler::IsOpCode(const char* text)
     return false;
 }
 
-CompilerOpcode* Compiler::FindOpcode(const char* name, AddressingMode am)
+CompilerOpcode* Compiler::FindOpcode(string &name, AddressingMode am)
 {
     int cnt = sizeof(s_opcodesRaw) / sizeof(CompilerOpcode);
     for (int i = 0; i < cnt; i++)
@@ -251,92 +290,41 @@ CompilerOpcode* Compiler::FindOpcode(const char* name, AddressingMode am)
     return nullptr;;
 }
 
-
-bool IsEqual(string &s1, const char* s2)
+CompilerLabel* Compiler::FindLabel(CompilerSourceInfo *si, string& name)
 {
-    return (SDL_strcasecmp(s1.c_str(), s2) == 0); 
+    for (int i = 0; i < sizeof(s_systemLabels) / sizeof(CompilerLabel); i++)
+    {
+        if (StrEqual(s_systemLabels[i].m_name, name))
+        {
+            return &s_systemLabels[i];
+        }
+    }
+
+    for (auto l : si->m_labels)
+    {
+        if (StrEqual(l->m_name, name))
+        {
+            return l;
+        }
+    }
+    return nullptr;
 }
+
 
 struct TokenFifo
 {
     TokenFifo(vector<string>& tokens) : m_tokens(tokens), m_end(""), m_index(0)
     {
-        SkipSpaces();
+        SkipSpacesAndComments();
     }
 
     string& Pop()
     {
         int result = m_index++;
-        SkipSpaces();
-        return (result < (int)m_tokens.size()) ? m_tokens[result] : m_end;
-    }
-
-    string& PopNoComments()
-    {
-        int result = m_index++;
         SkipSpacesAndComments();
         return (result < (int)m_tokens.size()) ? m_tokens[result] : m_end;
     }
 
-    string& Peek()
-    {
-        return (m_index < (int)m_tokens.size()) ? m_tokens[m_index] : m_end;
-    }
-
-    bool PopMatching(const char* match)
-    {
-        if (m_index < (int)m_tokens.size())
-        {
-            if (IsEqual(m_tokens[m_index], match))
-            {
-                m_index++;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool PopNumber(int& value)
-    {
-        SkipSpacesAndComments();
-
-        string& str = Peek();
-        if (str.empty())
-            return false;
-
-        char ch = str[0];
-        if (ch == '$')
-        {
-            // HEX
-            value = 0;
-            for (int i = 1; i < str.size(); i++)
-            {
-                value = value * 16;
-                char ch = toupper(str[i]);
-                value += (ch >= 'A' && ch <= 'F') ? ch - 'A' + 10 : ch - '0';
-            }
-            Pop();
-            return value;
-        }
-        else if (ch >= '0' && ch <= '9')
-        {
-            // DEC
-            value = 0;
-            for (int i = 1; i < str.size(); i++)
-            {
-                value = value * 10 + str[i] - '0';
-            }
-            Pop();
-            return value;
-        }
-        return false;
-    }
-
-    void SkipSpaces()
-    {
-        while (m_index < (int)m_tokens.size() && (m_tokens[m_index][0] == ' ' || m_tokens[m_index][0] == '\t'))
-            m_index++;
-    }
     void SkipSpacesAndComments()
     {
         while (m_index < (int)m_tokens.size() && (m_tokens[m_index][0] == ' ' || m_tokens[m_index][0] == '\t' || m_tokens[m_index][0] == ';'))
@@ -350,172 +338,251 @@ struct TokenFifo
     string m_end;
 };
 
-void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, vector<string>& tokens, CompileContext &context)
+bool Compiler::ParseImmediateOperand(string &token, CompilerLineInfo *li)
+{
+    if (!ConvertToNumber(token, li->operand))
+    {
+        li->label = token;
+        li->labelNeedsResolve = true;
+    }
+    return true;
+}
+
+bool Compiler::ParseOperand(string &token, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo *li)
+{
+    if (ConvertToNumber(token, li->operand))
+    {
+        li->addressMode = (li->operand > 0xff) ? amAbsolute : amZeroPage;
+    }
+    else
+    {
+        li->label = token;
+        auto label = FindLabel(si, token);
+        if (label)
+        {
+            li->operand = label->m_addr;
+            li->addressMode = (li->operand > 0xff) ? amAbsolute : amZeroPage;
+        }
+        else
+        {
+            li->labelNeedsResolve = true;
+            li->addressMode = amAbsolute;
+        }
+    }
+    return true;
+}
+
+void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, vector<string>& tokens, int& currentMemAddr)
 {
     TokenFifo fifo(tokens);
 
     auto& token = fifo.Pop();
     if (token.empty())
-        return;
-
-    if (token[0] == ';')
     {
         li->type = LT_Comment;
         return;
     }
-    else if (IsEqual(token, "#include"))
+    else if (StrEqual(token, "#"))
     {
-        // include source file (somehow)
+        // TODO: pragmas...  include/import
+        li->type = LT_Comment;
+        return;
     }
-    else if (IsEqual(token, "#import"))
+    else if (StrEqual(token, "*"))
     {
-        // import binary file - can skip certain things, etc.
-    }
-    else if (IsEqual(token, "*"))
-    {
-        // set address
-        if (fifo.PopMatching("="))
-        {
-            int addr = 0;
-            if (fifo.PopNumber(addr))
-            {
-                context.currentMemAddr = addr;
-                li->type = LT_Address;
-                li->memAddr = addr;
-                return;
-            }
-            else
-            {
-                Error("ERR Ln:%d) could not interpret address for '*' cmd", context.lineNmbr);
-                return;
-            }
-        }
-        else
-        {
-            Error("ERR Ln:%d) expected an '=' after '*' cmd", context.lineNmbr);
-            return;
-        }
+        string tok1 = fifo.Pop();
+        string tok2 = fifo.Pop();
+        if (!StrEqual(tok1, "="))
+            ERR("Err(ln:%d): Expected '=' after '*'", li->lineNmbr);
+        int addr;
+        if (!ConvertToNumber(tok2, addr))
+            ERR("Err(ln:%d): Bad value '%s'", li->lineNmbr, tok2.c_str());
+
+        currentMemAddr = addr;
+        li->type = LT_Address;
+        li->memAddr = addr;
+        return;
     }
     else if (IsOpCode(token.c_str()))
     {
         // decode the opcode
         li->type = LT_Instruction;
+        li->memAddr = currentMemAddr;
 
-        AddressingMode addressMode = AM_Implied;
+        li->opcode = 0;
+        li->operand = 0;
+        li->addressMode = AM_Implied;
+        li->label = "";
+        li->labelNeedsResolve;
 
-        string tok1 = fifo.PopNoComments();
+        string tok1 = fifo.Pop();
+        string tok2 = fifo.Pop();
+        string tok3 = fifo.Pop();
+        string tok4 = fifo.Pop();
+        string tok5 = fifo.Pop();
+        string tok6 = fifo.Pop();
+
         if (tok1.empty())
         {
-            // implied..
-            auto opcode = FindOpcode(token.c_str(), AM_Implied);
-            if (!opcode)
-            {
-                Error("ERR Ln:%d) cannot find opcode %s with addressmode Implied", context.lineNmbr, token.c_str());
-                return;
-            }
+            // implied
+            li->addressMode = AM_Implied;
         }
-        else if (tok1[0] == '#')
+        else if (StrEqual(tok1, "#"))
         {
             // immediate
-            int operandValue;
-            if (fifo.PopNumber(operandValue))
+            li->addressMode = AM_Immediate;
+            if (!ParseImmediateOperand(tok2, li))
+                return;
+        }
+        else if (StrEqual(tok1, "("))
+        {
+            if (StrEqual(tok3, ")"))
             {
-
+                if (StrEqual(tok4, ","))
+                {
+                    // indirectY
+                    li->addressMode = AM_IndirectY;
+                    if (!ParseImmediateOperand(tok2, li))
+                        return;
+                }
+                else
+                {
+                    // indirect
+                    li->addressMode = AM_Indirect;
+                    if (!ParseImmediateOperand(tok2, li))
+                        return;
+                }
             }
             else
-            {
-                string operandLabel = fifo.Pop();
-
-            }
-            string operand = fifo.PopNoComments();
-            if (operand.empty())
-            {
-                Error("ERR Ln:%d) immediate operand missing token", context.lineNmbr);
-                return;
-            }
-        }
-        else if (tok1[0] == '(')
-        {
-            // indirect, indirectX, indirectY
-            string operand = fifo.PopNoComments();
-            string tok2 = fifo.PopNoComments();
-            if (tok2.empty())
-            {
-                Error("Error %d",__LINE__);
-                return;
-            }
-            if (tok2[0] == ',')
             {
                 // indirectX
-                tok2 = fifo.PopNoComments();
-                if (tok2.empty() || !IsEqual((const char*)tok2.data(), "x"))
-                {
-                    Error("Error %d", __LINE__);
+                li->addressMode = AM_IndirectX;
+                if (!ParseImmediateOperand(tok2, li))
                     return;
-                }
-
             }
-            else if (tok2[0] == ')')
+        }
+        else if (StrEqual(tok2, ","))
+        {
+            if (StrEqual(tok3, "x"))
             {
-                // indirect, indirectY
-                string tok3 = fifo.PopNoComments();
-
+                // zeroPageX, absoluteX
+                if (!ParseOperand(tok1, AM_ZeroPageX, AM_AbsoluteX, si, li))
+                    return;
             }
             else
             {
-                Error("Error %d", __LINE__);
+                // zeroPageY, absoluteY
+                if (!ParseOperand(tok1, AM_ZeroPageY, AM_AbsoluteY, si, li))
+                    return;
             }
         }
         else
         {
-            // zeroPage, zeroPageX, zeroPageY, Absolute, AbsoluteX, AbsoluteY, Relative
-
+            // zeropage, absolute, relative
+            if (FindOpcode(token, AM_Relative))
+            {
+                li->addressMode = AM_Relative;
+                if (!ParseImmediateOperand(tok1, li))
+                    return;
+            }
+            else if (!ParseOperand(tok1, AM_ZeroPage, AM_Absolute, si, li))
+                return;
         }
 
+        auto opcode = FindOpcode(token, li->addressMode);
+        if (opcode)
+        {
+            li->opcode = opcode->opc;
+        }
+        else
+        {
+            ERR("Err(%d): Cannot find version of '%s' that matches the addressing mode", li->lineNmbr, token.c_str());
+        }
 
-        AM_Implied,              // operand
-            AM_Immediate,            // operand #value
-            AM_ZeroPage,             // operand value
-            AM_ZeroPageX,            // operand value,x
-            AM_ZeroPageY,            // operand value,y
-            AM_Absolute,             // operand value
-            AM_AbsoluteX,            // operand value,x
-            AM_AbsoluteY,            // operand value,y
-            AM_Indirect,             // operand (value)
-            AM_IndirectX,            // operand (value, x)
-            AM_IndirectY,            // operand (value), y
-            AM_Relative              // operand value
-
-
-
+        currentMemAddr += gAddressingModeSize[li->addressMode];
     }
     else if (token.back() == ':')
     {
+        // its a label
         if (token.size() == 1)
         {
-            Error("ERR Ln:%d) malformed label", context.lineNmbr);
+            Error("ERR Ln:%d) malformed label", li->lineNmbr);
             return;
         }
         else
         {
             // label
             li->type = LT_Label;
-            li->memAddr = context.currentMemAddr;
-            li->label = token.substr(0, token.size() - 2);
+            li->memAddr = currentMemAddr;
+            li->label = token.substr(0, token.size() - 1);
 
             if (si->DoesLabelExist(li->label.c_str()))
             {
-                Error("ERR Ln:%d) Duplicate label declaration: %s", context.lineNmbr, li->label.c_str());
+                Error("ERR Ln:%d) Duplicate label declaration: %s", li->lineNmbr, li->label.c_str());
                 return;
             }
 
             si->m_labels.push_back(new CompilerLabel(li->label.c_str(), li->memAddr));
         }
     }
+    else
+    {
+        ERR("Err(%d): Unexpected token - not a label or an opcode - '%s'", li->lineNmbr, token.c_str());
+    }
 }
 
 void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li)
 {
+    if (li->labelNeedsResolve)
+    {
+        auto label = FindLabel(si, li->label);
+        if (label)
+        {
+            if (li->addressMode == AM_Relative)
+            {
+                li->operand = (int)label->m_addr - (int)(li->memAddr+2);
+                if (li->operand < -128 || li->operand > 127)
+                {
+                    ERR("Err(ln:%d): Relative branch too large", li->lineNmbr);
+                    return;
+                }
+            }
+            else if (li->addressMode == AM_ZeroPage || li->addressMode == AM_ZeroPageX || li->addressMode == AM_ZeroPageY || li->addressMode == AM_Indirect || li->addressMode == AM_IndirectX || li->addressMode == AM_IndirectY )
+            {
+                li->operand = label->m_addr;
+                if (li->operand > 0xff)
+                {
+                    ERR("Err(ln:%d): Zero page operand too large", li->lineNmbr);
+                    return;
+                }
+            }
+            else
+            {
+                li->operand = label->m_addr;
+            }
+        }
+        else
+        {
+            ERR("Err(ln:%d): Unable to resolve label '%s'", li->lineNmbr, li->label.c_str());
+            return;
+        }
+    }
+
+    if (li->type == LT_Instruction || li->type == LT_DataBytes)
+    {
+        int instructionSize = gAddressingModeSize[li->addressMode];
+        li->data.clear();
+        li->data.push_back(li->opcode);
+        if (instructionSize == 2)
+        {
+            li->data.push_back((u8)(li->operand & 0xff));
+        }
+        else if (instructionSize == 3)
+        {
+            li->data.push_back((u8)(li->operand & 0xff));
+            li->data.push_back((u8)(li->operand >> 8));
+        }
+    }
 }
 
 GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourceVersion)
@@ -531,7 +598,7 @@ GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourc
             {
                 char buffer[16];
                 SDL_snprintf(buffer, 16, "%04x", sl->memAddr);
-                SDL_Color addrCol = { 255, 255, 255, 255 };
+                SDL_Color addrCol = { 255, 255, 0, 255 };
                 sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, addrCol, 0, 0));
             }
             return sl->gcMemAddr;
@@ -542,14 +609,42 @@ GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourc
 
 GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int sourceVersion)
 {
+    auto settings = gApp->GetSettings();
+    auto ci = file->GetCompileInfo();
+    if (ci && ci->m_sourceVersion == file->GetSourceVersion())
+    {
+        auto sl = ci->m_lines[line];
+        if (sl->type == LT_Instruction)
+        {
+            if (sl->gcDecode->IsEmpty())
+            {
+                char buffer[16];
+                auto opcode = &s_opcodes[sl->opcode];
+                switch (gAddressingModeSize[sl->addressMode])
+                {
+                    case 1:
+                        SDL_snprintf(buffer, 16, "%d %02x", opcode->cycles, sl->opcode);
+                        break;
+                    case 2:
+                        SDL_snprintf(buffer, 16, "%d %02x %02x", opcode->cycles, sl->opcode, sl->operand & 0xff);
+                        break;
+                    case 3:
+                        SDL_snprintf(buffer, 16, "%d %02x %02x %02x", opcode->cycles, sl->opcode, sl->operand & 0xff, (sl->operand >> 8) & 0xff);
+                        break;
+                }
+
+                SDL_Color addrCol = { 255, 255, 0, 255 };
+                sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, addrCol, 0, 0));
+            }
+            return sl->gcDecode;
+        }
+    }
     return nullptr;
 }
 
 void Compiler::Compile(SourceFile* file)
 {
-    CompileContext context;
-    context.currentMemAddr = 0;
-    context.lineNmbr = 0;
+    int currentMemAddr = 0;
 
     m_errors.clear();
 
@@ -557,12 +652,14 @@ void Compiler::Compile(SourceFile* file)
     sourceInfo->m_sourceVersion = file->GetSourceVersion();
     file->SetCompileInfo(sourceInfo);
 
+    int lineNmbr = 0;
     for (auto line : file->GetLines())
 	{
 		auto lineInfo = new CompilerLineInfo();
-		CompileLinePass1(sourceInfo, lineInfo, line->GetTokens(), context);
+        lineInfo->lineNmbr = lineNmbr;
+		CompileLinePass1(sourceInfo, lineInfo, line->GetTokens(), currentMemAddr);
         sourceInfo->m_lines.push_back(lineInfo);
-        context.lineNmbr++;
+        lineNmbr++;
 	}
 
     for (auto line : sourceInfo->m_lines)
@@ -591,3 +688,52 @@ bool CompilerSourceInfo::DoesLabelExist(const char* label)
     }
     return false;
 }
+
+void CompilerSourceInfo::ClearVisuals()
+{
+    for (auto l : m_lines)
+    {
+        l->gcDecode->Clear();
+        l->gcMemAddr->Clear();
+    }
+}
+
+void CompilerSourceInfo::SavePrg(const char* path)
+{
+    FILE* fh = fopen(path, "wb");
+    if (fh)
+    {
+        u32 startAddr = 0xffff;
+        u32 endAddr = 0;
+
+        // pass one - find our memory range
+        for (auto l : m_lines)
+        {
+            if (l->type == LT_Instruction || l->type == LT_DataBytes)
+            {
+                startAddr = min(l->memAddr, startAddr);
+                endAddr = max(l->memAddr, endAddr);
+            }
+        }
+
+        // allocate flat memory block with 2 byte header for address
+        u32 memSize = (endAddr + 1) - startAddr + 2;
+        u8* mem = (u8*)SDL_malloc((size_t)(memSize + 2));
+
+        // write out lines to memory
+        mem[0] = startAddr & 0xff;
+        mem[1] = (startAddr >> 8) & 0xff;
+        for (auto l : m_lines)
+        {
+            if (l->type == LT_Instruction || l->type == LT_DataBytes)
+            {
+                memcpy(mem + 2 + (l->memAddr - startAddr), l->data.data(), l->data.size());
+            }
+        }
+
+        // save and close
+        fwrite(mem, memSize, 1, fh);
+        fclose(fh);
+    }
+}
+

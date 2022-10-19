@@ -22,6 +22,7 @@ public:
     Compiler* GetCompiler() { return m_compiler; }
     SourceCopyBuffer* GetCopyBuffer() { return m_copyBuffer; }
     EditWindow* GetEditWindow() { return m_editWindow; }
+    int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
 
     // COMMANDS - undo'able
     void Cmd_InsertChar(char ch);
@@ -32,8 +33,14 @@ public:
     void Cmd_DeleteArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn, bool toCopyBuffer);
     void Cmd_CopyArea(SourceFile* file, int startLine, int startColumn, int endLine, int endColumn);
     void Cmd_PasteArea(SourceFile* file);
+    void Cmd_UndentLines(int startLine, int endLine);
+    void Cmd_IndentLines(int startLine, int endLine);
 
-    void Cmd_OverwriteChar(SourceFile* file, int line, int column, char ch);
+    // helpers
+    int GetCurrentIndent(vector<char>& chars);
+    void ReplaceIndent(vector<char>& chars, int newIndent);
+    SourceFile* FindFile(const char* path);
+    void ReloadFont();
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -54,6 +61,7 @@ protected:
     // RESOURCES
     SDL_Window* m_window;
     TTF_Font* m_font;
+    int m_whiteSpaceWidth;
     SDL_Renderer* m_renderer;
     EditWindow* m_editWindow;
     Compiler* m_compiler;

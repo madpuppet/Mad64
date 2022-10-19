@@ -37,8 +37,11 @@ GraphicElement* GraphicElement::CreateFromTexture(SDL_Texture* tex, i32 x, i32 y
 
 GraphicElement* GraphicElement::CreateFromText(TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
 {
-    SDL_Surface* surface = TTF_RenderText_Solid(font, text, col);
+    SDL_Color backCol = { 0, 0, 0, 0 };
+
+    SDL_Surface* surface = TTF_RenderText_Blended(font, text, col);
     SDL_Texture* tex = SDL_CreateTextureFromSurface(gApp->GetRenderer(), surface);
+    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
     SDL_FreeSurface(surface);
     return new GraphicElement(tex, x, y, true);
 }

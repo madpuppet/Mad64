@@ -105,14 +105,31 @@ void EditWindow::Draw()
 		int sourceVersion = file->GetSourceVersion();
 		for (int i = startLine; i < endLine; i++)
 		{
+			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
 			auto gc = gApp->GetCompiler()->GetMemAddrGC(file, i, sourceVersion);
 			if (gc)
 			{
 				int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
-				SDL_Rect lineQuad = { 0, y, m_memAddrRect.w, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, 0, 80 - ((i & 1) ? 8 : 0), 0, 255);
+				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+				SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 128 - ((i & 1) ? 16 : 0), 255);
 				SDL_RenderFillRect(r, &lineQuad);
 				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
+			}
+		}
+
+		// draw decode
+		SDL_RenderSetClipRect(r, &m_decodeRect);
+		for (int i = startLine; i < endLine; i++)
+		{
+			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+			auto gc = gApp->GetCompiler()->GetDecodeGC(file, i, sourceVersion);
+			if (gc)
+			{
+				int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
+				SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
+				SDL_SetRenderDrawColor(r, brighten, brighten + 64 - ((i & 1) ? 16 : 0), brighten, 255);
+				SDL_RenderFillRect(r, &lineQuad);
+				gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
 		}
 
@@ -121,6 +138,7 @@ void EditWindow::Draw()
 
 		for (int i = startLine; i < endLine; i++)
 		{
+			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
 			auto line = file->GetLines()[i];
 			int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			int lineWidth = line->GetLineWidth() + settings->textXMargin;
@@ -128,18 +146,18 @@ void EditWindow::Draw()
 			if (line->GetChars().empty())
 			{
 				SDL_Rect lineQuad = { settings->xPosText, y, m_sourceEditRect.w, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, 0, 0, 80 - ((i & 1) ? 8 : 0), 255);
+				SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
 				SDL_RenderFillRect(r, &lineQuad);
 			}
 			else
 			{
 				SDL_Rect lineQuad1 = { settings->xPosText, y, lineWidth, settings->lineHeight };
 				SDL_Rect lineQuad2 = { settings->xPosText + lineWidth, y, m_sourceEditRect.w - lineWidth, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, 0, 0, 128 - ((i & 1) ? 16 : 0), 255);
+				SDL_SetRenderDrawColor(r, 0, brighten, 128 - ((i & 1) ? 16 : 0), 255);
 				SDL_RenderFillRect(r, &lineQuad1);
 				if (lineWidth < m_sourceEditRect.w)
 				{
-					SDL_SetRenderDrawColor(r, 0, 0, 80 - ((i & 1) ? 8 : 0), 255);
+					SDL_SetRenderDrawColor(r, 0, brighten, 80 - ((i & 1) ? 8 : 0), 255);
 					SDL_RenderFillRect(r, &lineQuad2);
 				}
 			}
@@ -182,7 +200,7 @@ void EditWindow::Draw()
 		CalcScrollBar(barY1, barY2);
 
 		SDL_Rect BarBack = { settings->xPosContextHelp - settings->scrollBarWidth, m_sourceEditRect.y, settings->scrollBarWidth, m_sourceEditRect.h };
-		SDL_Rect Bar = { settings->xPosContextHelp - settings->scrollBarWidth + 1, barY1, settings->scrollBarWidth - 2, barY2-barY1 };
+		SDL_Rect Bar = { settings->xPosContextHelp - settings->scrollBarWidth + 4, barY1, settings->scrollBarWidth - 4, barY2-barY1 };
 		SDL_SetRenderDrawColor(r, 0, 0, 32, 255);
 		SDL_RenderFillRect(r, &BarBack);
 		if (m_dragMode == DRAG_EditVertScroll)
@@ -232,7 +250,7 @@ void EditWindow::CalcRects()
 }
 
 
-void EditWindow::CalcScrollBar(int &start, int &end)
+bool EditWindow::CalcScrollBar(int &start, int &end)
 {
 	int lineHeight = gApp->GetSettings()->lineHeight;
 	start = 0;
@@ -247,7 +265,10 @@ void EditWindow::CalcScrollBar(int &start, int &end)
 		float relEnd = SDL_clamp((float)viewEnd / (float)fileHeight, 0.0f, 1.0f);
 		start = (int)(m_sourceEditRect.y + relStart * m_sourceEditRect.h);
 		end = (int)(m_sourceEditRect.y + relEnd * m_sourceEditRect.h);
+
+		return relStart > 0.0f || relEnd < 1.0f;
 	}
+	return false;
 }
 
 
@@ -632,6 +653,12 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			for (int i = 0; i < 20; i++)
 				CursorDown(markingType);
 			return;
+		case SDLK_F5:
+			if (m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetName(), ".asm"))
+			{
+				gApp->GetCompiler()->Compile(m_activeSourceFileItem->file);
+			}
+			return;
 		case SDLK_UP:
 			CursorUp(markingType);
 			return;
@@ -644,6 +671,33 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		case SDLK_RIGHT:
 			CursorRight(markingType);
 			return;
+		case SDLK_TAB:
+			if (m_activeSourceFileItem && m_marked)
+			{
+				bool isMarked;
+				int startLine, startColumn, endLine, endColumn;
+				GetSortedMarking(isMarked, startLine, startColumn, endLine, endColumn);
+				if (endColumn == 0)
+					endLine--;
+				if (e->key.keysym.mod & KMOD_SHIFT)
+				{
+					gApp->Cmd_UndentLines(startLine, endLine);
+				}
+				else
+				{
+					gApp->Cmd_IndentLines(startLine, endLine);
+				}
+				return;
+			}
+			else
+			{
+				int tabsToInsert = settings->tabWidth - (m_activeSourceFileItem->activeColumn % settings->tabWidth);
+				if (settings->tabsToSpaces)
+					gApp->Cmd_InsertSpaces(tabsToInsert);
+				else
+					gApp->Cmd_InsertChar('\t');
+			}
+			break;
 		case SDLK_END:
 			if (e->key.keysym.mod & KMOD_CTRL)
 			{
@@ -734,17 +788,6 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			}
 			gApp->Cmd_InsertNewLine();
 			return;
-		case SDLK_TAB:
-			if (m_marked)
-			{
-				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndColumn, m_markEndColumn, false);
-			}
-
-			int tabsToInsert = settings->tabWidth - (m_activeSourceFileItem->activeColumn % settings->tabWidth);
-			if (settings->tabsToSpaces)
-				gApp->Cmd_InsertSpaces(tabsToInsert);
-			else
-				gApp->Cmd_InsertChar('\t');
 		}
 
 		char ch = e->key.keysym.sym;
