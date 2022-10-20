@@ -4,11 +4,39 @@
 
 CompilerLabel s_systemLabels[] =
 {
-    CompilerLabel("VIC_SPRITE0X", 0xd000),  CompilerLabel("VIC_SPRITE0Y", 0xd001),  CompilerLabel("VIC_SPRITE1X", 0xd002),  CompilerLabel("VIC_SPRITE1Y", 0xd003),
-    CompilerLabel("VIC_SPRITE2X", 0xd004),  CompilerLabel("VIC_SPRITE2Y", 0xd005),  CompilerLabel("VIC_SPRITE3X", 0xd006),  CompilerLabel("VIC_SPRITE3Y", 0xd007),
-    CompilerLabel("VIC_SPRITE4X", 0xd008),  CompilerLabel("VIC_SPRITE4Y", 0xd009),  CompilerLabel("VIC_SPRITE5X", 0xd00a),  CompilerLabel("VIC_SPRITE5Y", 0xd00b),
-    CompilerLabel("VIC_SPRITE6X", 0xd00c),  CompilerLabel("VIC_SPRITE6Y", 0xd00d),  CompilerLabel("VIC_SPRITE7X", 0xd00e),  CompilerLabel("VIC_SPRITE7Y", 0xd00f),
-    CompilerLabel("VIC_SPRITEMSB", 0xd010)
+    CompilerLabel("vic.sprite0X", 0xd000),  CompilerLabel("vic.sprite0Y", 0xd001),  CompilerLabel("vic.sprite1X", 0xd002),  CompilerLabel("vic.sprite1Y", 0xd003),
+    CompilerLabel("vic.sprite2X", 0xd004),  CompilerLabel("vic.sprite2Y", 0xd005),  CompilerLabel("vic.sprite3X", 0xd006),  CompilerLabel("vic.sprite3Y", 0xd007),
+    CompilerLabel("vic.sprite4X", 0xd008),  CompilerLabel("vic.sprite4Y", 0xd009),  CompilerLabel("vic.sprite5X", 0xd00a),  CompilerLabel("vic.sprite5Y", 0xd00b),
+    CompilerLabel("vic.sprite6X", 0xd00c),  CompilerLabel("vic.sprite6Y", 0xd00d),  CompilerLabel("vic.sprite7X", 0xd00e),  CompilerLabel("vic.sprite7Y", 0xd00f),
+    CompilerLabel("vic.spriteXMSB", 0xd010), CompilerLabel("vic.control1", 0xd011), CompilerLabel("vic.rasterCounter", 0xd012), CompilerLabel("vic.lightPenX", 0xd013),
+    CompilerLabel("vic.lightPenY", 0xd014), CompilerLabel("vic.spriteEnable", 0xd015), CompilerLabel("vic.control2", 0xd016), CompilerLabel("vic.spriteYSize", 0xd017),
+    CompilerLabel("vic.memoryPointer", 0xd018), CompilerLabel("vic.interruptRegister", 0xd019), CompilerLabel("vic.interruptEnable", 0xd01a), CompilerLabel("vic.spritePriority", 0xd01b),
+    CompilerLabel("vic.spriteMulticolor", 0xd01c), CompilerLabel("vic.spriteXSize", 0xd01d), CompilerLabel("vic.spriteToSpriteCollision", 0xd01e), CompilerLabel("vic.spriteToDataCollision", 0xd01f),
+    CompilerLabel("vic.borderColor", 0xd020), CompilerLabel("vic.backgroundColor0", 0xd021), CompilerLabel("vic.backgroundColor1", 0xd022), CompilerLabel("vic.backgroundColor2", 0xd023),
+    CompilerLabel("vic.backgroundColor3", 0xd024), CompilerLabel("vic.spriteMulticolor0", 0xd025), CompilerLabel("vic.spriteMulticolor1", 0xd026), CompilerLabel("vic.sprite0Color", 0xd027),
+    CompilerLabel("vic.sprite1Color", 0xd028), CompilerLabel("vic.sprite2Color", 0xd029), CompilerLabel("vic.sprite3Color", 0xd02a), CompilerLabel("vic.sprite4Color", 0xd02b),
+    CompilerLabel("vic.sprite5Color", 0xd02c), CompilerLabel("vic.sprite6Color", 0xd02d), CompilerLabel("vic.sprite7Color", 0xd02e), CompilerLabel("vic.colorMemory", 0xd800),
+
+    CompilerLabel("cia1.dataPortA", 0xdc00), CompilerLabel("cia1.dataPortB", 0xdc01), CompilerLabel("cia1.dataDirectionA", 0xdc02), CompilerLabel("cia1.dataDirectionB", 0xdc03),
+    CompilerLabel("cia1.timerALow", 0xdc04), CompilerLabel("cia1.timerAHigh", 0xdc05), CompilerLabel("cia1.timerBLow", 0xdc06), CompilerLabel("cia1.timerBHigh", 0xdc07),
+    CompilerLabel("cia1.clockTenths", 0xdc08), CompilerLabel("cia1.clockSeconds", 0xdc09), CompilerLabel("cia1.clockMinutes", 0xdc0a), CompilerLabel("cia1.clockHours", 0xdc0b),
+    CompilerLabel("cia1.serialShift", 0xdc0c), CompilerLabel("cia1.interruptControl", 0xdc0d), CompilerLabel("cia1.controlTimerA", 0xdc0e), CompilerLabel("cia1.controlTimerB", 0xdc0f),
+
+    CompilerLabel("cia2.dataPortA", 0xdd00), CompilerLabel("cia2.dataPortB", 0xdd01), CompilerLabel("cia2.dataDirectionA", 0xdd02), CompilerLabel("cia2.dataDirectionB", 0xdd03),
+    CompilerLabel("cia2.timerALow", 0xdd04), CompilerLabel("cia2.timerAHigh", 0xdd05), CompilerLabel("cia2.timerBLow", 0xdd06), CompilerLabel("cia2.timerBHigh", 0xdd07),
+    CompilerLabel("cia2.clockTenths", 0xdd08), CompilerLabel("cia2.clockSeconds", 0xdd09), CompilerLabel("cia2.clockMinutes", 0xdd0a), CompilerLabel("cia2.clockHours", 0xdd0b),
+    CompilerLabel("cia2.serialShift", 0xdd0c), CompilerLabel("cia2.interruptControl", 0xdd0d), CompilerLabel("cia2.controlTimerA", 0xdd0e), CompilerLabel("cia2.controlTimerB", 0xdd0f),
+
+    CompilerLabel("rom.SETLFS", 0xffba), CompilerLabel("rom.SETNAM", 0xffbd), CompilerLabel("rom.LOAD", 0xffd5),
+
+    CompilerLabel("sid.v1_freqLow", 0xd400), CompilerLabel("sid.v1_freqHi", 0xd401), CompilerLabel("sid.v1_pulseWaveformWidthLo", 0xd402), CompilerLabel("sid.v1_pulseWaveformWidthHi", 0xd403),
+    CompilerLabel("sid.b1_Control", 0xd404), CompilerLabel("sid.v1_envelope_ad", 0xd405), CompilerLabel("sid.v1_envelope_sr", 0xd406), CompilerLabel("sid.v2_freqLow", 0xd407),
+    CompilerLabel("sid.v2_freqHi", 0xd408), CompilerLabel("sid.v2_pulseWaveformWidthLo", 0xd409), CompilerLabel("sid.v2_pulseWaveformWidthHi", 0xd40a), CompilerLabel("sid.v2_control", 0xd40b),
+    CompilerLabel("sid.v2_envelope_ad", 0xd40c), CompilerLabel("sid.v2_envelope_sr", 0xd40d), CompilerLabel("sid.v3_freqLow", 0xd40e), CompilerLabel("sid.v3_freqHi", 0xd40f),
+    CompilerLabel("sid.v3_pulseWaveformWidthLo", 0xd410), CompilerLabel("sid.v3_pulseWaveformWidthHi", 0xd411), CompilerLabel("sid.v3_control", 0xd412), CompilerLabel("sid.v3_envelope_ad", 0xd413),
+    CompilerLabel("sid.v3_envelope_sr", 0xd414), CompilerLabel("sid.filterCutoffFreqLo", 0xd415), CompilerLabel("sid.filterCutoffFreqHi", 0xd416), CompilerLabel("sid.filterResonance", 0xd417),
+    CompilerLabel("sid.filterModeAndVolume", 0xd418), CompilerLabel("sid.analogDigitalConvert1", 0xd419), CompilerLabel("sid.analogDigitalConvert2", 0xd41a), CompilerLabel("sid.oscillator3Random", 0xd41b),
+    CompilerLabel("sid.envelope3Output", 0xd41c)
 };
 
 int gAddressingModeSize[] =
@@ -142,7 +170,7 @@ CompilerOpcode s_opcodesRaw[] =
     {"LDY", AM_Absolute,  0xAC, 4},
     {"LDY", AM_AbsoluteX, 0xBC, 4, true},
 
-    {"LSR", AM_Immediate, 0x4A, 2},
+    {"LSR", AM_Implied,   0x4A, 2},
     {"LSR", AM_ZeroPage,  0x46, 5},
     {"LSR", AM_ZeroPageX, 0x56, 6},
     {"LSR", AM_Absolute,  0x4E, 6},
@@ -375,8 +403,14 @@ bool Compiler::ParseOperand(string &token, AddressingMode amZeroPage, Addressing
 void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, vector<string>& tokens, int& currentMemAddr)
 {
     TokenFifo fifo(tokens);
+    string &token = fifo.Pop();
+    string &tok1 = fifo.Pop();
+    string &tok2 = fifo.Pop();
+    string &tok3 = fifo.Pop();
+    string &tok4 = fifo.Pop();
+    string &tok5 = fifo.Pop();
+    string &tok6 = fifo.Pop();
 
-    auto& token = fifo.Pop();
     if (token.empty())
     {
         li->type = LT_Comment;
@@ -390,13 +424,17 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, ve
     }
     else if (StrEqual(token, "*"))
     {
-        string tok1 = fifo.Pop();
-        string tok2 = fifo.Pop();
         if (!StrEqual(tok1, "="))
-            ERR("Err(ln:%d): Expected '=' after '*'", li->lineNmbr);
+        {
+            ERR("Err(ln:%d): Expected '=' after '*'", li->lineNmbr); li->error = true;
+            return;
+        }
         int addr;
         if (!ConvertToNumber(tok2, addr))
-            ERR("Err(ln:%d): Bad value '%s'", li->lineNmbr, tok2.c_str());
+        {
+            ERR("Err(ln:%d): Bad value '%s'", li->lineNmbr, tok2.c_str()); li->error = true;
+            return;
+        }
 
         currentMemAddr = addr;
         li->type = LT_Address;
@@ -414,13 +452,6 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, ve
         li->addressMode = AM_Implied;
         li->label = "";
         li->labelNeedsResolve;
-
-        string tok1 = fifo.Pop();
-        string tok2 = fifo.Pop();
-        string tok3 = fifo.Pop();
-        string tok4 = fifo.Pop();
-        string tok5 = fifo.Pop();
-        string tok6 = fifo.Pop();
 
         if (tok1.empty())
         {
@@ -496,7 +527,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, ve
         }
         else
         {
-            ERR("Err(%d): Cannot find version of '%s' that matches the addressing mode", li->lineNmbr, token.c_str());
+            ERR("Err(%d): Cannot find version of '%s' that matches the addressing mode", li->lineNmbr, token.c_str()); li->error = true;
         }
 
         currentMemAddr += gAddressingModeSize[li->addressMode];
@@ -506,7 +537,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, ve
         // its a label
         if (token.size() == 1)
         {
-            Error("ERR Ln:%d) malformed label", li->lineNmbr);
+            Error("ERR Ln:%d) malformed label", li->lineNmbr); li->error = true;
             return;
         }
         else
@@ -518,16 +549,34 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, ve
 
             if (si->DoesLabelExist(li->label.c_str()))
             {
-                Error("ERR Ln:%d) Duplicate label declaration: %s", li->lineNmbr, li->label.c_str());
+                Error("ERR Ln:%d) Duplicate label declaration: %s", li->lineNmbr, li->label.c_str()); li->error = true;
                 return;
             }
 
             si->m_labels.push_back(new CompilerLabel(li->label.c_str(), li->memAddr));
         }
     }
+    else if (StrEqual(tok1, "="))
+    {
+        // label
+        li->type = LT_Variable;
+        li->memAddr = currentMemAddr;
+        li->label = token;
+        int value;
+        if (!ConvertToNumber(tok2, value))
+        {
+            Error("ERR Ln:%d) Cannnot parse var %s value %s", li->lineNmbr, token.c_str(), tok2.c_str()); li->error = true;
+        }
+        if (si->DoesLabelExist(li->label.c_str()))
+        {
+            Error("ERR Ln:%d) Duplicate variable declaration: %s", li->lineNmbr, li->label.c_str()); li->error = true;
+            return;
+        }
+        si->m_labels.push_back(new CompilerLabel(li->label.c_str(), value));
+    }
     else
     {
-        ERR("Err(%d): Unexpected token - not a label or an opcode - '%s'", li->lineNmbr, token.c_str());
+        ERR("Err(%d): Unexpected token - not a label or an opcode - '%s'", li->lineNmbr, token.c_str()); li->error = true;
     }
 }
 
@@ -543,7 +592,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li)
                 li->operand = (int)label->m_addr - (int)(li->memAddr+2);
                 if (li->operand < -128 || li->operand > 127)
                 {
-                    ERR("Err(ln:%d): Relative branch too large", li->lineNmbr);
+                    ERR("Err(ln:%d): Relative branch too large", li->lineNmbr); li->error = true;
                     return;
                 }
             }
@@ -552,7 +601,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li)
                 li->operand = label->m_addr;
                 if (li->operand > 0xff)
                 {
-                    ERR("Err(ln:%d): Zero page operand too large", li->lineNmbr);
+                    ERR("Err(ln:%d): Zero page operand too large", li->lineNmbr); li->error = true;
                     return;
                 }
             }
@@ -563,7 +612,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li)
         }
         else
         {
-            ERR("Err(ln:%d): Unable to resolve label '%s'", li->lineNmbr, li->label.c_str());
+            ERR("Err(ln:%d): Unable to resolve label '%s'", li->lineNmbr, li->label.c_str()); li->error = true;
             return;
         }
     }
@@ -596,10 +645,18 @@ GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourc
         {
             if (sl->gcMemAddr->IsEmpty())
             {
-                char buffer[16];
-                SDL_snprintf(buffer, 16, "%04x", sl->memAddr);
-                SDL_Color addrCol = { 255, 255, 0, 255 };
-                sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, addrCol, 0, 0));
+                if (sl->error)
+                {
+                    SDL_Color addrCol = { 255, 0, 0, 255 };
+                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetFont(), "****", addrCol, 0, 0));
+                }
+                else
+                {
+                    char buffer[16];
+                    SDL_snprintf(buffer, 16, "%04x", sl->memAddr);
+                    SDL_Color addrCol = { 255, 255, 0, 255 };
+                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, addrCol, 0, 0));
+                }
             }
             return sl->gcMemAddr;
         }

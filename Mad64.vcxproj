@@ -162,6 +162,7 @@
     </ClCompile>
     <ClCompile Include="source\appSettings.cpp" />
     <ClCompile Include="source\sourcefile.cpp" />
+    <ClCompile Include="source\textInput.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\begin_code.h" />
@@ -262,6 +263,7 @@
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\appSettings.h" />
     <ClInclude Include="source\sourceFile.h" />
+    <ClInclude Include="source\textInput.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\SDL_config.h.cmake" />

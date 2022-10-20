@@ -27,6 +27,9 @@ inline bool StrEqual(const char* a, const char* b) { return SDL_strcasecmp(a, b)
 inline bool StrEqual(string& s1, const char* s2) { return s1.empty() ? (s2[0] == 0) : (SDL_strcasecmp(s1.c_str(), s2) == 0); }
 inline bool StrEqual(string& s1, string& s2) { return s1.empty() ? s2.empty() : (SDL_strcasecmp(s1.c_str(), s2.c_str()) == 0); }
 inline bool HasExtension(const char *s, const char* ext) { const char *strExt = SDL_strrchr(s, '.'); return (ext) ? StrEqual(strExt, ext) : false; }
+extern void CopyToClipboard(vector<string>& buffer);
+extern void CopyFromClipboard(vector<string>& buffer);
+extern char KeySymToAscii(const SDL_Keysym &sym);
 
 #include "graphicChunk.h"
 #include "sourceFile.h"

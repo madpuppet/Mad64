@@ -24,6 +24,7 @@ EditWindow::EditWindow()
 	m_marked = false;
 	m_keyMarking = false;
 	m_mouseMarking = false;
+	m_inputCapture = IC_None;
 
 	m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 	m_cursorIBeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
@@ -31,8 +32,20 @@ EditWindow::EditWindow()
 	m_cursorVert = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 	m_cursorHand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
+	m_searchBox = new TextInput(DELEGATE(EditWindow::OnSearchEnter));
+	m_replaceBox = new TextInput(DELEGATE(EditWindow::OnReplaceEnter));
+
 	CalcRects();
 	InitStatus();
+}
+
+void EditWindow::OnSearchEnter(const string& text)
+{
+	// search all
+}
+void EditWindow::OnReplaceEnter(const string& text)
+{
+	// replace all
 }
 
 void DrawColouredLine(int x, int y1, int y2, bool highlighted)
@@ -175,7 +188,7 @@ void EditWindow::Draw()
 			}
 
 			// draw cursor
-			if (i == m_activeSourceFileItem->activeLine)
+			if (i == m_activeSourceFileItem->activeLine && m_inputCapture == IC_None)
 			{
 				int cursorX1, cursorX2;
 				line->GetCharX(m_activeSourceFileItem->activeColumn, cursorX1, cursorX2);
@@ -221,6 +234,15 @@ void EditWindow::Draw()
 	// draw status bar
 	DrawStatus();
 
+	// draw search boxes
+	m_searchBox->Draw();
+	m_replaceBox->Draw();
+
+	// draw context bar split
+	SDL_Rect divider = { settings->xPosContextHelp, settings->lineHeight * 2 + settings->textYMargin * 2, windowWidth - settings->xPosContextHelp, 3 };
+	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+	SDL_RenderFillRect(r, &divider);
+
 	// draw separator bars
 	DrawColouredLine(settings->xPosDecode, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
 	DrawColouredLine(settings->xPosText, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
@@ -245,8 +267,15 @@ void EditWindow::CalcRects()
 	m_memAddrRect = { 0, settings->lineHeight, settings->xPosDecode, editHeight };
 	m_decodeRect = { settings->xPosDecode, settings->lineHeight, settings->xPosText - settings->xPosDecode, editHeight };
 	m_sourceEditRect = { settings->xPosText, settings->lineHeight, settings->xPosContextHelp - settings->xPosText, editHeight };
-	m_contextHelpRect = { settings->xPosContextHelp, settings->lineHeight, windowWidth - settings->xPosContextHelp, editHeight };
 	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
+
+	SDL_Rect searchBox = { settings->xPosContextHelp + settings->textXMargin, settings->lineHeight + settings->textYMargin, 200, settings->lineHeight };
+	m_searchBox->SetArea(searchBox);
+
+	SDL_Rect replaceBox = { searchBox.x + searchBox.w + 20, searchBox.y, 200, searchBox.h };
+	m_replaceBox->SetArea(replaceBox);
+
+	m_contextHelpRect = { settings->xPosContextHelp, searchBox.y + searchBox.h + settings->textYMargin, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
 }
 
 
@@ -372,6 +401,9 @@ void EditWindow::Update()
 	}
 
 	UpdateStatus();
+
+	m_searchBox->Update();
+	m_replaceBox->Update();
 }
 
 bool Contains(const SDL_Rect& rect, int x, int y)
@@ -384,6 +416,17 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 	auto settings = gApp->GetSettings();
 	if (e->button.button == 1)
 	{
+		if (m_inputCapture == IC_Search && !Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
+		{
+			m_searchBox->SetActive(false);
+			m_inputCapture = IC_None;
+		}
+		else if (m_inputCapture == IC_Replace && !Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
+		{
+			m_replaceBox->SetActive(false);
+			m_inputCapture = IC_None;
+		}
+
 		// LEFT button
 		if (Contains(m_titleTabsRect, e->button.x, e->button.y))
 		{
@@ -398,6 +441,18 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 					}
 				}
 			}
+		}
+		else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
+		{
+			m_searchBox->SetActive(true);
+			m_replaceBox->SetActive(false);
+			m_inputCapture = IC_Search;
+		}
+		else if (Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
+		{
+			m_searchBox->SetActive(false);
+			m_replaceBox->SetActive(true);
+			m_inputCapture = IC_Replace;
 		}
 		else if (abs(e->button.x - settings->xPosDecode) < 2)
 		{
@@ -630,11 +685,61 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		return;
 	}
 
+	if (m_inputCapture == IC_Search)
+	{
+		if (e->key.keysym.sym == SDLK_TAB)
+		{
+			m_searchBox->SetActive(false);
+			m_replaceBox->SetActive(true);
+			m_inputCapture = IC_Replace;
+		}
+		else if (e->key.keysym.sym == SDLK_ESCAPE)
+		{
+			m_searchBox->SetActive(false);
+			m_inputCapture = IC_None;
+		}
+		else
+		{
+			m_searchBox->OnKeyDown(e);
+		}
+		return;
+	}
+	
+	if (m_inputCapture == IC_Replace)
+	{
+		if (e->key.keysym.sym == SDLK_TAB)
+		{
+			m_searchBox->SetActive(true);
+			m_replaceBox->SetActive(false);
+			m_inputCapture = IC_Search;
+		}
+		else if (e->key.keysym.sym == SDLK_ESCAPE)
+		{
+			m_replaceBox->SetActive(false);
+			m_inputCapture = IC_None;
+		}
+		else
+		{
+			m_replaceBox->OnKeyDown(e);
+		}
+		return;
+	}
+
 	if (m_activeSourceFileItem)
 	{
 		MarkingType markingType = e->key.keysym.mod & KMOD_SHIFT ? MARK_Key : MARK_None;
 		switch (e->key.keysym.sym)
 		{
+		case SDLK_f:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				m_searchBox->SetActive(true);
+				m_replaceBox->SetActive(false);
+				m_inputCapture = IC_Search;
+				return;
+			}
+			break;
+
 		case SDLK_z:
 			if (e->key.keysym.mod & KMOD_CTRL)
 			{
@@ -793,9 +898,7 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		char ch = e->key.keysym.sym;
 		if (ch >= SDLK_SPACE && ch <= SDLK_z)
 		{
-			if (e->key.keysym.mod & KMOD_SHIFT)
-				ch = s_shifted[ch];
-
+			ch = KeySymToAscii(e->key.keysym);
 			if (m_marked)
 			{
 				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
@@ -804,6 +907,18 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		}
 	}
 }
+
+char KeySymToAscii(const SDL_Keysym& sym)
+{
+	char ch = sym.sym;
+	if (ch >= SDLK_SPACE && ch <= SDLK_z)
+	{
+		if (sym.mod & KMOD_SHIFT)
+			ch = s_shifted[ch];
+	}
+	return ch;
+}
+
 
 void EditWindow::MakeActiveLineVisible()
 {

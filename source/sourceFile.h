@@ -26,27 +26,6 @@ protected:
     vector<int> m_charXOffset;
 };
 
-class SourceCopyBufferLine
-{
-public:
-    vector<char>& GetChars() { return m_chars; }
-
-protected:
-    vector<char> m_chars;
-};
-
-class SourceCopyBuffer
-{
-public:
-    void Clear();
-    void Dump();
-    void CopyToClipboard();
-    vector<SourceCopyBufferLine*> &GetLines() { return m_lines; }
-
-protected:
-    vector<SourceCopyBufferLine*> m_lines;
-};
-
 class SourceFile
 {
 public:

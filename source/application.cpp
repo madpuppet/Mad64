@@ -39,8 +39,6 @@ Application::Application()
 
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
-        m_copyBuffer = new SourceCopyBuffer();
-
         for (auto& p : m_settings->loadedFilePaths)
         {
             LoadFile(p.c_str());
@@ -612,35 +610,27 @@ void Application::Cmd_DeleteArea(SourceFile* file, int startLine, int startColum
     // copy deleted section to the copy buffer
     if (toCopyBuffer)
     {
-        m_copyBuffer->Clear();
+        vector<string> copyBuffer;
         if (sl == el)
         {
             auto line = file->GetLines()[sl];
-            auto cbLine = new SourceCopyBufferLine();
-            cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin() + sc, line->GetChars().begin() + ec);
-            m_copyBuffer->GetLines().push_back(cbLine);
-            m_copyBuffer->CopyToClipboard();
+            copyBuffer.push_back(string(&line->GetChars()[sc], &line->GetChars()[ec]));
+            CopyToClipboard(copyBuffer);
         }
         else
         {
             auto line = file->GetLines()[sl];
-            auto cbLine = new SourceCopyBufferLine();
-            cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin() + sc, line->GetChars().end());
-            m_copyBuffer->GetLines().push_back(cbLine);
+            copyBuffer.push_back(string(&line->GetChars()[sc], line->GetChars().size() - sc));
 
             for (int i = sl + 1; i < el; i++)
             {
                 line = file->GetLines()[i];
-                cbLine = new SourceCopyBufferLine();
-                cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin(), line->GetChars().end());
-                m_copyBuffer->GetLines().push_back(cbLine);
+                copyBuffer.push_back(string(&line->GetChars()[0], line->GetChars().size()));
             }
 
             line = file->GetLines()[el];
-            cbLine = new SourceCopyBufferLine();
-            cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin(), line->GetChars().begin() + ec);
-            m_copyBuffer->GetLines().push_back(cbLine);
-            m_copyBuffer->CopyToClipboard();
+            copyBuffer.push_back(string(&line->GetChars()[0], ec));
+            CopyToClipboard(copyBuffer);
         }
     }
 
@@ -700,41 +690,35 @@ void Application::Cmd_CopyArea(SourceFile* file, int startLine, int startColumn,
         ec = startColumn;
     }
 
-    m_copyBuffer->Clear();
+    vector<string> copyBuffer;
     if (sl == el)
     {
         auto line = file->GetLines()[sl];
-        auto cbLine = new SourceCopyBufferLine();
-        cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin() + sc, line->GetChars().begin() + ec);
-        m_copyBuffer->GetLines().push_back(cbLine);
-        m_copyBuffer->CopyToClipboard();
+        copyBuffer.push_back(string(&line->GetChars()[sc], ec - sc));
+        CopyToClipboard(copyBuffer);
     }
     else
     {
         auto line = file->GetLines()[sl];
-        auto cbLine = new SourceCopyBufferLine();
-        cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin() + sc, line->GetChars().end());
-        m_copyBuffer->GetLines().push_back(cbLine);
+        copyBuffer.push_back(string(&line->GetChars()[sc], line->GetChars().size() - sc));
 
         for (int i = sl + 1; i < el; i++)
         {
             line = file->GetLines()[i];
-            cbLine = new SourceCopyBufferLine();
-            cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin(), line->GetChars().end());
-            m_copyBuffer->GetLines().push_back(cbLine);
+            copyBuffer.push_back(string(&line->GetChars()[0], line->GetChars().size()));
         }
 
         line = file->GetLines()[el];
-        cbLine = new SourceCopyBufferLine();
-        cbLine->GetChars().insert(cbLine->GetChars().begin(), line->GetChars().begin(), line->GetChars().begin() + ec);
-        m_copyBuffer->GetLines().push_back(cbLine);
-        m_copyBuffer->CopyToClipboard();
+        copyBuffer.push_back(string(&line->GetChars()[0], ec));
+        CopyToClipboard(copyBuffer);
     }
 }
 
 void Application::Cmd_PasteArea(SourceFile* file)
 {
-    if (!m_copyBuffer->GetLines().empty())
+    vector<string> copyBuffer;
+    CopyFromClipboard(copyBuffer);
+    if (!copyBuffer.empty())
     {
         SourceFile* file = m_editWindow->GetActiveFile();
         if (file)
@@ -752,21 +736,21 @@ void Application::Cmd_PasteArea(SourceFile* file)
 
             int startMarkingCol = (int)copyStart.size();
             int startMarkingLine = oldActiveLine;
-            int endMarkingLine = oldActiveLine + (int)m_copyBuffer->GetLines().size() - 1;
-            int endMarkingCol = (int)m_copyBuffer->GetLines().back()->GetChars().size();
+            int endMarkingLine = oldActiveLine + (int)copyBuffer.size() - 1;
+            int endMarkingCol = (int)copyBuffer.back().size();
 
             vector<char> out;
             auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
-            for (int i = 0; i < m_copyBuffer->GetLines().size(); i++)
+            for (int i = 0; i < copyBuffer.size(); i++)
             {
-                auto cbLine = m_copyBuffer->GetLines()[i];
+                auto& cbLine = copyBuffer[i];
 
                 out.clear();
                 if (i == 0)
                     out = copyStart;
-                out.insert(out.end(), cbLine->GetChars().begin(), cbLine->GetChars().end());
+                out.insert(out.end(), cbLine.begin(), cbLine.end());
 
-                if (i == m_copyBuffer->GetLines().size() - 1)
+                if (i == copyBuffer.size() - 1)
                 {
                     endMarkingCol = (int)out.size();
                     out.insert(out.end(), copyEnd.begin(), copyEnd.end());
@@ -779,8 +763,6 @@ void Application::Cmd_PasteArea(SourceFile* file)
             }
 
             cmd->SetNewActiveLineCol(endMarkingLine, endMarkingCol);
-            cmd->SetPostMarking(startMarkingLine, startMarkingCol, endMarkingLine, endMarkingCol);
-
             file->GetCmdManager()->PushCmd(cmd);
             cmd->Do();
         }

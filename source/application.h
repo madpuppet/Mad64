@@ -20,7 +20,6 @@ public:
     SDL_Window* GetWindow() { return m_window; }
     AppSettings* GetSettings() { return m_settings; }
     Compiler* GetCompiler() { return m_compiler; }
-    SourceCopyBuffer* GetCopyBuffer() { return m_copyBuffer; }
     EditWindow* GetEditWindow() { return m_editWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
 
@@ -65,7 +64,6 @@ protected:
     SDL_Renderer* m_renderer;
     EditWindow* m_editWindow;
     Compiler* m_compiler;
-    SourceCopyBuffer* m_copyBuffer;
     bool m_quit;
     bool m_repaint;
     AppSettings* m_settings;

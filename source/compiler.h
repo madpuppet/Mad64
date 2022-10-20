@@ -16,6 +16,7 @@ enum CompilerLineType
     LT_Include,
     LT_Address,
     LT_Label,
+    LT_Variable,
     LT_DataBytes,
     LT_Instruction
 };
@@ -41,7 +42,7 @@ extern int gAddressingModeSize[];
 class CompilerLineInfo
 {
 public:
-    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0) 
+    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelNeedsResolve(false)
     {
         gcMemAddr = new GraphicChunk();
         gcDecode = new GraphicChunk();
@@ -59,6 +60,7 @@ public:
     int operand;
     AddressingMode addressMode;
     string label;
+    bool error;
     bool labelNeedsResolve;
     std::vector<u8> data;
 

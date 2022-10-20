@@ -74,8 +74,8 @@ AppSettings::AppSettings()
     commentColor = { 0, 255, 64, 255 };
     numericColor = { 200, 255, 50, 255 };
     opCodeColor = { 255, 200, 50, 255 };
-    xPosDecode = 100;
-    xPosText = 300;
+    xPosDecode = 57;
+    xPosText = 185;
     xPosContextHelp = 1600;
     scrollBarWidth = 20;
 }

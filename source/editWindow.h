@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TextInput.h"
+
 enum MarkingType
 {
 	MARK_None,
@@ -85,7 +87,12 @@ protected:
 	bool CalcScrollBar(int& start, int& end);
 	void SelectCursor(int x, int y);
 	void MakeActiveLineVisible();
+
+	// check if line <lineNmbr> is marked
+	// if it is, return the area of the line that is marked (from startCol to endCol)
 	bool CheckLineMarked(int lineNmbr, int& startCol, int& endCol);
+
+	// convert a mouse coord to a row/col in the edit source window
 	bool MouseToRowCol(int x, int y, int& row, int& col);
 	void ProcessMouseMarking(int x, int y);
 	void SnapScrollBarToMouseY(int y);
@@ -102,6 +109,19 @@ protected:
 	vector<SourceFileItem*> m_fileTabs;
 	SourceFileItem* m_activeSourceFileItem;
 	float m_cursorAnimTime;
+
+	enum InputCapture
+	{
+		IC_None,
+		IC_Search,
+		IC_Replace
+	};
+	InputCapture m_inputCapture;
+
+	TextInput* m_searchBox;
+	TextInput* m_replaceBox;
+	void OnSearchEnter(const string& text);
+	void OnReplaceEnter(const string& text);
 
 	bool m_keyMarking;
 	bool m_mouseMarking;

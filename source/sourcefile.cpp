@@ -139,7 +139,7 @@ bool CharInStr(char ch, const char* str)
     return false;
 }
 
-#define SINGLE_CHAR_TOKENS "[]()<>=*/#+-"
+#define SINGLE_CHAR_TOKENS "[]()<>=*/#+-,"
 #define WHITE_SPACE_TOKENS " \t"
 
 const char* ScanToken(const char *src, const char *end)
@@ -322,37 +322,6 @@ void SourceLine::VisualizeText()
             }
             charIdx += len;
         }
-    }
-}
-
-void SourceCopyBuffer::Clear()
-{
-    for (auto l : m_lines)
-        delete l;
-    m_lines.clear();
-}
-
-void SourceCopyBuffer::CopyToClipboard()
-{
-    string text = "";
-    for (auto l : m_lines)
-    {
-        if (!l->GetChars().empty())
-            text += string(l->GetChars().data(), l->GetChars().size());
-
-        if (l != m_lines.back())
-            text += "\n";
-    }
-    SDL_SetClipboardText(text.c_str());
-}
-
-void SourceCopyBuffer::Dump()
-{
-    printf("** DUMP **\n");
-    for (auto l : m_lines)
-    {
-        string pork((char*)l->GetChars().data(), l->GetChars().size());
-        printf("|%s|\n", pork.c_str());
     }
 }
 
