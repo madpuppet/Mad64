@@ -32,8 +32,8 @@ EditWindow::EditWindow()
 	m_cursorVert = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 	m_cursorHand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
-	m_searchBox = new TextInput(DELEGATE(EditWindow::OnSearchEnter));
-	m_replaceBox = new TextInput(DELEGATE(EditWindow::OnReplaceEnter));
+	m_searchBox = new TextInput(0,0,"Search",DELEGATE(EditWindow::OnSearchEnter));
+	m_replaceBox = new TextInput(0, 0, "Replace", DELEGATE(EditWindow::OnReplaceEnter));
 
 	CalcRects();
 	InitStatus();
@@ -42,6 +42,25 @@ EditWindow::EditWindow()
 void EditWindow::OnSearchEnter(const string& text)
 {
 	// search all
+	if (m_activeSourceFileItem)
+	{
+		int startLine = (m_activeSourceFileItem->activeLine + 1) % m_activeSourceFileItem->file->GetLines().size();
+		int ln = startLine;
+		do
+		{
+			auto line = m_activeSourceFileItem->file->GetLines()[ln];
+			auto& chars = line->GetChars();
+			int col = (int)line->GetChars().find(text);
+			if (col != string::npos)
+			{
+				m_searchBox->Flash(TextInput::MODE_Found);
+				GotoLineCol(ln, col, MARK_None, true);
+				return;
+			}
+			ln = (ln + 1) % m_activeSourceFileItem->file->GetLines().size();
+		} while (ln != m_activeSourceFileItem->activeLine);
+		m_searchBox->Flash(TextInput::MODE_NotFound);
+	}
 }
 void EditWindow::OnReplaceEnter(const string& text)
 {
@@ -151,7 +170,7 @@ void EditWindow::Draw()
 
 		for (int i = startLine; i < endLine; i++)
 		{
-			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+			int brighten = (m_activeSourceFileItem->activeLine == i) ? 32 : 0;
 			auto line = file->GetLines()[i];
 			int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			int lineWidth = line->GetLineWidth() + settings->textXMargin;
@@ -268,14 +287,9 @@ void EditWindow::CalcRects()
 	m_decodeRect = { settings->xPosDecode, settings->lineHeight, settings->xPosText - settings->xPosDecode, editHeight };
 	m_sourceEditRect = { settings->xPosText, settings->lineHeight, settings->xPosContextHelp - settings->xPosText, editHeight };
 	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
-
-	SDL_Rect searchBox = { settings->xPosContextHelp + settings->textXMargin, settings->lineHeight + settings->textYMargin, 200, settings->lineHeight };
-	m_searchBox->SetArea(searchBox);
-
-	SDL_Rect replaceBox = { searchBox.x + searchBox.w + 20, searchBox.y, 200, searchBox.h };
-	m_replaceBox->SetArea(replaceBox);
-
-	m_contextHelpRect = { settings->xPosContextHelp, searchBox.y + searchBox.h + settings->textYMargin, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
+	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight);
+	m_replaceBox->SetPos(settings->xPosContextHelp + 200, settings->lineHeight);
+	m_contextHelpRect = { settings->xPosContextHelp, m_searchBox->GetArea().y + m_searchBox->GetArea().h + settings->textYMargin, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
 }
 
 

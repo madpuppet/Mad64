@@ -1,16 +1,23 @@
 #include "common.h"
 #include "textInput.h"
 
-TextInput::TextInput(DMFastDelegate::FastDelegate1<const string &> onEnter)
+TextInput::TextInput(int x, int y, const char* title, DMFastDelegate::FastDelegate1<const string &> onEnter)
 {
+	m_pos.x = x;
+	m_pos.y = y;
+
+	m_title = title;
 	m_onEnter = onEnter;
 	m_gc = new GraphicChunk();
+	Visualize();
 }
 
 TextInput::~TextInput()
 {
 	delete m_gc;
 }
+
+static SDL_Color s_flashColors[3] = { { 0, 255, 0, 255 }, { 255, 0, 0, 255 }, { 64,32,16,255 } };
 
 void TextInput::Draw()
 {
@@ -21,7 +28,15 @@ void TextInput::Draw()
 	if (m_isActive)
 		backCol = { 16, 32, 16, 255 };
 
-	SDL_SetRenderDrawColor(r, 0, 22, 0, 255);
+	if (m_flashTime > 0.0f)
+	{
+		SDL_Color* c = &s_flashColors[m_flashMode];
+		backCol.r = lerp(backCol.r, c->r, m_flashTime);
+		backCol.g = lerp(backCol.g, c->g, m_flashTime);
+		backCol.b = lerp(backCol.b, c->b, m_flashTime);
+	}
+
+	SDL_SetRenderDrawColor(r, backCol.r, backCol.g, backCol.b, 255);
 	SDL_RenderFillRect(r, &m_area);
 
 	m_gc->Draw();
@@ -100,9 +115,17 @@ void TextInput::OnKeyDown(SDL_Event* e)
 
 void TextInput::Visualize()
 {
-	SDL_Color col = { 255,255,255,255 };
-	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_area.y + gApp->GetSettings()->textYMargin);
+	auto settings = gApp->GetSettings();
+
 	m_gc->Clear();
+
+	SDL_Color col = { 255,255,255,255 };
+	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + gApp->GetSettings()->textYMargin);
+	int x2 = m_pos.x + settings->textXMargin + geTitle->GetRect().w;
+	m_area = { x2, 0, 200, settings->lineHeight,};
+	m_gc->Add(geTitle);
+
+	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_area.y + gApp->GetSettings()->textYMargin);
 	m_gc->Add(ge);
 }
 
@@ -112,5 +135,7 @@ void TextInput::Update()
 	{
 		m_cursorAnim += TIMEDELTA * 5.0f;
 	}
+
+	m_flashTime = max(0.0f, m_flashTime - TIMEDELTA * 2.0f);
 }
 

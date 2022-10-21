@@ -139,58 +139,65 @@ bool CharInStr(char ch, const char* str)
     return false;
 }
 
-#define SINGLE_CHAR_TOKENS "[]()<>=*/#+-,"
-#define WHITE_SPACE_TOKENS " \t"
+#define SINGLE_CHAR_TOKENS "[]()<>=$%*/#+-;:!,"
 
-const char* ScanToken(const char *src, const char *end)
+bool ScanToken(const char * &src, string &out)
 {
-    if (src >= end)
-        return nullptr;
+    out = "";
 
-    char ch = *src++;
-
-    // whitespace
-    if (ch == ' ')
+    if (*src == ' ')
     {
-        // scan white space
-        while (src < end && *src == ' ')
-            src++;
-        return src;
-    }
-    if (ch == '\t')
-    {
-        // scan tabs space
-        while (src < end && *src == '\t')
-            src++;
-        return src;
-    }
-
-    // comment line
-    if (ch == ';')
-    {
-        return end;
-    }
-
-    // single char tokens
-    if (CharInStr(ch, SINGLE_CHAR_TOKENS))
-        return src;
-
-    // quoted string
-    if (ch == '"')
-    { 
-        while (src < end)
+        // scan spaces
+        while (*src == ' ')
         {
-            ch = *src++;
-            if (ch == '"')
-                break;
+            out.push_back(' ');
+            src++;
         }
-        return src;
+        return true;
     }
 
-    // normal text
-    while (src < end && !CharInStr(*src, SINGLE_CHAR_TOKENS) && !CharInStr(*src, WHITE_SPACE_TOKENS))
+    if (*src == '\t')
+    {
+        // scan spaces
+        while (*src == '\t')
+        {
+            out.push_back(' ');
+            src++;
+        }
+        return true;
+    }
+
+    if (*src == ';')
+    {
+        while (*src)
+        {
+            out.push_back(*src);
+            src++;
+        }
+        return true;
+    }
+
+    if (CharInStr(*src, SINGLE_CHAR_TOKENS))
+    {
+        out.push_back(*src);
         src++;
-    return src;
+        return true;
+    }
+
+    bool quoted = false;
+    bool bs = false;
+    while (*src && (bs || quoted || (!CharInStr(*src, SINGLE_CHAR_TOKENS) && *src != ' ' && *src != '\t')))
+    {
+        if (!bs && *src == '\\')
+            bs = true;
+        else
+            bs = false;
+        if (!bs && *src == '"')
+            quoted = !quoted;
+        out.push_back(*src);
+        src++;
+    }
+    return !out.empty();
 }
 
 SourceLine::SourceLine(const char* start, const char* end)
@@ -217,20 +224,11 @@ void SourceLine::Tokenize()
     m_tokens.clear();
     if (!m_chars.empty())
     {
-        bool isComment = false;
-
-        // calc positions of all chars
-        int xLoc = 0;
-        int charIndex = 0;
-
-        // break into tokens
-        const char* src = &m_chars[0];
-        const char* tokenEnd;
-        const char* end = src + m_chars.size();
-        while (tokenEnd = ScanToken(src, end))
+        const char *src = &m_chars[0];
+        string token;
+        while (ScanToken(src, token))
         {
-            m_tokens.push_back(string(src, (size_t)(tokenEnd - src)));
-            src = tokenEnd;
+            m_tokens.push_back(token);
         }
     }
 }

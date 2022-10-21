@@ -326,7 +326,7 @@ void Application::OnKeyDown(SDL_Event* e)
     m_editWindow->OnKeyDown(e);
 }
 
-int Application::GetCurrentIndent(vector<char>& chars)
+int Application::GetCurrentIndent(string& chars)
 {
     int indent = 0;
     for (int i = 0; i<chars.size(); i++)
@@ -341,7 +341,7 @@ int Application::GetCurrentIndent(vector<char>& chars)
     return indent;
 }
 
-void Application::ReplaceIndent(vector<char>& chars, int newIndent)
+void Application::ReplaceIndent(string& chars, int newIndent)
 {
     int lastIndent = 0;
     while (lastIndent < chars.size() && (chars[lastIndent] == ' ' || chars[lastIndent] == '\t'))
@@ -739,7 +739,7 @@ void Application::Cmd_PasteArea(SourceFile* file)
             int endMarkingLine = oldActiveLine + (int)copyBuffer.size() - 1;
             int endMarkingCol = (int)copyBuffer.back().size();
 
-            vector<char> out;
+            string out;
             auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
             for (int i = 0; i < copyBuffer.size(); i++)
             {

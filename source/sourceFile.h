@@ -7,7 +7,7 @@ public:
     SourceLine(const char* start, const char* end);
     ~SourceLine();
 
-    vector<char>& GetChars() { return m_chars; }
+    string &GetChars() { return m_chars; }
     vector<string>& GetTokens() { return m_tokens; }
     int GetLineWidth() { return m_charXOffset.back(); }
     void GetCharX(int column, int& xStart, int& xEnd);
@@ -21,7 +21,7 @@ public:
 protected:
     GraphicChunk* m_gcText;         // graphic chunk for text
 
-    vector<char> m_chars;
+    string m_chars;
     vector<string> m_tokens;
     vector<int> m_charXOffset;
 };

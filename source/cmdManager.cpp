@@ -167,7 +167,7 @@ void CmdChangeLines::Undo()
 	m_file->UpdateDirty(-1);
 }
 
-void CmdChangeLines::PushAdd(int line, vector<char>& chars)
+void CmdChangeLines::PushAdd(int line, string& chars)
 {
 	auto change = new Change();
 	change->type = Change::CHANGE_Add;
@@ -185,7 +185,7 @@ void CmdChangeLines::PushRemove(int line)
 	m_changes.push_back(change);
 }
 
-void CmdChangeLines::PushReplace(int line, vector<char>& chars)
+void CmdChangeLines::PushReplace(int line, string& chars)
 {
 	auto change = new Change();
 	change->type = Change::CHANGE_Replace;

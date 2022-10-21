@@ -62,9 +62,9 @@ public:
 		m_newActiveLine = line;
 		m_newActiveColumn = column;
 	}
-	void PushAdd(int line, vector<char>& chars);
+	void PushAdd(int line, string& chars);
 	void PushRemove(int line);
-	void PushReplace(int line, vector<char>& chars);
+	void PushReplace(int line, string& chars);
 	int Size() { return (int)m_changes.size(); }
 
 	void SetPostMarking(int startLine, int startColumn, int endLine, int endColumn)
@@ -87,8 +87,8 @@ protected:
 		} type;
 		int line;
 
-		vector<char> oldLine;
-		vector<char> newLine;
+		string oldLine;
+		string newLine;
 	};
 	vector<Change*> m_changes;
 	

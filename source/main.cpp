@@ -57,5 +57,12 @@ void CopyFromClipboard(vector<string>& buffer)
     SDL_free(clip);
 }
 
-
+string FormatString(const char* pFormat, ...)
+{
+    va_list va;
+    va_start(va, pFormat);
+    char buffer[1024];
+    vsprintf(buffer, pFormat, va);
+    return string(buffer, SDL_strlen(buffer));
+}
 

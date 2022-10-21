@@ -60,6 +60,13 @@ public:
     int operand;
     AddressingMode addressMode;
     string label;
+    enum LabelSearch
+    {
+        LabelSearch_Global,
+        LabelSearch_Up,
+        LabelSearch_Down
+    } labelSearchDir;
+
     bool error;
     bool labelNeedsResolve;
     std::vector<u8> data;
@@ -97,7 +104,73 @@ struct CompilerOpcode
     bool extraCycleOnBranch;
 };
 
-#define ERR(...)  { Error(__VA_ARGS__); return; }
+struct CompilerExpressionToken
+{
+    bool isLabel;
+    int value;
+    string label;
+};
+
+struct CompilerExpression
+{
+    enum Operation
+    {
+        OP_ADD,
+        OP_SUBTRACT,
+        OP_MULTIPLY,
+        OP_DIVIDE,
+        OP_AND,
+        OP_OR,
+        OP_MODULO,
+        OP_SHIFT_LEFT,
+        OP_SHIFT_RIGHT
+    };
+    vector<CompilerExpressionToken*> m_tokens;
+};
+
+struct TokenFifo
+{
+    TokenFifo(vector<string>& tokens) : m_end(""), m_index(0)
+    {
+        // build tokens ignore white space tokens
+        for (auto& t : tokens)
+        {
+            if (t[0] != ' ' && t[0] != '\t' && t[0] != ';')
+                m_tokens.push_back(t);
+        }
+    }
+
+    string& Pop(int ahead = 0)
+    {
+        if (m_index + ahead < (int)m_tokens.size())
+        {
+            string& result = m_tokens[m_index + ahead];
+            m_index += ahead+1;
+            return result;
+        }
+        m_index = (int)m_tokens.size();
+        return m_end;
+    }
+
+    string& Peek(int ahead = 0)
+    {
+        if ((m_index + ahead) < (int)m_tokens.size())
+            return m_tokens[m_index + ahead];
+        return m_end;
+    }
+
+    int Mark() { return m_index; }
+    void ReturnToMark(int mark) { m_index = mark; }
+
+    bool IsEmpty() { return m_index == m_tokens.size(); }
+
+    int m_index;
+    vector<string> m_tokens;
+    string m_end;
+};
+
+
+#define ERR(...)  { string error = FormatString(__VA_ARGS__);  Error("Err ln %d:'%s' : %s",li->lineNmbr, sourceLine->GetChars().c_str(), error.c_str() ); li->error = true; return; }
 
 class Compiler
 {
@@ -110,16 +183,16 @@ public:
     // compile a single line
     // pass one builds up all the source code and labels,  but leaves markers for forward referenced labels since we don't know where they are yet
     // pass two fills in label address operands
-    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, vector<string>& tokens, int &currentMemAddr);
-    void CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li);
+    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine, int &currentMemAddr);
+    void CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine);
 
 	// return opcode index or -1 if not an opcode
 	bool IsOpCode(const char* text);
 
     CompilerOpcode* FindOpcode(string &name, AddressingMode am);
     CompilerLabel* FindLabel(CompilerSourceInfo* si, string& name);
-    bool ParseImmediateOperand(string& token, CompilerLineInfo* li);
-    bool ParseOperand(string& token, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo* li);
+    bool ParseImmediateOperand(TokenFifo& token, CompilerLineInfo* li);
+    bool ParseOperand(TokenFifo& token, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo* li);
 
     GraphicChunk* GetMemAddrGC(class SourceFile* file, int line, int sourceVersion);
     GraphicChunk* GetDecodeGC(class SourceFile* file, int line, int sourceVersion);

@@ -36,8 +36,8 @@ public:
     void Cmd_IndentLines(int startLine, int endLine);
 
     // helpers
-    int GetCurrentIndent(vector<char>& chars);
-    void ReplaceIndent(vector<char>& chars, int newIndent);
+    int GetCurrentIndent(string& chars);
+    void ReplaceIndent(string& chars, int newIndent);
     SourceFile* FindFile(const char* path);
     void ReloadFont();
 

@@ -17,7 +17,18 @@ textVal2 =  $5b
 textLines = $5c
 tempVar = $5d
 
+sprite0Ptr = $7f8
+sprite1Ptr = $7f9
+sprite2Ptr = $7fa
+sprite3Ptr = $7fb
+sprite4Ptr = $7fc
+sprite5Ptr = $7fd
+sprite6Ptr = $7fe
+sprite7Ptr = $7ff
+
 start:
+    jmp start
+
     jsr cls
 
     lda #$1             // enable all the sprites
@@ -810,7 +821,7 @@ chars:
     .word %1110001010100111
 
    *=$1000-$7e
-   .import binary "music.sid"
+;   .import binary "music.sid"
 
    *=$2000
 colors1:
