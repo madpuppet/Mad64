@@ -154,6 +154,7 @@
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
+    <ClCompile Include="source\LogWindow.cpp" />
     <ClCompile Include="source\main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">common.h</PrecompiledHeaderFile>
@@ -163,6 +164,7 @@
     <ClCompile Include="source\appSettings.cpp" />
     <ClCompile Include="source\sourcefile.cpp" />
     <ClCompile Include="source\textInput.cpp" />
+    <ClCompile Include="source\thread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\begin_code.h" />
@@ -262,8 +264,10 @@
     <ClInclude Include="source\editWindow.h" />
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\appSettings.h" />
+    <ClInclude Include="source\logWindow.h" />
     <ClInclude Include="source\sourceFile.h" />
     <ClInclude Include="source\textInput.h" />
+    <ClInclude Include="source\thread.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\SDL_config.h.cmake" />

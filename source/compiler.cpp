@@ -1,6 +1,7 @@
 #include "common.h"
 #include "compiler.h"
 #include "graphicChunk.h"
+#include <algorithm>
 
 CompilerLabel s_systemLabels[] =
 {
@@ -311,7 +312,7 @@ bool ConvertToNumber(TokenFifo& fifo, int& value)
     return success;
 }
 
-Compiler::Compiler()
+Compiler::Compiler() : m_compileRequested(1,1), m_compileCompleted(1,1), Thread("Compiler")
 {
     memset(m_ram, 0, sizeof(m_ram));
     memset(s_opcodes, 0, sizeof(s_opcodes));
@@ -527,8 +528,6 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
     else if (StrEqual(token, "*"))
     {
         string& tok1 = fifo.Pop();
-        string& tok2 = fifo.Pop();
-
         if (!StrEqual(tok1, "="))
         {
             ERR("Expected '=' after '*'");
@@ -536,7 +535,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         int addr;
         if (!ConvertToNumber(fifo, addr))
         {
-            ERR("Bad value '%s'", tok2.c_str());
+            ERR("Unable to parse expression");
         }
 
         currentMemAddr = addr;
@@ -639,7 +638,10 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             if (!opcode)
                 ERR("Cannot find version of '%s' that matches the addressing mode", token.c_str());
         }
-
+        else
+        {
+            ERR("Cannot find version of '%s' that matches the addressing mode", token.c_str());
+        }
         currentMemAddr += gAddressingModeSize[li->addressMode];
     }
     else if (token == "!")
@@ -681,7 +683,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                     ERR("Expected comma in data bytes")
             }
         }
-        currentMemAddr += li->data.size();
+        currentMemAddr += (int)li->data.size();
     }
     else if (StrEqual(token, ".text"))
     {
@@ -717,7 +719,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                     ERR("Expected comma in data bytes")
             }
         }
-        currentMemAddr += li->data.size();
+        currentMemAddr += (int)li->data.size();
     }
     else
     {
@@ -881,54 +883,66 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
 
 void Compiler::Compile(SourceFile* file)
 {
-    Profile PF("COMPILE");
+    auto lw = gApp->GetLogWindow();
+    lw->ClearLog(LogWindow::LF_CompilerWarning);
 
     int currentMemAddr = 0;
 
     m_errors.clear();
 
-	auto sourceInfo = new CompilerSourceInfo();
+    auto sourceInfo = new CompilerSourceInfo();
     sourceInfo->m_sourceVersion = file->GetSourceVersion();
     file->SetCompileInfo(sourceInfo);
 
     string path = file->GetPath();
-    int pathEnd = path.find_last_of('\\');
+    int pathEnd = (int)path.find_last_of('\\');
     if (pathEnd == string::npos)
     {
         sourceInfo->m_workingDir = "";
     }
     else
     {
-        sourceInfo->m_workingDir = path.substr(0, pathEnd+1);
+        sourceInfo->m_workingDir = path.substr(0, pathEnd + 1);
     }
 
     int lineNmbr = 0;
     for (auto line : file->GetLines())
-	{
-		auto lineInfo = new CompilerLineInfo();
+    {
+        auto lineInfo = new CompilerLineInfo();
         lineInfo->lineNmbr = lineNmbr;
-		CompileLinePass1(sourceInfo, lineInfo, line, currentMemAddr);
+        CompileLinePass1(sourceInfo, lineInfo, line, currentMemAddr);
         sourceInfo->m_lines.push_back(lineInfo);
         lineNmbr++;
-	}
+    }
 
     for (auto line : sourceInfo->m_lines)
     {
         CompileLinePass2(sourceInfo, line, file->GetLines()[line->lineNmbr]);
     }
 
-    u64 timeEnd = SDL_GetTicks64();
+    FlushErrors();
 }
 
-void Compiler::Error(const char* pFormat, ...)
+void Compiler::Error(const string& text, int lineNmbr)
 {
-    va_list va;
-    va_start(va, pFormat);
-    char buffer[1024];
-    vsprintf(buffer, pFormat, va);
-    string out(buffer, SDL_strlen(buffer));
-    m_errors.push_back(out);
-    printf("%s\n", out.c_str());
+    string out = FormatString("%d: %s", lineNmbr+1, text.c_str());
+    auto item = new ErrorItem();
+    item->lineNmbr = lineNmbr;
+    item->text = out;
+    m_errors.push_back(item);
+}
+
+void Compiler::FlushErrors()
+{
+    std::sort(m_errors.begin(), m_errors.end(), [](ErrorItem* a, ErrorItem* b) { return a->lineNmbr < b->lineNmbr; });
+
+    auto lw = gApp->GetLogWindow();
+    for (auto e : m_errors)
+    {
+        lw->LogText(LogWindow::LF_CompilerWarning, e->text, e->lineNmbr);
+        delete e;
+    }
+    m_errors.clear();
 }
 
 bool CompilerSourceInfo::DoesLabelExist(const char* label) 
@@ -988,4 +1002,81 @@ void CompilerSourceInfo::SavePrg(const char* path)
         fclose(fh);
     }
 }
+
+
+int Compiler::Go()
+{
+    while (!m_terminate)
+    {
+        m_compileRequested.Wait();
+
+        // .. do compile
+
+        m_compileCompleted.Signal();
+    }
+    return 0;
+}
+
+#if 1
+TokenisedFile::TokenisedFile(SourceFile* sf)
+{
+    m_memory = (char*)malloc(64 * 1024 * 0124);
+    m_lineCount = (int)sf->GetLines().size();
+    m_lines = new TokenisedLine[m_lineCount];
+    m_tokens = new TokenisedLine::Token[1024 * 1024];
+
+    char* mptr = m_memory;
+    int currentToken = 0;
+    TokenisedLine* tl = m_lines;
+    for (auto sl : sf->GetLines())
+    {
+        // count the tokens
+        tl->m_tokenCount = 0;
+        tl->m_firstToken = currentToken;
+        for (auto& t : sl->GetTokens())
+        {
+            if (t[0] != ' ' && t[0] != '\t')
+            {
+                memcpy(mptr, &t[0], t.size() + 1);
+                m_tokens[currentToken].memory = mptr;
+                m_tokens[currentToken].length = (int)t.size();
+                currentToken++;
+                tl->m_tokenCount++;
+            }
+        }
+        tl++;
+    }
+}
+
+TokenisedFile::~TokenisedFile()
+{
+    free(m_memory);
+    delete[] m_tokens;
+    delete[] m_lines;
+}
+
+#else
+
+TokenisedFile::TokenisedFile(SourceFile* sf)
+{
+    for (auto sl : sf->GetLines())
+    {
+        auto line = new TokenisedLine();
+        for (auto& t : sl->GetTokens())
+        {
+            if (t[0] != ' ' && t[0] != '\t')
+            {
+                line->m_tokens.push_back(t);
+            }
+        }
+        m_lines.push_back(line);
+    }
+}
+
+TokenisedFile::~TokenisedFile()
+{
+    for (auto l : m_lines)
+        delete l;
+}
+#endif
 

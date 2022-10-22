@@ -44,8 +44,13 @@ extern string FormatString(const char* pFormat, ...);
 class Profile
 {
 public:
-	Profile(string label) { m_label = label; m_start = SDL_GetTicks64(); }
-	~Profile() {	u64 duration = SDL_GetTicks64() - m_start; printf("PF: %s %dms\n", m_label.c_str(), (int)duration);	}
+	Profile(string label) { m_label = label; m_start = SDL_GetPerformanceCounter(); }
+	~Profile() 
+	{
+		u64 duration = SDL_GetPerformanceCounter() - m_start; 
+		float ms = (float)((double)duration * 1000.0 / (double)SDL_GetPerformanceFrequency());
+		printf("PF: %s %1.4fms\n", m_label.c_str(), ms);
+	}
 	string m_label;
 	u64 m_start;
 };

@@ -35,8 +35,8 @@ public:
     class CmdManager* GetCmdManager() { return m_cmdManager; }
     bool Load();
     bool Save();
-    const char* GetName() { return m_name.c_str(); }
-    const char* GetPath() { return m_path.c_str(); }
+    string &GetName() { return m_name; }
+    string &GetPath() { return m_path; }
     vector<SourceLine*> &GetLines() { return m_lines; }
 
     void UpdateDirty(int amount) { m_dirtyCount += amount; m_sourceVersion++; }

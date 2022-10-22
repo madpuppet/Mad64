@@ -35,6 +35,8 @@ public:
     void DrawAt(i32 x, i32 y);
     void Clear();
     bool IsEmpty() { return elements.empty(); }
+    int Size() { return (int)elements.size(); }
+
     ~GraphicChunk();
 
 protected:

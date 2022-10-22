@@ -38,6 +38,10 @@ string MakeString(char* src, char* end)
     temp[len] = 0;
     return string(temp);
 }
+void ReadString(char* src, string& str)
+{
+    str = string(src, strlen(src));
+}
 void ReadStringArray(char* src, vector<string>& arr)
 {
     char* next;
@@ -63,7 +67,7 @@ AppSettings::AppSettings()
     tabsToSpaces = true;
     overwriteMode = false;
     autoIndent = true;
-
+    vicePath = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
     lineHeight = 24;
     fontPath = "data/CodeNewRoman.otf";
     fontSize = 16;
@@ -176,6 +180,10 @@ bool AppSettings::Load()
                     ReadColor(value, r, g, b);
                     numericColor = { r, g, b, 255 };
                 }
+                else if (SDL_strcasecmp(token, "vicePath") == 0)
+                {
+                    ReadString(value, vicePath);
+                }
                 else if (SDL_strcasecmp(token, "loadedFilePaths") == 0)
                 {
                     ReadStringArray(value, loadedFilePaths);
@@ -244,6 +252,11 @@ bool AppSettings::Save()
         fprintf(fh, "opCodeColor=%d,%d,%d\n", opCodeColor.r, opCodeColor.g, opCodeColor.b);
         fprintf(fh, "commentColor=%d,%d,%d\n", commentColor.r, commentColor.g, commentColor.b);
         fprintf(fh, "numericColor=%d,%d,%d\n", numericColor.r, numericColor.g, numericColor.b);
+        if (!vicePath.empty())
+        {
+            fprintf(fh, "vicePath=%s\n", vicePath.c_str());
+        }
+
         if (!loadedFilePaths.empty())
         {
             fprintf(fh, "loadedFilePaths=%s", loadedFilePaths[0].c_str());

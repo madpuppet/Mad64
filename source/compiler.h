@@ -1,4 +1,5 @@
 #pragma once
+#include "thread.h"
 
 class CompilerLabel
 {
@@ -198,9 +199,53 @@ struct TokenFifo
 };
 
 
-#define ERR(...)  { string error = FormatString(__VA_ARGS__);  Error("Err ln %d:'%s' : %s",li->lineNmbr+1, sourceLine->GetChars().c_str(), error.c_str() ); li->error = true; return; }
+#define ERR(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return; }
 
-class Compiler
+
+#if 1
+class TokenisedLine
+{
+public:
+    struct Token
+    {
+        const char* memory;
+        int length;
+    };
+
+    int m_firstToken;
+    int m_tokenCount;
+};
+
+class TokenisedFile
+{
+public:
+    TokenisedFile(SourceFile* sf);
+    ~TokenisedFile();
+
+    TokenisedLine::Token* m_tokens;
+    TokenisedLine* m_lines;
+
+    int m_lineCount;
+    char* m_memory;
+};
+#else
+class TokenisedLine
+{
+public:
+    vector<string> m_tokens;
+};
+
+class TokenisedFile
+{
+public:
+    TokenisedFile(SourceFile* sf);
+    ~TokenisedFile();
+
+    vector<TokenisedLine*> m_lines;
+};
+#endif
+
+class Compiler : public Thread
 {
 public:
 	Compiler();
@@ -228,8 +273,23 @@ public:
 	// 64k of ram
 	u8 m_ram[65536];
 
-    vector<string> m_errors;
-    void Error(const char* pFormat, ...);
+    struct ErrorItem
+    {
+        string text;
+        int lineNmbr;
+    };
+    vector<ErrorItem*> m_errors;
+    void Error(const string &text, int lineNmbr);
+    void FlushErrors();
+
+protected:
+    Semaphore m_compileRequested;
+    Semaphore m_compileCompleted;
+
+    // compiler loop
+    virtual int Go();
+
+    TokenisedFile* m_fileCopy;
 };
 
 

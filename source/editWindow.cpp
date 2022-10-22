@@ -32,8 +32,8 @@ EditWindow::EditWindow()
 	m_cursorVert = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 	m_cursorHand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
-	m_searchBox = new TextInput(0,0,"Search",DELEGATE(EditWindow::OnSearchEnter));
-	m_replaceBox = new TextInput(0, 0, "Replace", DELEGATE(EditWindow::OnReplaceEnter));
+	m_searchBox = new TextInput(0,0,"S",DELEGATE(EditWindow::OnSearchEnter));
+	m_replaceBox = new TextInput(0, 0, "R", DELEGATE(EditWindow::OnReplaceEnter));
 
 	CalcRects();
 	InitStatus();
@@ -249,6 +249,7 @@ void EditWindow::Draw()
 	SDL_RenderSetClipRect(r, nullptr);
 
 	// - context help
+	gApp->GetLogWindow()->Draw();
 
 	// draw status bar
 	DrawStatus();
@@ -287,9 +288,13 @@ void EditWindow::CalcRects()
 	m_decodeRect = { settings->xPosDecode, settings->lineHeight, settings->xPosText - settings->xPosDecode, editHeight };
 	m_sourceEditRect = { settings->xPosText, settings->lineHeight, settings->xPosContextHelp - settings->xPosText, editHeight };
 	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
-	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight);
-	m_replaceBox->SetPos(settings->xPosContextHelp + 200, settings->lineHeight);
-	m_contextHelpRect = { settings->xPosContextHelp, m_searchBox->GetArea().y + m_searchBox->GetArea().h + settings->textYMargin, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
+	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight+2);
+	m_replaceBox->SetPos(settings->xPosContextHelp + 200, settings->lineHeight+2);
+
+	int y = m_searchBox->GetArea().y + m_searchBox->GetArea().h + settings->textYMargin + settings->lineHeight;
+	m_contextHelpRect = { settings->xPosContextHelp, y, windowWidth - settings->xPosContextHelp, editHeight - y };
+
+	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
 }
 
 
@@ -321,7 +326,7 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 	auto sfi = new SourceFileItem();
 	sfi->modified = false;
 	sfi->file = file;
-	sfi->geText = GraphicElement::CreateFromText(gApp->GetFont(), file->GetName(), { 255,255,255,255 }, 0, 0);
+	sfi->geText = GraphicElement::CreateFromText(gApp->GetFont(), file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
 	sfi->activeColumn = 0;
 	sfi->activeLine = 0;
 	sfi->activeTargetX = 0;
@@ -455,6 +460,11 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 					}
 				}
 			}
+		}
+		else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
+		{
+			gApp->GetLogWindow()->OnMouseDown(e);
+			return;
 		}
 		else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
 		{
@@ -771,12 +781,6 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		case SDLK_PAGEDOWN:
 			for (int i = 0; i < 20; i++)
 				CursorDown(markingType);
-			return;
-		case SDLK_F5:
-			if (m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetName(), ".asm"))
-			{
-				gApp->GetCompiler()->Compile(m_activeSourceFileItem->file);
-			}
 			return;
 		case SDLK_UP:
 			CursorUp(markingType);

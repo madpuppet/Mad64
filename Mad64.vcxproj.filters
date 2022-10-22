@@ -42,6 +42,12 @@
     <ClCompile Include="source\textInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\thread.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\LogWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -339,6 +345,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\textInput.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\thread.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\logWindow.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

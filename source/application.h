@@ -6,6 +6,7 @@
 #include "compiler.h"
 #include "cmdManager.h"
 #include "AppSettings.h"
+#include "LogWindow.h"
 
 class Application
 {
@@ -21,6 +22,7 @@ public:
     AppSettings* GetSettings() { return m_settings; }
     Compiler* GetCompiler() { return m_compiler; }
     EditWindow* GetEditWindow() { return m_editWindow; }
+    LogWindow* GetLogWindow() { return m_logWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
 
     // COMMANDS - undo'able
@@ -63,6 +65,7 @@ protected:
     int m_whiteSpaceWidth;
     SDL_Renderer* m_renderer;
     EditWindow* m_editWindow;
+    LogWindow* m_logWindow;
     Compiler* m_compiler;
     bool m_quit;
     bool m_repaint;

@@ -9,6 +9,7 @@ public:
     bool overwriteMode;  // overwrite or insert
     bool autoIndent;     // on return, do we indent the next line
 
+    string vicePath;     // path to vice
     string fontPath;     // path to font
     int fontSize;        // point size of font
     int lineHeight;      // pixel height of a line of text

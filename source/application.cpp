@@ -37,8 +37,10 @@ Application::Application()
         SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x60));
         SDL_UpdateWindowSurface(m_window);
 
+        m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
+
         for (auto& p : m_settings->loadedFilePaths)
         {
             LoadFile(p.c_str());
@@ -163,7 +165,7 @@ SourceFile *Application::FindFile(const char* path)
     // check file isn't already loaded
     for (auto f : m_sourceFiles)
     {
-        if (SDL_strcasecmp(path, f->GetPath()) == 0)
+        if (StrEqual(f->GetPath(), path))
         {
             return f;
         }
@@ -317,6 +319,30 @@ void Application::OnKeyDown(SDL_Event* e)
             {
                 m_settings->Save();
                 LoadFile(path.c_str());
+            }
+            return;
+        }
+        break;
+    case SDLK_F5:
+        {
+            auto file = m_editWindow->GetActiveFile();
+            if (file && HasExtension(file->GetName().c_str(), ".asm"))
+            {
+                m_settings->Save();
+                file->Save();
+
+                size_t lastindex = file->GetPath().find_last_of(".");
+                string prgname = file->GetPath().substr(0, lastindex) + ".prg";
+
+                STARTUPINFOA info = { sizeof(info) };
+                PROCESS_INFORMATION processInfo;
+                string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
+                string cmdLine = "-autostartprgdiskimage " + prgname;
+                if (CreateProcessA(path.c_str(), (char *)cmdLine.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+                {
+                    CloseHandle(processInfo.hProcess);
+                    CloseHandle(processInfo.hThread);
+                }
             }
             return;
         }

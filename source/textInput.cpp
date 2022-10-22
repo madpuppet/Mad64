@@ -46,7 +46,7 @@ void TextInput::Draw()
 		string sub = m_text.substr(0, m_cursorPos);
 		int textWidth;
 		int x = TTF_SizeText(gApp->GetFont(), sub.c_str(), &textWidth, nullptr);
-		SDL_Rect cursorRect = { m_area.x + settings->textXMargin + textWidth, m_area.y, 4, settings->lineHeight };
+		SDL_Rect cursorRect = { m_area.x + settings->textXMargin + textWidth, m_area.y, 4, m_area.h };
 		int brightness = max(0, (int)(100 + cosf(m_cursorAnim) * 128));
 		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 		SDL_SetRenderDrawColor(r, 255, 255, 255, brightness);
@@ -121,10 +121,10 @@ void TextInput::Visualize()
 
 	SDL_Color col = { 255,255,255,255 };
 	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + gApp->GetSettings()->textYMargin);
-	int x2 = m_pos.x + settings->textXMargin + geTitle->GetRect().w;
-	m_area = { x2, 0, 200, settings->lineHeight,};
+	int x2 = m_pos.x + geTitle->GetRect().w + 16;
 	m_gc->Add(geTitle);
 
+	m_area = { x2, m_pos.y+2, 150, settings->lineHeight-4 };
 	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_area.y + gApp->GetSettings()->textYMargin);
 	m_gc->Add(ge);
 }

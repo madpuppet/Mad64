@@ -120,6 +120,7 @@ void CmdChangeLines::Do()
 	}
 
 	m_file->UpdateDirty(1);
+	gApp->GetCompiler()->Compile(m_file);
 }
 
 void CmdChangeLines::Undo()
