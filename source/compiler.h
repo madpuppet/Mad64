@@ -91,6 +91,7 @@ public:
     // this much match current source stamp or compile is invalid
     int m_sourceVersion;
 
+    string m_workingDir;
     vector<CompilerLabel*> m_labels;
     vector<CompilerLineInfo*> m_lines;
 };

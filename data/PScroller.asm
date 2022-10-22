@@ -1,6 +1,6 @@
-;#import "../includes/c64.lib"
-
 ;BasicUpstart2(start)
+
+#import "music.sid"
 
 nextX = $50
 nextY = $51
@@ -823,7 +823,7 @@ chars:
     .word %1110001010100111
 
    *=$1000-$7e
-   .import binary "music.sid"
+   #import "music.sid"
 
    *=$2000
 colors1:
@@ -1145,8 +1145,5 @@ xwave:
 	.byte %11111111, %10101010, %01010101
 	.byte %11111111, %10101010, %01010101
 	.byte %11111111, %10101010, %01010101,0
-
-    ; sprite 12
-     .import binary "logo.raw"
 
 	 

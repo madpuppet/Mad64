@@ -494,13 +494,35 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
     }
     else if (StrEqual(token, "#"))
     {
-        // TODO: pragmas...  include/import
-        li->type = LT_Comment;
+        string pragma = fifo.Pop();
+        if (StrEqual(pragma, "import"))
+        {
+            string filename = fifo.Pop();
+            string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
+            FILE* fh = fopen(path.c_str(), "rb");
+            if (fh)
+            {
+                fseek(fh, 0, SEEK_END);
+                int size = ftell(fh);
+                fseek(fh, 0, SEEK_SET);
+                
+                u8* data = (u8*)SDL_malloc(size);
+                fread(data, size, 1, fh);
+                fclose(fh);
+
+                for (int i = 0; i < size; i++)
+                    li->data.push_back(data[i]);
+
+                li->type = LT_DataBytes;
+                li->memAddr = currentMemAddr;
+                currentMemAddr += size;
+            }
+            else
+            {
+                ERR("Unable to import file %s", path.c_str());
+            }
+        }
         return;
-    }
-    else if (StrEqual(token, ".import"))
-    {
-        
     }
     else if (StrEqual(token, "*"))
     {
@@ -659,6 +681,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                     ERR("Expected comma in data bytes")
             }
         }
+        currentMemAddr += li->data.size();
     }
     else if (StrEqual(token, ".text"))
     {
@@ -694,6 +717,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                     ERR("Expected comma in data bytes")
             }
         }
+        currentMemAddr += li->data.size();
     }
     else
     {
@@ -770,7 +794,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         }
     }
 
-    if (li->type == LT_Instruction || li->type == LT_DataBytes)
+    if (li->type == LT_Instruction)
     {
         int instructionSize = gAddressingModeSize[li->addressMode];
         li->data.clear();
@@ -866,6 +890,17 @@ void Compiler::Compile(SourceFile* file)
 	auto sourceInfo = new CompilerSourceInfo();
     sourceInfo->m_sourceVersion = file->GetSourceVersion();
     file->SetCompileInfo(sourceInfo);
+
+    string path = file->GetPath();
+    int pathEnd = path.find_last_of('\\');
+    if (pathEnd == string::npos)
+    {
+        sourceInfo->m_workingDir = "";
+    }
+    else
+    {
+        sourceInfo->m_workingDir = path.substr(0, pathEnd+1);
+    }
 
     int lineNmbr = 0;
     for (auto line : file->GetLines())
