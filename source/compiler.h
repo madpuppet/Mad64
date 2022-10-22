@@ -39,10 +39,19 @@ enum AddressingMode
 };
 extern int gAddressingModeSize[];
 
+enum LabelResolve
+{
+    LabelResolve_None,
+    LabelResolve_Done,
+    LabelResolve_Global,
+    LabelResolve_Backwards,
+    LabelResolve_Forwards
+};
+
 class CompilerLineInfo
 {
 public:
-    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelNeedsResolve(false)
+    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelResolve(LabelResolve_None)
     {
         gcMemAddr = new GraphicChunk();
         gcDecode = new GraphicChunk();
@@ -60,15 +69,8 @@ public:
     int operand;
     AddressingMode addressMode;
     string label;
-    enum LabelSearch
-    {
-        LabelSearch_Global,
-        LabelSearch_Up,
-        LabelSearch_Down
-    } labelSearchDir;
-
+    LabelResolve labelResolve;
     bool error;
-    bool labelNeedsResolve;
     std::vector<u8> data;
 
     GraphicChunk* gcMemAddr;
@@ -159,6 +161,31 @@ struct TokenFifo
         return m_end;
     }
 
+    bool PopLabel(string &label, bool &localLabel, LabelResolve &resolve)
+    {
+        if (Peek() == "!")
+        {
+            localLabel = true;
+            Pop();
+        }
+        label = Pop();
+        if (Peek() == "+")
+        {
+            resolve = LabelResolve_Forwards;
+            Pop();
+        }
+        else if (Peek() == "-")
+        {
+            resolve = LabelResolve_Backwards;
+            Pop();
+        }
+        else
+        {
+            resolve = LabelResolve_Global;
+        }
+        return !label.empty();
+    }
+
     int Mark() { return m_index; }
     void ReturnToMark(int mark) { m_index = mark; }
 
@@ -170,7 +197,7 @@ struct TokenFifo
 };
 
 
-#define ERR(...)  { string error = FormatString(__VA_ARGS__);  Error("Err ln %d:'%s' : %s",li->lineNmbr, sourceLine->GetChars().c_str(), error.c_str() ); li->error = true; return; }
+#define ERR(...)  { string error = FormatString(__VA_ARGS__);  Error("Err ln %d:'%s' : %s",li->lineNmbr+1, sourceLine->GetChars().c_str(), error.c_str() ); li->error = true; return; }
 
 class Compiler
 {
@@ -190,7 +217,7 @@ public:
 	bool IsOpCode(const char* text);
 
     CompilerOpcode* FindOpcode(string &name, AddressingMode am);
-    CompilerLabel* FindLabel(CompilerSourceInfo* si, string& name);
+    CompilerLabel* FindLabel(CompilerSourceInfo* si, string& name, LabelResolve resolve, u32 resolveStartAddr);
     bool ParseImmediateOperand(TokenFifo& token, CompilerLineInfo* li);
     bool ParseOperand(TokenFifo& token, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo* li);
 

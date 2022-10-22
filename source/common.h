@@ -41,6 +41,15 @@ extern char KeySymToAscii(const SDL_Keysym &sym);
 extern string FormatString(const char* pFormat, ...);
 #define STR(...)  FormatString(__VA_ARGS__);
 
+class Profile
+{
+public:
+	Profile(string label) { m_label = label; m_start = SDL_GetTicks64(); }
+	~Profile() {	u64 duration = SDL_GetTicks64() - m_start; printf("PF: %s %dms\n", m_label.c_str(), (int)duration);	}
+	string m_label;
+	u64 m_start;
+};
+
 
 #include "graphicChunk.h"
 #include "sourceFile.h"

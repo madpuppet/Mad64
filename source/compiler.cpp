@@ -350,22 +350,68 @@ CompilerOpcode* Compiler::FindOpcode(string &name, AddressingMode am)
     return nullptr;;
 }
 
-CompilerLabel* Compiler::FindLabel(CompilerSourceInfo *si, string& name)
+CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelResolve resolve, u32 resolveStartAddr)
 {
-    for (int i = 0; i < sizeof(s_systemLabels) / sizeof(CompilerLabel); i++)
+    if (resolve == LabelResolve_Global)
     {
-        if (StrEqual(s_systemLabels[i].m_name, name))
+        for (int i = 0; i < sizeof(s_systemLabels) / sizeof(CompilerLabel); i++)
         {
-            return &s_systemLabels[i];
+            if (StrEqual(s_systemLabels[i].m_name, name))
+            {
+                return &s_systemLabels[i];
+            }
         }
     }
 
-    for (auto l : si->m_labels)
+    if (resolve == LabelResolve_Global)
     {
-        if (StrEqual(l->m_name, name))
+        for (auto l : si->m_labels)
         {
-            return l;
+            if (StrEqual(l->m_name, name))
+            {
+                return l;
+            }
         }
+    }
+    else if (resolve == LabelResolve_Backwards)
+    {
+        CompilerLabel* best = nullptr;
+
+        // find largest label that is smaller than the start addr
+        for (auto l : si->m_labels)
+        {
+            if (StrEqual(l->m_name, name))
+            {
+                if (!best || (l->m_addr > best->m_addr))
+                {
+                    if (l->m_addr < resolveStartAddr)
+                    {
+                        best = l;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+    else
+    {
+        CompilerLabel* best = nullptr;
+
+        // find smallest label that is larger than the start addr
+        for (auto l : si->m_labels)
+        {
+            if (StrEqual(l->m_name, name))
+            {
+                if (!best || (l->m_addr < best->m_addr))
+                {
+                    if (l->m_addr >= resolveStartAddr)
+                    {
+                        best = l;
+                    }
+                }
+            }
+        }
+        return best;
     }
     return nullptr;
 }
@@ -374,30 +420,62 @@ bool Compiler::ParseImmediateOperand(TokenFifo &fifo, CompilerLineInfo *li)
 {
     if (!ConvertToNumber(fifo, li->operand))
     {
+        if (StrEqual(fifo.Peek(), "!"))
+        {
+            fifo.Pop();
+        }
         li->label = fifo.Pop();
-        li->labelNeedsResolve = true;
+
+        if (StrEqual(fifo.Peek(), "+"))
+        {
+            li->labelResolve = LabelResolve_Forwards;
+            fifo.Pop();
+        }
+        else if (StrEqual(fifo.Peek(), "-"))
+        {
+            li->labelResolve = LabelResolve_Backwards;
+            fifo.Pop();
+        }
+        else
+            li->labelResolve = LabelResolve_Global;
     }
     return true;
 }
 
 bool Compiler::ParseOperand(TokenFifo &fifo, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo *li)
 {
+    bool isLocal;
     if (ConvertToNumber(fifo, li->operand))
     {
         li->addressMode = (li->operand > 0xff) ? amAbsolute : amZeroPage;
     }
-    else
+    else if (fifo.PopLabel(li->label, isLocal, li->labelResolve))
     {
-        li->label = fifo.Pop();
-        auto label = FindLabel(si, li->label);
+        auto label = FindLabel(si, li->label, li->labelResolve, li->memAddr);
         if (label)
         {
             li->operand = label->m_addr;
-            li->addressMode = (!li->operand > 0xff) ? amAbsolute : amZeroPage;
+            li->addressMode = (li->operand > 0xff) ? amAbsolute : amZeroPage;
+            li->labelResolve = LabelResolve_Done;
         }
         else
         {
-            li->labelNeedsResolve = true;
+            if (StrEqual(fifo.Peek(), "!"))
+                fifo.Pop();
+
+            if (StrEqual(fifo.Peek(), "+"))
+            {
+                li->labelResolve = LabelResolve_Forwards;
+                fifo.Pop();
+            }
+            else if (StrEqual(fifo.Peek(), "-"))
+            {
+                li->labelResolve = LabelResolve_Backwards;
+                fifo.Pop();
+            }
+            else
+                li->labelResolve = LabelResolve_Global;
+
             li->addressMode = amAbsolute;
         }
     }
@@ -419,6 +497,10 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         // TODO: pragmas...  include/import
         li->type = LT_Comment;
         return;
+    }
+    else if (StrEqual(token, ".import"))
+    {
+        
     }
     else if (StrEqual(token, "*"))
     {
@@ -450,7 +532,6 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         li->operand = 0;
         li->addressMode = AM_Implied;
         li->label = "";
-        li->labelNeedsResolve;
 
         if (fifo.Peek().empty())
         {
@@ -558,6 +639,9 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
     }
     else if (StrEqual(token, "dc.b") || StrEqual(token, ".byte"))
     {
+        li->type = LT_DataBytes;
+        li->memAddr = currentMemAddr;
+
         while (!fifo.IsEmpty())
         {
             int dataval;
@@ -576,8 +660,22 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             }
         }
     }
+    else if (StrEqual(token, ".text"))
+    {
+        li->type = LT_DataBytes;
+        li->memAddr = currentMemAddr;
+
+        string text = fifo.Pop();
+        if (text.empty() || text.front() != '"' || text.back() != '"')
+            ERR("Malformed text");
+        for (auto c : text)
+            li->data.push_back((u8)c);
+    }
     else if (StrEqual(token, "dc.w") || StrEqual(token, ".word"))
     {
+        li->type = LT_DataBytes;
+        li->memAddr = currentMemAddr;
+
         while (!fifo.IsEmpty())
         {
             int dataval;
@@ -640,9 +738,9 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
 
 void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine)
 {
-    if (li->labelNeedsResolve)
+    if (li->labelResolve == LabelResolve_Global || li->labelResolve == LabelResolve_Forwards || li->labelResolve == LabelResolve_Backwards)
     {
-        auto label = FindLabel(si, li->label);
+        auto label = FindLabel(si, li->label, li->labelResolve, li->memAddr);
         if (label)
         {
             if (li->addressMode == AM_Relative)
@@ -721,41 +819,46 @@ GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourc
 
 GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int sourceVersion)
 {
+    SDL_Color dataCol = { 255, 64, 64, 255 };
+    SDL_Color cycleCol = { 255, 255, 0, 255 };
+
     auto settings = gApp->GetSettings();
     auto ci = file->GetCompileInfo();
     if (ci && ci->m_sourceVersion == file->GetSourceVersion())
     {
         auto sl = ci->m_lines[line];
-        if (sl->type == LT_Instruction)
+        if (sl->gcDecode->IsEmpty())
         {
-            if (sl->gcDecode->IsEmpty())
+            if (sl->type == LT_Instruction)
             {
                 char buffer[16];
                 auto opcode = &s_opcodes[sl->opcode];
-                switch (gAddressingModeSize[sl->addressMode])
-                {
-                    case 1:
-                        SDL_snprintf(buffer, 16, "%d %02x", opcode->cycles, sl->opcode);
-                        break;
-                    case 2:
-                        SDL_snprintf(buffer, 16, "%d %02x %02x", opcode->cycles, sl->opcode, sl->operand & 0xff);
-                        break;
-                    case 3:
-                        SDL_snprintf(buffer, 16, "%d %02x %02x %02x", opcode->cycles, sl->opcode, sl->operand & 0xff, (sl->operand >> 8) & 0xff);
-                        break;
-                }
-
-                SDL_Color addrCol = { 255, 255, 0, 255 };
-                sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, addrCol, 0, 0));
+                SDL_snprintf(buffer, 16, "%d", opcode->cycles);
+                sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, cycleCol, 0, 0));
             }
-            return sl->gcDecode;
+            if (sl->type == LT_Instruction || sl->type == LT_DataBytes)
+            {
+                char buffer[16];
+                for (int i = 0; i < min((int)sl->data.size(), 8); i++)
+                {
+                    SDL_snprintf(buffer, 16, "%02x", sl->data[i]);
+                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, dataCol, gApp->GetWhiteSpaceWidth() * (3 + i * 3), 0));
+                }
+                if (sl->data.size() > 8)
+                {
+                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), "..", dataCol, gApp->GetWhiteSpaceWidth() * (3 + 8 * 3), 0));
+                }
+            }
         }
+        return sl->gcDecode;
     }
     return nullptr;
 }
 
 void Compiler::Compile(SourceFile* file)
 {
+    Profile PF("COMPILE");
+
     int currentMemAddr = 0;
 
     m_errors.clear();
@@ -778,6 +881,8 @@ void Compiler::Compile(SourceFile* file)
     {
         CompileLinePass2(sourceInfo, line, file->GetLines()[line->lineNmbr]);
     }
+
+    u64 timeEnd = SDL_GetTicks64();
 }
 
 void Compiler::Error(const char* pFormat, ...)

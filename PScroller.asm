@@ -26,6 +26,8 @@ sprite5Ptr = $7fd
 sprite6Ptr = $7fe
 sprite7Ptr = $7ff
 
+* = $801
+
 start:
     jmp start
 
@@ -821,7 +823,7 @@ chars:
     .word %1110001010100111
 
    *=$1000-$7e
-;   .import binary "music.sid"
+   .import binary "music.sid"
 
    *=$2000
 colors1:
