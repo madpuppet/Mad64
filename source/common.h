@@ -45,16 +45,15 @@ class Profile
 {
 public:
 	Profile(string label) { m_label = label; m_start = SDL_GetPerformanceCounter(); }
-	~Profile() 
+	string Log()
 	{
-		u64 duration = SDL_GetPerformanceCounter() - m_start; 
+		u64 duration = SDL_GetPerformanceCounter() - m_start;
 		float ms = (float)((double)duration * 1000.0 / (double)SDL_GetPerformanceFrequency());
-		printf("PF: %s %1.4fms\n", m_label.c_str(), ms);
+		return FormatString("%s: %1.4fms", m_label.c_str(), ms);
 	}
 	string m_label;
 	u64 m_start;
 };
-
 
 #include "graphicChunk.h"
 #include "sourceFile.h"

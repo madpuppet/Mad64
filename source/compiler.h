@@ -1,13 +1,14 @@
 #pragma once
 #include "thread.h"
 
+// compiler label only get added to labels list once they are evaluated
 class CompilerLabel
 {
 public:
-    CompilerLabel(const char* name, u32 addr) : m_name(name), m_addr(addr) {}
-
+    CompilerLabel(const string &name, i64 value, bool isLocal=false) : m_name(name), m_value(value), m_isLocal(isLocal) {}
     string m_name;
-    u32 m_addr;
+    i64 m_value;
+    bool m_isLocal;
 };
 
 enum CompilerLineType
@@ -19,6 +20,8 @@ enum CompilerLineType
     LT_Label,
     LT_Variable,
     LT_DataBytes,
+    LT_DataWords,
+    LT_DataText,
     LT_Instruction
 };
 
@@ -42,17 +45,41 @@ extern int gAddressingModeSize[];
 
 enum LabelResolve
 {
-    LabelResolve_None,
     LabelResolve_Done,
     LabelResolve_Global,
     LabelResolve_Backwards,
     LabelResolve_Forwards
 };
 
+struct CompilerExpressionOpcode
+{
+    const char* text;
+    int params;
+    int priority;
+    i64(*Evaluate)(i64 a, i64 b, i64 c);
+};
+
+struct CompilerExpressionToken
+{
+    CompilerExpressionToken(i64 _value) : resolve(LabelResolve_Done), value(_value) {}
+    CompilerExpressionToken(string _label, LabelResolve _resolve, u32 _lineAddr) : resolve(_resolve), label(_label), value(_lineAddr) {}
+
+    LabelResolve resolve;
+    i64 value;
+    string label;
+};
+
+struct CompilerExpression
+{
+    vector<CompilerExpressionToken*> m_tokens;
+    vector<CompilerExpressionOpcode*> m_operators;
+    vector<int> m_operatorPri;
+};
+
 class CompilerLineInfo
 {
 public:
-    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelResolve(LabelResolve_None)
+    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), operandEvaluated(false), error(false), labelResolve(LabelResolve_Done)
     {
         gcMemAddr = new GraphicChunk();
         gcDecode = new GraphicChunk();
@@ -64,14 +91,23 @@ public:
     }
 
     int lineNmbr;
+    bool error;
     CompilerLineType type;
     u32 memAddr;
     int opcode;
-    int operand;
+
     AddressingMode addressMode;
+    CompilerExpression *operandExpr;
+    int operandValue;
+    bool operandEvaluated;
+
+    i64 operand;
     string label;
     LabelResolve labelResolve;
-    bool error;
+
+    vector<CompilerExpression*> dataExpr;
+    bool dataEvaluated;
+
     std::vector<u8> data;
 
     GraphicChunk* gcMemAddr;
@@ -108,30 +144,6 @@ struct CompilerOpcode
     bool extraCycleOnBranch;
 };
 
-struct CompilerExpressionToken
-{
-    bool isLabel;
-    int value;
-    string label;
-};
-
-struct CompilerExpression
-{
-    enum Operation
-    {
-        OP_ADD,
-        OP_SUBTRACT,
-        OP_MULTIPLY,
-        OP_DIVIDE,
-        OP_AND,
-        OP_OR,
-        OP_MODULO,
-        OP_SHIFT_LEFT,
-        OP_SHIFT_RIGHT
-    };
-    vector<CompilerExpressionToken*> m_tokens;
-};
-
 struct TokenFifo
 {
     TokenFifo(vector<string>& tokens) : m_end(""), m_index(0)
@@ -144,22 +156,22 @@ struct TokenFifo
         }
     }
 
-    string& Pop(int ahead = 0)
+    string& Pop()
     {
-        if (m_index + ahead < (int)m_tokens.size())
+        if (m_index < (int)m_tokens.size())
         {
-            string& result = m_tokens[m_index + ahead];
-            m_index += ahead+1;
+            string& result = m_tokens[m_index];
+            m_index++;
             return result;
         }
         m_index = (int)m_tokens.size();
         return m_end;
     }
 
-    string& Peek(int ahead = 0)
+    string& Peek()
     {
-        if ((m_index + ahead) < (int)m_tokens.size())
-            return m_tokens[m_index + ahead];
+        if (m_index < (int)m_tokens.size())
+            return m_tokens[m_index];
         return m_end;
     }
 
@@ -200,7 +212,9 @@ struct TokenFifo
 
 
 #define ERR(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return; }
-
+#define ERR_RF(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return false; }
+#define ERR_NOLINE(...)  { string error = FormatString(__VA_ARGS__); Error(error, 0); return; }
+#define ERR_NORET(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; }
 
 #if 1
 class TokenisedLine
@@ -253,25 +267,28 @@ public:
 	// compile all lines
 	void Compile(class SourceFile* file);
 
-    // compile a single line
-    // pass one builds up all the source code and labels,  but leaves markers for forward referenced labels since we don't know where they are yet
-    // pass two fills in label address operands
-    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine, int &currentMemAddr);
-    void CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine);
+    // pass one builds up all the source code and labels,  but does not try to evaluate all expressions
+    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine, u32 &currentMemAddr);
+
+    // pass two attempts to resolve all labels/expressions but may take multiple passes if there are deep dependancies
+    bool CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine);
 
 	// return opcode index or -1 if not an opcode
 	bool IsOpCode(const char* text);
 
     CompilerOpcode* FindOpcode(string &name, AddressingMode am);
     CompilerLabel* FindLabel(CompilerSourceInfo* si, string& name, LabelResolve resolve, u32 resolveStartAddr);
-    bool ParseImmediateOperand(TokenFifo& token, CompilerLineInfo* li);
-    bool ParseOperand(TokenFifo& token, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo* li);
 
     GraphicChunk* GetMemAddrGC(class SourceFile* file, int line, int sourceVersion);
     GraphicChunk* GetDecodeGC(class SourceFile* file, int line, int sourceVersion);
 
 	// 64k of ram
 	u8 m_ram[65536];
+
+    CompilerExpressionOpcode *FindExprOpcode(string& token);
+    void PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, CompilerExpression* expr, int priority);
+    bool EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, i64& value);
+    bool ResolveExpressionToken(CompilerSourceInfo* si, CompilerExpressionToken* token);
 
     struct ErrorItem
     {

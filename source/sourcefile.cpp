@@ -139,7 +139,19 @@ bool CharInStr(char ch, const char* str)
     return false;
 }
 
-#define SINGLE_CHAR_TOKENS "[]()<>=$%*/#+-;:!,"
+bool DblCharInStr(const char *src, const char* str)
+{
+    while (*str)
+    {
+        if (src[0] == str[0] && src[1] == str[1])
+            return true;
+        str += 2;
+    }
+    return false;
+}
+
+#define SINGLE_CHAR_TOKENS "[]()<>=$%*/#+@-~;:!,"
+#define DOUBLE_CHAR_TOKENS "<<>><=>===!=&&||"
 
 bool ScanToken(const char * &src, string &out)
 {
@@ -174,6 +186,13 @@ bool ScanToken(const char * &src, string &out)
             out.push_back(*src);
             src++;
         }
+        return true;
+    }
+
+    if (DblCharInStr(src, DOUBLE_CHAR_TOKENS))
+    {
+        out.push_back(*src++);
+        out.push_back(*src++);
         return true;
     }
 

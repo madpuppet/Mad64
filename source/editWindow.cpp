@@ -159,7 +159,7 @@ void EditWindow::Draw()
 			{
 				int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 				SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, brighten, brighten + 64 - ((i & 1) ? 16 : 0), brighten, 255);
+				SDL_SetRenderDrawColor(r, brighten, brighten + 32 - ((i & 1) ? 8 : 0), brighten, 255);
 				SDL_RenderFillRect(r, &lineQuad);
 				gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
@@ -658,6 +658,15 @@ void EditWindow::SelectCursor(int x, int y)
 			SDL_SetCursor(m_cursorIBeam);
 		}
 		return;
+	}
+	else if (Contains(m_contextHelpRect, x, y))
+	{
+		int line;
+		if (gApp->GetLogWindow()->FindLogLineAt(y, line))
+		{
+			SDL_SetCursor(m_cursorHand);
+			return;
+		}
 	}
 	SDL_SetCursor(m_cursorArrow);
 }

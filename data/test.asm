@@ -1,15 +1,8 @@
-; Test Compiler
+tempChar = $80
+tempVoice = $81
 
-    * = $1000
-    ldy #$ff
-outerLoop:
-    ldx #$ff
-loop:
-    stx vic.backgroundColor0
-    stx vic.borderColor
-    dex
-    bne loop
-    dey
-    bne outerLoop>
-    inc vic.borderColor
+*=$1000
+    sta tempChar
     rts
+
+ 

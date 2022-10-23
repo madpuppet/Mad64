@@ -1,7 +1,5 @@
 ;BasicUpstart2(start)
 
-#import "music.sid"
-
 nextX = $50
 nextY = $51
 nextCol = $52
@@ -26,20 +24,18 @@ sprite5Ptr = $7fd
 sprite6Ptr = $7fe
 sprite7Ptr = $7ff
 
-* = $801
+* = $80e
 
 start:
-    jmp start
-
     jsr cls
 
-    lda #$1             // enable all the sprites
+    lda #$1                ; enable all the sprites
     sta vic.spriteEnable
     lda #1
     sta vic.spriteMulticolor
-    lda #$0                 // reset sprites to size 0
+    lda #$0                ; reset sprites to size 0
     sta vic.spriteXSize
-	sta vic.spriteYSize
+   	sta vic.spriteYSize
 
     lda #0
     ldx #0
@@ -61,11 +57,11 @@ start:
     
     lda #120
     sta tempVar
-!loop:
+@loop:
     jsr UpdateText
     dec tempVar
     lda tempVar
-    bne !loop-
+    bne @loop-
 
     sei
     
@@ -390,17 +386,17 @@ cls_loop:
 
 extend_borders:
    lda #$f8
-!hack:
+@hack:
    cmp vic.rasterCounter
-   bne !hack-
+   bne @hack-
 
     lda #$10
     sta $d011
 
    lda #$fe
-!hack:
+@hack:
    cmp vic.rasterCounter
-   bne !hack-
+   bne @hack-
 
     lda #$18
     sta $d011
@@ -415,9 +411,9 @@ frame_sync:
 
 line_x:
     lda currentRaster
-!loop:
+@loop:
     cmp vic.rasterCounter
-    beq !loop-
+    beq @loop-
     inc currentRaster
 
     inc nextX
@@ -428,9 +424,9 @@ line_x:
 
 line_xs:
     lda currentRaster
-!loop:
+@loop:
     cmp vic.rasterCounter
-    beq !loop-
+    beq @loop-
     inc currentRaster
 
     inc nextX
@@ -454,9 +450,9 @@ line_xs:
 
 line_c:
     lda currentRaster
-!loop:
+@loop:
     cmp vic.rasterCounter
-    beq !loop-
+    beq @loop-
     inc currentRaster
 
     lda vic.rasterCounter
@@ -475,16 +471,16 @@ line_c:
     sta vic.spriteMulticolor1
    
    lda currentRaster
-!wait:
+@wait:
    cmp vic.rasterCounter
-   beq !wait-
+   beq @wait-
    rts
 
 line_s:
     lda currentRaster
-!loop:
+@loop:
     cmp vic.rasterCounter
-    beq !loop-
+    beq @loop-
     inc currentRaster
 
     lda nextY
@@ -552,40 +548,40 @@ moreLines:
 WriteCol1:
     ror textVal2
     ror textVal1
-    bcc !noCol+
+    bcc @noCol+
     lda textCol
     sta colors1,y
-    jmp !skip+
-!noCol:
+    jmp @skip+
+@noCol:
     lda #0
     sta colors1,y
-!skip:
+@skip:
     rts
     
 WriteCol2:
     ror textVal2
     ror textVal1
-    bcc !noCol+
+    bcc @noCol+
     lda textCol
     sta colors2,y
-    jmp !skip+
-!noCol:
+    jmp @skip+
+@noCol:
     lda #0
     sta colors2,y
-!skip:
+@skip:
     rts
     
 WriteCol3:
     ror textVal2
     ror textVal1
-    bcc !noCol+
+    bcc @noCol+
     lda textCol
     sta colors3,y
-    jmp !skip+
-!noCol:
+    jmp @skip+
+@noCol:
     lda #0
     sta colors3,y
-!skip:
+@skip:
     rts
     
  error1:
@@ -865,7 +861,23 @@ sprites:
     *=$2200
 xwave:
     ; Make data for a sine wave
-    .for(var i=0;i<256;i++) .byte round(70 + 16*sin(toRadians(360*i/256)) + 16*sin(toRadians(360*i/128)))
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    .byte 40,41,42,43,44,45,46,47,48,49,4a,4b,4c,4d,4e,4f
+    ;.for(var i=0;i<256;i++) .byte round(70 + 16*sin(toRadians(360*i/256)) + 16*sin(toRadians(360*i/128)))
 
    
 	* = $3000  "Sprites"

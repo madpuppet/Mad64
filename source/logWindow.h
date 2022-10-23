@@ -22,6 +22,7 @@ public:
 	void Draw();
 
 	void OnMouseDown(SDL_Event* event);
+	bool FindLogLineAt(int y, int &line);
 
 protected:
 	SDL_Rect m_area;

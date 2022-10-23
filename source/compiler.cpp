@@ -40,6 +40,137 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("sid.envelope3Output", 0xd41c)
 };
 
+i64 ExprAdd(i64 a, i64 b, i64 c)
+{
+    return a + b;
+}
+i64 ExprSub(i64 a, i64 b, i64 c)
+{
+    return a - b;
+}
+i64 ExprDiv(i64 a, i64 b, i64 c)
+{
+    return a / b;
+}
+i64 ExprMul(i64 a, i64 b, i64 c)
+{
+    return a * b;
+}
+i64 ExprMod(i64 a, i64 b, i64 c)
+{
+    return a % b;
+}
+i64 ExprRShift(i64 a, i64 b, i64 c)
+{
+    return a >> b;
+}
+i64 ExprLShift(i64 a, i64 b, i64 c)
+{
+    return a << b;
+}
+i64 ExprOr(i64 a, i64 b, i64 c)
+{
+    return a | b;
+}
+i64 ExprAnd(i64 a, i64 b, i64 c)
+{
+    return a & b;
+}
+i64 ExprXor(i64 a, i64 b, i64 c)
+{
+    return a ^ b;
+}
+i64 ExprNot(i64 a, i64 b, i64 c)
+{
+    return ~a;
+}
+i64 ExprLowByte(i64 a, i64 b, i64 c)
+{
+    return a & 0xff;
+}
+i64 ExprHighByte(i64 a, i64 b, i64 c)
+{
+    return (a >> 8) & 0xff;
+}
+i64 ExprBoolNot(i64 a, i64 b, i64 c)
+{
+    return a ? 0 : 1;
+}
+i64 ExprBoolOr(i64 a, i64 b, i64 c)
+{
+    return (a || b) ? 1 : 0;
+}
+i64 ExprBoolAnd(i64 a, i64 b, i64 c)
+{
+    return (a && b) ? 1 : 0;
+}
+i64 ExprTernary(i64 a, i64 b, i64 c)
+{
+    return a ? b : c;
+}
+i64 ExprBoolLess(i64 a, i64 b, i64 c)
+{
+    return (a < b) ? 1 : 0;
+}
+i64 ExprBoolLessEqual(i64 a, i64 b, i64 c)
+{
+    return (a <= b) ? 1 : 0;
+}
+i64 ExprBoolGreater(i64 a, i64 b, i64 c)
+{
+    return (a > b) ? 1 : 0;
+}
+i64 ExprBoolGreaterEqual(i64 a, i64 b, i64 c)
+{
+    return (a >= b) ? 1 : 0;
+}
+i64 ExprBoolEqual(i64 a, i64 b, i64 c)
+{
+    return (a == b) ? 1 : 0;
+}
+i64 ExprBoolNotEqual(i64 a, i64 b, i64 c)
+{
+    return (a != b) ? 1 : 0;
+}
+
+CompilerExpressionOpcode s_exprOpcodes[] = {
+    {"~",  1, 15, &ExprNot},
+    {"!",  1, 15, &ExprBoolNot},
+    {"/",  2, 14, &ExprDiv},
+    {"*",  2, 14, &ExprMul},
+    {"%",  2, 14, &ExprMod},
+    {"+",  2, 13, &ExprAdd},
+    {"-",  2, 13, &ExprSub},
+    {">>", 2, 12, &ExprRShift},
+    {"<<", 2, 12, &ExprLShift},
+    {"<",  2, 11, &ExprBoolLess},
+    {"<=", 2, 11, &ExprBoolLessEqual},
+    {">",  2, 11, &ExprBoolGreater},
+    {">=", 2, 11, &ExprBoolGreaterEqual},
+    {"==", 2, 10, &ExprBoolEqual},
+    {"!=", 2, 10, &ExprBoolNotEqual},
+    {"&",  2, 9,  &ExprAnd},
+    {"^",  2, 8,  &ExprXor},
+    {"|",  2, 7,  &ExprOr},
+    {"&&", 2, 6,  &ExprBoolAnd},
+    {"||", 2, 5,  &ExprBoolOr},
+    {"?",  3, 4,  &ExprTernary}
+};
+CompilerExpressionOpcode s_exprLowByte = { "<", 1, 15, &ExprLowByte };
+CompilerExpressionOpcode s_exprHighByte = { ">", 1, 15, &ExprHighByte };
+
+
+CompilerExpressionOpcode* Compiler::FindExprOpcode(string& token)
+{
+    for (int i = 0; i < sizeof(s_exprOpcodes) / sizeof(CompilerExpressionOpcode); i++)
+    {
+        if (token == s_exprOpcodes[i].text)
+            return &s_exprOpcodes[i];
+    }
+    return nullptr;
+}
+
+
 int gAddressingModeSize[] =
 {
     1,  //    AM_Implied,              // operand
@@ -54,6 +185,11 @@ int gAddressingModeSize[] =
     2,  //    AM_IndirectX,            // operand (value, x)
     2,  //    AM_IndirectY,            // operand (value), y
     2   //    AM_Relative              // operand value
+};
+
+const char* gAddressingModeName[] =
+{
+    "Implied", "Immediate", "Zero Page", "Zero Page X", "Zero Page Y", "Absolute", "Absolute X", "Absolute Y", "Indirect", "Indirect X", "Indirect Y", "Relative"
 };
 
 CompilerOpcode s_opcodesRaw[] =
@@ -142,8 +278,8 @@ CompilerOpcode s_opcodesRaw[] =
     {"INC", AM_Absolute,  0xEE, 6},
     {"INC", AM_AbsoluteX, 0xFE, 7},
 
-    {"INX", AM_Implied,   0xCA, 2},
-    {"INY", AM_Implied,   0x88, 2},
+    {"INX", AM_Implied,   0xE8, 2},
+    {"INY", AM_Implied,   0xC8, 2},
 
     {"JMP", AM_Absolute,  0x4C, 3},
     {"JMP", AM_Indirect,  0x6C, 5},
@@ -241,29 +377,6 @@ CompilerOpcode s_opcodesRaw[] =
 
 CompilerOpcode s_opcodes[256];
 
-bool DecimalToNumber(string& token, int& value)
-{
-    value = 0;
-    char ch = token[0];
-    int idx = 0;
-    int sign = 1;
-    if (ch == '-')
-    {
-        sign = -1;
-        idx = 1;
-        ch = token[1];
-    }
-
-    for (int i = idx; i < token.size(); i++)
-    {
-        ch = token[i];
-        if (ch < '0' || ch > '9')
-            return false;
-        value = value * 10 + ch - '0';
-    }
-    return true;
-}
-
 bool HexToNumber(string& token, int& value)
 {
     value = 0;
@@ -292,24 +405,6 @@ bool BinaryToNumber(string& token, int& value)
         value += ch == '0' ? 0 : 1;
     }
     return true;
-}
-
-bool ConvertToNumber(TokenFifo& fifo, int& value)
-{
-    int mark = fifo.Mark();
-    bool success;
-
-    if (fifo.Peek(0) == "$")
-        success = HexToNumber(fifo.Pop(1), value);
-    else if (fifo.Peek(0) == "%")
-        success = BinaryToNumber(fifo.Pop(1), value);
-    else
-        success = DecimalToNumber(fifo.Pop(), value);
-
-    if (!success)
-        fifo.ReturnToMark(mark);
-
-    return success;
 }
 
 Compiler::Compiler() : m_compileRequested(1,1), m_compileCompleted(1,1), Thread("Compiler")
@@ -383,9 +478,9 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
         {
             if (StrEqual(l->m_name, name))
             {
-                if (!best || (l->m_addr > best->m_addr))
+                if (!best || (l->m_value > best->m_value))
                 {
-                    if (l->m_addr < resolveStartAddr)
+                    if (l->m_value < resolveStartAddr)
                     {
                         best = l;
                     }
@@ -403,9 +498,9 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
         {
             if (StrEqual(l->m_name, name))
             {
-                if (!best || (l->m_addr < best->m_addr))
+                if (!best || (l->m_value < best->m_value))
                 {
-                    if (l->m_addr >= resolveStartAddr)
+                    if (l->m_value >= resolveStartAddr)
                     {
                         best = l;
                     }
@@ -417,73 +512,7 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
     return nullptr;
 }
 
-bool Compiler::ParseImmediateOperand(TokenFifo &fifo, CompilerLineInfo *li)
-{
-    if (!ConvertToNumber(fifo, li->operand))
-    {
-        if (StrEqual(fifo.Peek(), "!"))
-        {
-            fifo.Pop();
-        }
-        li->label = fifo.Pop();
-
-        if (StrEqual(fifo.Peek(), "+"))
-        {
-            li->labelResolve = LabelResolve_Forwards;
-            fifo.Pop();
-        }
-        else if (StrEqual(fifo.Peek(), "-"))
-        {
-            li->labelResolve = LabelResolve_Backwards;
-            fifo.Pop();
-        }
-        else
-            li->labelResolve = LabelResolve_Global;
-    }
-    return true;
-}
-
-bool Compiler::ParseOperand(TokenFifo &fifo, AddressingMode amZeroPage, AddressingMode amAbsolute, CompilerSourceInfo* si, CompilerLineInfo *li)
-{
-    bool isLocal;
-    if (ConvertToNumber(fifo, li->operand))
-    {
-        li->addressMode = (li->operand > 0xff) ? amAbsolute : amZeroPage;
-    }
-    else if (fifo.PopLabel(li->label, isLocal, li->labelResolve))
-    {
-        auto label = FindLabel(si, li->label, li->labelResolve, li->memAddr);
-        if (label)
-        {
-            li->operand = label->m_addr;
-            li->addressMode = (li->operand > 0xff) ? amAbsolute : amZeroPage;
-            li->labelResolve = LabelResolve_Done;
-        }
-        else
-        {
-            if (StrEqual(fifo.Peek(), "!"))
-                fifo.Pop();
-
-            if (StrEqual(fifo.Peek(), "+"))
-            {
-                li->labelResolve = LabelResolve_Forwards;
-                fifo.Pop();
-            }
-            else if (StrEqual(fifo.Peek(), "-"))
-            {
-                li->labelResolve = LabelResolve_Backwards;
-                fifo.Pop();
-            }
-            else
-                li->labelResolve = LabelResolve_Global;
-
-            li->addressMode = amAbsolute;
-        }
-    }
-    return true;
-}
-
-void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine *sourceLine, int& currentMemAddr)
+void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine *sourceLine, u32& currentMemAddr)
 {
     auto tokens = sourceLine->GetTokens();
     TokenFifo fifo(tokens);
@@ -499,6 +528,9 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         if (StrEqual(pragma, "import"))
         {
             string filename = fifo.Pop();
+            if (filename.empty())
+                ERR("No filename specified");
+
             string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
             FILE* fh = fopen(path.c_str(), "rb");
             if (fh)
@@ -506,10 +538,18 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                 fseek(fh, 0, SEEK_END);
                 int size = ftell(fh);
                 fseek(fh, 0, SEEK_SET);
-                
+
+                if (size == 0)
+                    ERR("Import file size is 0");
+
                 u8* data = (u8*)SDL_malloc(size);
-                fread(data, size, 1, fh);
-                fclose(fh);
+                int readSize = (int)fread(data, size, 1, fh);
+                if (readSize != 1)
+                {
+                    fclose(fh);
+                    SDL_free(data);
+                    ERR("Error reading file");
+                }
 
                 for (int i = 0; i < size; i++)
                     li->data.push_back(data[i]);
@@ -517,30 +557,35 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                 li->type = LT_DataBytes;
                 li->memAddr = currentMemAddr;
                 currentMemAddr += size;
+                SDL_free(data);
+                fclose(fh);
             }
             else
             {
-                ERR("Unable to import file %s", path.c_str());
+                ERR("Unable to open file %s", path.c_str());
             }
         }
         return;
     }
     else if (StrEqual(token, "*"))
     {
+        li->operandExpr = new CompilerExpression();
+
         string& tok1 = fifo.Pop();
         if (!StrEqual(tok1, "="))
-        {
             ERR("Expected '=' after '*'");
-        }
-        int addr;
-        if (!ConvertToNumber(fifo, addr))
-        {
-            ERR("Unable to parse expression");
-        }
 
-        currentMemAddr = addr;
+        PopExpressionValue(fifo, li, li->operandExpr, 0);
+        if (li->error)
+            return;
+
+        i64 addr;
+        if (!EvaluateExpression(si, li, li->operandExpr, addr))
+            return;
+
+        currentMemAddr = (int)addr;
         li->type = LT_Address;
-        li->memAddr = addr;
+        li->memAddr = (u32)addr;
         return;
     }
     else if (IsOpCode(token.c_str()))
@@ -548,11 +593,11 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         // decode the opcode
         li->type = LT_Instruction;
         li->memAddr = currentMemAddr;
-
-        li->opcode = 0;
-        li->operand = 0;
         li->addressMode = AM_Implied;
-        li->label = "";
+        li->opcode = 0;
+        li->operandValue = 0;
+        li->operandEvaluated = false;
+        li->operandExpr = new CompilerExpression();
 
         if (fifo.Peek().empty())
         {
@@ -564,130 +609,158 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             // immediate
             fifo.Pop();
             li->addressMode = AM_Immediate;
-            if (!ParseImmediateOperand(fifo, li))
-                return;
+
+            PopExpressionValue(fifo, li, li->operandExpr, 0);
         }
         else if (StrEqual(fifo.Peek(), "("))
         {
-            if (StrEqual(fifo.Peek(2), ")"))
+            fifo.Pop();
+
+            // indirect, indirectY, indirectX
+            PopExpressionValue(fifo, li, li->operandExpr, 0);
+
+            if (fifo.Peek() == ",")
             {
-                if (StrEqual(fifo.Peek(3), ","))
+                // indirectX
+                fifo.Pop();
+                if (fifo.Pop() != "x")
+                    ERR("Expected 'x' for indirect X addressing mode");
+                li->addressMode = AM_IndirectX;
+            }
+            else
+            {
+                // indirect, indirectY
+                if (fifo.Pop() != ")")
+                    ERR("Expected close bracket");
+
+                if (fifo.Peek() == ",")
                 {
                     // indirectY
+                    fifo.Pop();
+                    if (fifo.Pop() != "y")
+                        ERR("Expected 'y' for indirect Y addressing mode");
                     li->addressMode = AM_IndirectY;
-                    fifo.Pop(1);
-                    if (!ParseImmediateOperand(fifo, li))
-                        return;
                 }
                 else
                 {
-                    // indirect
                     li->addressMode = AM_Indirect;
-                    fifo.Pop(1);
-                    if (!ParseImmediateOperand(fifo, li))
-                        return;
                 }
-            }
-            else
-            {
-                // indirectX
-                li->addressMode = AM_IndirectX;
-                fifo.Pop(1);
-                if (!ParseImmediateOperand(fifo, li))
-                    return;
-            }
-        }
-        else if (StrEqual(fifo.Peek(1), ","))
-        {
-            if (StrEqual(fifo.Peek(2), "x"))
-            {
-                // zeroPageX, absoluteX
-                if (!ParseOperand(fifo, AM_ZeroPageX, AM_AbsoluteX, si, li))
-                    return;
-            }
-            else
-            {
-                // zeroPageY, absoluteY
-                if (!ParseOperand(fifo, AM_ZeroPageY, AM_AbsoluteY, si, li))
-                    return;
             }
         }
         else
         {
-            // zeropage, absolute, relative
+            // zeroPage, zeroPageX, absoluteX, absoluteY, relative
+            PopExpressionValue(fifo, li, li->operandExpr, 0);
+
             if (FindOpcode(token, AM_Relative))
             {
                 li->addressMode = AM_Relative;
-                if (!ParseImmediateOperand(fifo, li))
-                    return;
             }
-            else if (!ParseOperand(fifo, AM_ZeroPage, AM_Absolute, si, li))
-                return;
+            else
+            {
+                // if we can't evaluate it now, then we consider it absolute addressing
+                i64 value;
+                bool canEvaluate = EvaluateExpression(si, li, li->operandExpr, value);
+                bool isZeroPage = (canEvaluate && value >= -128 && value <= 255);
+
+                if (fifo.Peek() == ",")
+                {
+                    fifo.Pop();
+                    if (fifo.Peek() == "x")
+                    {
+                        fifo.Pop();
+                        li->addressMode = isZeroPage ? AM_ZeroPageX : AM_AbsoluteX;
+                    }
+                    else if (fifo.Peek() == "y")
+                    {
+                        fifo.Pop();
+                        li->addressMode = isZeroPage ? AM_ZeroPageY : AM_AbsoluteY;
+                    }
+                    else
+                        ERR("Expected x or y for absolute indexed addressing mode")
+                }
+                else
+                {
+                    li->addressMode = isZeroPage ? AM_ZeroPage : AM_Absolute;
+                }
+            }
         }
 
         auto opcode = FindOpcode(token, li->addressMode);
-        if (opcode)
-        {
-            li->opcode = opcode->opc;
-        }
-        else if (li->addressMode == AM_ZeroPage)
-        {
-            // try a full absolute..
-            li->addressMode = AM_Absolute;
-            opcode = FindOpcode(token, li->addressMode);
-            if (!opcode)
-                ERR("Cannot find version of '%s' that matches the addressing mode", token.c_str());
-        }
-        else
-        {
-            ERR("Cannot find version of '%s' that matches the addressing mode", token.c_str());
-        }
+        if (opcode == nullptr)
+            ERR("Opcode '%s' with address mode '%s'", token.c_str(), gAddressingModeName[li->addressMode]);
+
+        li->opcode = opcode->opc;
+
         currentMemAddr += gAddressingModeSize[li->addressMode];
     }
-    else if (token == "!")
+    else if (token == "@")
     {
         // local address label
-        string& tok1 = fifo.Pop();
-        string& tok2 = fifo.Pop();
-        if (tok2 != ":")
-        {
-            ERR("Expected ':' at end of label");
-        }
+        li->label = fifo.Pop();
+
+        if (fifo.Peek() != ":")
+            ERR("Expected ':' at end of labels.");
 
         // address label
         li->type = LT_Label;
-        li->label = tok1;
         li->memAddr = currentMemAddr;
         li->operand = li->memAddr;
-        si->m_labels.push_back(new CompilerLabel(li->label.c_str(), currentMemAddr));
+        si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, true));
     }
-    else if (StrEqual(token, "dc.b") || StrEqual(token, ".byte"))
+    else if (StrEqual(token, "dc.b") || StrEqual(token, ".byte") || StrEqual(token, "byte"))
     {
         li->type = LT_DataBytes;
         li->memAddr = currentMemAddr;
+        li->dataEvaluated = false;
 
         while (!fifo.IsEmpty())
         {
-            int dataval;
-            if (!ConvertToNumber(fifo, dataval) || dataval < -128 || dataval > 255)
-            {
-                ERR("Data byte is malformed or outside 1 byte range");
-            }
-            li->data.push_back((u8)dataval);
+            auto expr = new CompilerExpression();
+            PopExpressionValue(fifo, li, expr, 0);
+            li->dataExpr.push_back(expr);
 
-            if (!fifo.IsEmpty())
+            if (fifo.Peek() == ",")
             {
-                // skip ','
-                string& comma = fifo.Pop();
-                if (comma != ",")
-                    ERR("Expected comma in data bytes")
+                fifo.Pop();
+                if (fifo.IsEmpty())
+                    ERR("Expected more data on line");
+            }
+            else if (!fifo.IsEmpty())
+            {
+                ERR("Unexpected token '%s' in data bytes", fifo.Peek().c_str());
             }
         }
-        currentMemAddr += (int)li->data.size();
+        currentMemAddr += (int)li->dataExpr.size();
+    }
+    else if (StrEqual(token, "dc.w") || StrEqual(token, ".word") || StrEqual(token, "word"))
+    {
+        li->type = LT_DataWords;
+        li->memAddr = currentMemAddr;
+        li->dataEvaluated = false;
+
+        while (!fifo.IsEmpty())
+        {
+            auto expr = new CompilerExpression();
+            PopExpressionValue(fifo, li, expr, 0);
+            li->dataExpr.push_back(expr);
+
+            if (fifo.Peek() == ",")
+            {
+                fifo.Pop();
+                if (fifo.IsEmpty())
+                    ERR("Expected more data on line");
+            }
+            else if (!fifo.IsEmpty())
+            {
+                ERR("Unexpected token '%s' in data bytes", fifo.Peek().c_str());
+            }
+        }
+        currentMemAddr += (int)li->dataExpr.size();
     }
     else if (StrEqual(token, ".text"))
     {
-        li->type = LT_DataBytes;
+        li->type = LT_DataText;
         li->memAddr = currentMemAddr;
 
         string text = fifo.Pop();
@@ -696,74 +769,240 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         for (auto c : text)
             li->data.push_back((u8)c);
     }
-    else if (StrEqual(token, "dc.w") || StrEqual(token, ".word"))
-    {
-        li->type = LT_DataBytes;
-        li->memAddr = currentMemAddr;
-
-        while (!fifo.IsEmpty())
-        {
-            int dataval;
-            if (!ConvertToNumber(fifo, dataval) || dataval < -32768 || dataval > 65535)
-            {
-                ERR("Data byte is malformed or outside 2 byte range");
-            }
-            li->data.push_back((u8)(dataval&0xff));
-            li->data.push_back((u8)(dataval>>8));
-
-            if (!fifo.IsEmpty())
-            {
-                // skip ','
-                string& comma = fifo.Pop();
-                if (comma != ",")
-                    ERR("Expected comma in data bytes")
-            }
-        }
-        currentMemAddr += (int)li->data.size();
-    }
     else
     {
-        string& tok1 = fifo.Pop();
-        if (tok1 == ":")
+        // address label
+        li->label = token;
+
+        if (si->DoesLabelExist(li->label.c_str()))
+            ERR("Duplicate variable declaration: %s", li->label.c_str());
+
+        if (fifo.Peek() == "=")
         {
-            // address label
-            li->type = LT_Label;
-            li->memAddr = currentMemAddr;
-            li->operand = li->memAddr;
-            li->label = token;
-            if (si->DoesLabelExist(li->label.c_str()))
-            {
-                ERR("Duplicate label declaration: %s", li->label.c_str());
-            }
-            si->m_labels.push_back(new CompilerLabel(li->label.c_str(), li->memAddr));
-        }
-        else if (StrEqual(tok1, "="))
-        {
-            // label assignment
+            fifo.Pop();
+
+            // value by assignment
             li->type = LT_Variable;
-            li->label = token;
-            int value;
-            if (!ConvertToNumber(fifo, value))
+            li->operandExpr = new CompilerExpression();
+
+            PopExpressionValue(fifo, li, li->operandExpr, 0);
+
+            i64 value;
+            if (EvaluateExpression(si, li, li->operandExpr, value))
             {
-                ERR("Cannot parse var %s", token.c_str());
+                si->m_labels.push_back(new CompilerLabel(li->label, value));
+                li->operandEvaluated = true;
             }
-            if (si->DoesLabelExist(li->label.c_str()))
-            {
-                ERR("Duplicate variable declaration: %s", li->label.c_str());
-            }
-            li->operand = value;
-            li->memAddr = value;
-            si->m_labels.push_back(new CompilerLabel(li->label.c_str(), value));
         }
         else
         {
-            ERR("Unexpected token - not a label or an opcode - '%s'", token.c_str());
+            // value by address
+            if (fifo.Peek() != ":")
+                ERR("Cannot evaluate token '%s' - Expected ':' if its a label.", token.c_str());
+
+            // address label
+            li->type = LT_Label;
+            li->memAddr = currentMemAddr;
+            si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr));
         }
     }
 }
 
-void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine)
+bool Compiler::ResolveExpressionToken(CompilerSourceInfo *si, CompilerExpressionToken *token)
 {
+    if (token->resolve != LabelResolve_Done)
+    {
+        auto label = FindLabel(si, token->label, token->resolve, (u32)token->value);
+        if (!label)
+            return false;
+
+        token->resolve = LabelResolve_Done;
+        token->value = label->m_value;
+    }
+    return true;
+}
+
+bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, i64 &value)
+{
+    int tokenIdx = 0;
+    int operatorIdx = 0;
+
+    while (!expr->m_operators.empty())
+    {
+        if (operatorIdx < expr->m_operators.size() - 1 && expr->m_operatorPri[operatorIdx + 1] > expr->m_operatorPri[operatorIdx])
+        {
+            tokenIdx += expr->m_operators[operatorIdx]->params - 1;
+            operatorIdx++;
+        }
+        else
+        {
+            auto op = expr->m_operators[operatorIdx];
+            if (op->params == 1)
+            {
+                auto token = expr->m_tokens[tokenIdx];
+                if (!ResolveExpressionToken(si, token))
+                    return false;
+
+                i64 value = op->Evaluate(token->value, 0, 0);
+
+                auto newToken = new CompilerExpressionToken(value);
+                expr->m_tokens[tokenIdx] = newToken;
+                delete token;
+            }
+            else if (op->params == 2)
+            {
+                if (expr->m_tokens.size() < tokenIdx + 2)
+                    return false;
+
+                auto inTok1 = expr->m_tokens[tokenIdx];
+                auto inTok2 = expr->m_tokens[tokenIdx+1];
+
+                if (!ResolveExpressionToken(si, inTok1))
+                    return false;
+                if (!ResolveExpressionToken(si, inTok2))
+                    return false;
+
+                i64 value = op->Evaluate(inTok1->value, inTok2->value, 0);
+
+                auto newToken = new CompilerExpressionToken(value);
+                expr->m_tokens.erase(expr->m_tokens.begin() + tokenIdx, expr->m_tokens.begin() + (tokenIdx + 2));
+                expr->m_tokens.insert(expr->m_tokens.begin() + tokenIdx, newToken);
+                delete inTok1;
+                delete inTok2;
+            }
+            else if (op->params == 3)
+            {
+                if (expr->m_tokens.size() < tokenIdx + 3)
+                    return false;
+
+                auto inTok1 = expr->m_tokens[tokenIdx];
+                auto inTok2 = expr->m_tokens[tokenIdx + 1];
+                auto inTok3 = expr->m_tokens[tokenIdx + 2];
+
+                if (!ResolveExpressionToken(si, inTok1))
+                    return false;
+                if (!ResolveExpressionToken(si, inTok2))
+                    return false;
+                if (!ResolveExpressionToken(si, inTok3))
+                    return false;
+
+                i64 value = op->Evaluate(inTok1->value, inTok2->value, inTok3->value);
+
+                auto newToken = new CompilerExpressionToken(value);
+                expr->m_tokens.erase(expr->m_tokens.begin() + tokenIdx, expr->m_tokens.begin() + (tokenIdx + 2));
+                expr->m_tokens.insert(expr->m_tokens.begin() + tokenIdx, newToken);
+                delete inTok1;
+                delete inTok2;
+                delete inTok3;
+            }
+
+            expr->m_operators.erase(expr->m_operators.begin() + operatorIdx);
+            expr->m_operatorPri.erase(expr->m_operatorPri.begin() + operatorIdx);
+            if (operatorIdx > 0)
+            {
+                operatorIdx--;
+                tokenIdx--;
+            }
+        }
+    }
+
+    if (expr->m_tokens.empty())
+        return false;
+
+    auto tok = expr->m_tokens.front();
+    if (!ResolveExpressionToken(si, tok))
+        return false;
+
+    value = tok->value;
+    return true;
+}
+
+bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine)
+{
+    if (li->error)
+        return true;
+
+    if (li->type == LT_Instruction)
+    {
+        if (!li->operandEvaluated)
+        {
+            int instructionLength = gAddressingModeSize[li->addressMode];
+            if (instructionLength > 1)
+            {
+                if (!EvaluateExpression(si, li, li->operandExpr, li->operand))
+                    return false;
+            }
+
+            li->operandEvaluated = true;
+            li->data.push_back(li->opcode);
+            if (instructionLength == 2)
+            {
+                if (li->addressMode == AM_Relative)
+                    li->operand = li->operand - (li->memAddr + 2);
+
+                if (li->operand > 255)
+                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, gAddressingModeName[li->addressMode]);
+
+                li->data.push_back(li->operand & 0xff);
+            }
+            else if (instructionLength == 3)
+            {
+                if (li->operand < -32768 || li->operand > 65535)
+                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, gAddressingModeName[li->addressMode]);
+
+                li->data.push_back((u8)(li->operand & 0xff));
+                li->data.push_back((u8)((li->operand >> 8) & 0xff));
+            }
+        }
+    }
+    else if (li->type == LT_Variable)
+    {
+        if (!li->operandEvaluated)
+        {
+            if (!EvaluateExpression(si, li, li->operandExpr, li->operand))
+                return false;
+            li->operandEvaluated = true;
+            si->m_labels.push_back(new CompilerLabel(li->label, li->operand));
+        }
+    }
+    else if (li->type == LT_DataBytes)
+    {
+        if (!li->dataEvaluated)
+        {
+            for (int i = 0; i < li->dataExpr.size(); i++)
+            {
+                i64 value;
+                if (!EvaluateExpression(si, li, li->dataExpr[i], value))
+                    return false;
+
+                li->data.push_back(value & 0xff);
+            }
+            li->dataEvaluated = true;
+        }
+    }
+    else if (li->type == LT_DataWords)
+    {
+        if (!li->dataEvaluated)
+        {
+            for (int i = 0; i < li->dataExpr.size(); i++)
+            {
+                i64 value;
+                if (!EvaluateExpression(si, li, li->dataExpr[i], value))
+                    return false;
+
+                li->data.push_back((u8)(value & 0xff));
+                li->data.push_back((u8)(value >> 8));
+            }
+            li->dataEvaluated = true;
+        }
+    }
+    else if (li->type == LT_DataText)
+    {
+    }
+    return true;
+
+
+#if 0
     if (li->labelResolve == LabelResolve_Global || li->labelResolve == LabelResolve_Forwards || li->labelResolve == LabelResolve_Backwards)
     {
         auto label = FindLabel(si, li->label, li->labelResolve, li->memAddr);
@@ -771,7 +1010,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         {
             if (li->addressMode == AM_Relative)
             {
-                li->operand = (int)label->m_addr - (int)(li->memAddr+2);
+                li->operand = (int)label->m_value - (int)(li->memAddr+2);
                 if (li->operand < -128 || li->operand > 127)
                 {
                     ERR("Relative branch too large", li->lineNmbr); li->error = true;
@@ -779,7 +1018,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             }
             else if (li->addressMode == AM_ZeroPage || li->addressMode == AM_ZeroPageX || li->addressMode == AM_ZeroPageY || li->addressMode == AM_Indirect || li->addressMode == AM_IndirectX || li->addressMode == AM_IndirectY )
             {
-                li->operand = label->m_addr;
+                li->operand = label->m_value;
                 if (li->operand > 0xff)
                 {
                     ERR("Zero page operand too large");
@@ -787,7 +1026,7 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             }
             else
             {
-                li->operand = label->m_addr;
+                li->operand = label->m_value;
             }
         }
         else
@@ -796,21 +1035,8 @@ void Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         }
     }
 
-    if (li->type == LT_Instruction)
-    {
-        int instructionSize = gAddressingModeSize[li->addressMode];
-        li->data.clear();
-        li->data.push_back(li->opcode);
-        if (instructionSize == 2)
-        {
-            li->data.push_back((u8)(li->operand & 0xff));
-        }
-        else if (instructionSize == 3)
-        {
-            li->data.push_back((u8)(li->operand & 0xff));
-            li->data.push_back((u8)(li->operand >> 8));
-        }
-    }
+
+#endif
 }
 
 GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourceVersion)
@@ -862,7 +1088,7 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
                 SDL_snprintf(buffer, 16, "%d", opcode->cycles);
                 sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, cycleCol, 0, 0));
             }
-            if (sl->type == LT_Instruction || sl->type == LT_DataBytes)
+            if (sl->data.size() > 0)
             {
                 char buffer[16];
                 for (int i = 0; i < min((int)sl->data.size(), 8); i++)
@@ -872,7 +1098,9 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
                 }
                 if (sl->data.size() > 8)
                 {
-                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), "..", dataCol, gApp->GetWhiteSpaceWidth() * (3 + 8 * 3), 0));
+                    dataCol = { 255, 255, 64, 255 };
+                    string text = FormatString("%d bytes", sl->data.size());
+                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 8 * 3), 0));
                 }
             }
         }
@@ -883,10 +1111,12 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
 
 void Compiler::Compile(SourceFile* file)
 {
+    Profile PF("Compile Time");
+
     auto lw = gApp->GetLogWindow();
     lw->ClearLog(LogWindow::LF_CompilerWarning);
 
-    int currentMemAddr = 0;
+    u32 currentMemAddr = 0;
 
     m_errors.clear();
 
@@ -915,12 +1145,40 @@ void Compiler::Compile(SourceFile* file)
         lineNmbr++;
     }
 
-    for (auto line : sourceInfo->m_lines)
+    // keep passing over the source until 
+    int lastCount = 0;
+    int thisCount = 0;
+    while (true)
     {
-        CompileLinePass2(sourceInfo, line, file->GetLines()[line->lineNmbr]);
+        thisCount = 0;
+        for (auto li : sourceInfo->m_lines)
+        {
+            if (!CompileLinePass2(sourceInfo, li, file->GetLines()[li->lineNmbr]))
+                thisCount++;
+        }
+        if (thisCount == 0 || thisCount == lastCount)
+            break;
+        lastCount = thisCount;
+    }
+
+    if (thisCount != 0)
+    {
+        for (auto li : sourceInfo->m_lines)
+        {
+            if (!CompileLinePass2(sourceInfo, li, file->GetLines()[li->lineNmbr]))
+                ERR_NORET("Unable to resolve expression");
+        }
+    }
+
+    lw->ClearLog(LogWindow::LF_LabelHelp);
+    for (auto l : sourceInfo->m_labels)
+    {
+        lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x", l->m_name.c_str(), l->m_value));
     }
 
     FlushErrors();
+
+    lw->LogText(LogWindow::LF_CompilerWarning, PF.Log());
 }
 
 void Compiler::Error(const string& text, int lineNmbr)
@@ -966,40 +1224,44 @@ void CompilerSourceInfo::ClearVisuals()
 
 void CompilerSourceInfo::SavePrg(const char* path)
 {
-    FILE* fh = fopen(path, "wb");
-    if (fh)
+    u32 startAddr = 0xffff;
+    u32 endAddr = 0;
+
+    // pass one - find our memory range
+    for (auto l : m_lines)
     {
-        u32 startAddr = 0xffff;
-        u32 endAddr = 0;
-
-        // pass one - find our memory range
-        for (auto l : m_lines)
+        if (l->data.size() > 0 && !l->error)
         {
-            if (l->type == LT_Instruction || l->type == LT_DataBytes)
-            {
-                startAddr = min(l->memAddr, startAddr);
-                endAddr = max(l->memAddr, endAddr);
-            }
+            startAddr = min(l->memAddr, startAddr);
+            endAddr = max(l->memAddr, endAddr);
         }
+    }
 
-        // allocate flat memory block with 2 byte header for address
-        u32 memSize = (endAddr + 1) - startAddr + 2;
-        u8* mem = (u8*)SDL_malloc((size_t)(memSize + 2));
-
-        // write out lines to memory
-        mem[0] = startAddr & 0xff;
-        mem[1] = (startAddr >> 8) & 0xff;
-        for (auto l : m_lines)
+    if (startAddr <= endAddr)
+    {
+        FILE* fh = fopen(path, "wb");
+        if (fh)
         {
-            if (l->type == LT_Instruction || l->type == LT_DataBytes)
-            {
-                memcpy(mem + 2 + (l->memAddr - startAddr), l->data.data(), l->data.size());
-            }
-        }
 
-        // save and close
-        fwrite(mem, memSize, 1, fh);
-        fclose(fh);
+            // allocate flat memory block with 2 byte header for address
+            u32 memSize = (endAddr + 1) - startAddr + 2;
+            u8* mem = (u8*)SDL_malloc((size_t)(memSize + 2));
+
+            // write out lines to memory
+            mem[0] = startAddr & 0xff;
+            mem[1] = (startAddr >> 8) & 0xff;
+            for (auto l : m_lines)
+            {
+                if (!l->data.empty())
+                {
+                    memcpy(mem + 2 + (l->memAddr - startAddr), l->data.data(), l->data.size());
+                }
+            }
+
+            // save and close
+            fwrite(mem, memSize, 1, fh);
+            fclose(fh);
+        }
     }
 }
 
@@ -1079,4 +1341,137 @@ TokenisedFile::~TokenisedFile()
         delete l;
 }
 #endif
+
+void Compiler::PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, CompilerExpression* expr, int priority)
+{
+    if (fifo.Peek() == "(")
+    {
+        fifo.Pop();
+
+        PopExpressionValue(fifo, li, expr, priority + 16);
+        if (li->error)
+            return;
+
+        if (fifo.Peek() != ")")
+            ERR("Expected close bracket!");
+
+        fifo.Pop();
+    }
+    else
+    {
+        if (fifo.IsEmpty())
+            ERR("Expected a label or expression!");
+
+        // label or number
+        string& token = fifo.Pop();
+        if (token == "$")
+        {
+            // hex
+            int value;
+            if (!HexToNumber(fifo.Pop(), value))
+                ERR("Unable to parse hex value");
+            expr->m_tokens.push_back(new CompilerExpressionToken(value));
+        }
+        else if (token == "%")
+        {
+            // binary number
+            int value;
+            if (!BinaryToNumber(fifo.Pop(), value))
+                ERR("Unable to parse binary value");
+            expr->m_tokens.push_back(new CompilerExpressionToken(value));
+        }
+        else if (token == "@")
+        {
+            // local label
+            string& label = fifo.Pop();
+            LabelResolve resolve = LabelResolve_Done;
+            if (label.empty())
+                ERR("Expected local label after '@'");
+
+            string& dir = fifo.Pop();
+            if (dir == "+")
+                resolve = LabelResolve_Forwards;
+            else if (dir == "-")
+                resolve = LabelResolve_Backwards;
+            else
+                ERR("Expected + or -  (seach direction) after local label");
+            expr->m_tokens.push_back(new CompilerExpressionToken(label, resolve, li->memAddr));
+        }
+        else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '.' || token[0] == '-' || token[0] == '+')
+        {
+            // value
+            i64 value = 0;
+            if (token == "-")
+            {
+                value = -atoi(fifo.Pop().c_str());
+            }
+            else if (token == "+")
+            {
+                value = atoi(fifo.Pop().c_str());
+            }
+            else
+            {
+                value = atoi(token.c_str());
+            }
+            expr->m_tokens.push_back(new CompilerExpressionToken(value));
+        }
+        else if (token == "~" || token == "!")
+        {
+            CompilerExpressionOpcode* opc = FindExprOpcode(token);
+            expr->m_operators.push_back(opc);
+            expr->m_operatorPri.push_back(priority + opc->priority);
+
+            PopExpressionValue(fifo, li, expr, priority);
+        }
+        else if (token == ">")
+        {
+            CompilerExpressionOpcode* opc = &s_exprHighByte;
+            expr->m_operators.push_back(opc);
+            expr->m_operatorPri.push_back(priority + opc->priority);
+            PopExpressionValue(fifo, li, expr, priority);
+        }
+        else if (token == "<")
+        {
+            CompilerExpressionOpcode* opc = &s_exprLowByte;
+            expr->m_operators.push_back(opc);
+            expr->m_operatorPri.push_back(priority + opc->priority);
+            PopExpressionValue(fifo, li, expr, priority);
+        }
+        else
+        {
+            // global label
+            expr->m_tokens.push_back(new CompilerExpressionToken(token, LabelResolve_Global, 0));
+        }
+    }
+
+    // continue if we follow up with an operand
+    if (!fifo.IsEmpty())
+    {
+        string opcodeToken = fifo.Peek();
+        CompilerExpressionOpcode* opc = FindExprOpcode(opcodeToken);
+        if (!opc)
+            return;
+
+        fifo.Pop();
+
+        if (opc->params == 1)
+            ERR("Unexpected prefix maths opcode '%s' after a value", opcodeToken.c_str());
+
+        expr->m_operators.push_back(opc);
+        expr->m_operatorPri.push_back(priority + opc->priority);
+
+        if (opc->params == 2)
+        {
+            PopExpressionValue(fifo, li, expr, priority);
+        }
+        else if (opc->params == 2)
+        {
+            PopExpressionValue(fifo, li, expr, priority);
+            if (fifo.Peek() != ":")
+                ERR("Expected ternary ':'");
+            fifo.Pop();
+            PopExpressionValue(fifo, li, expr, priority);
+        }
+    }
+}
 

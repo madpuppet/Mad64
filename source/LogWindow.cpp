@@ -49,10 +49,10 @@ void LogWindow::Draw()
 	}
 }
 
-void LogWindow::OnMouseDown(SDL_Event* event)
+bool LogWindow::FindLogLineAt(int y, int& line)
 {
 	auto settings = gApp->GetSettings();
-	int row = (event->button.y - m_area.y) / settings->lineHeight;
+	int row = (y - m_area.y) / settings->lineHeight;
 	for (int i = 0; i < LF_MAX && row > 0; i++)
 	{
 		if (row < m_gcLines[i].size())
@@ -60,12 +60,20 @@ void LogWindow::OnMouseDown(SDL_Event* event)
 			int jumpTo = (m_gcLines[i][row]);
 			if (jumpTo != -1)
 			{
-				gApp->GetEditWindow()->GotoLineCol(jumpTo, 0, MARK_None, true);
+				line = jumpTo;
+				return true;
 			}
-			return;
+			return false;
 		}
 		row -= (int)m_gcLines[i].size();
 	}
+	return false;
+}
 
+void LogWindow::OnMouseDown(SDL_Event* event)
+{
+	int jumpTo;
+	if (FindLogLineAt(event->button.y, jumpTo))
+		gApp->GetEditWindow()->GotoLineCol(jumpTo, 0, MARK_None, true);
 }
 
