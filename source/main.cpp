@@ -52,8 +52,7 @@ void CopyFromClipboard(vector<string>& buffer)
             line += *src++;
         }
     }
-    if (!line.empty())
-        buffer.push_back(line);
+    buffer.push_back(line);
     SDL_free(clip);
 }
 
