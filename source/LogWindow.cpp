@@ -81,41 +81,49 @@ void LogWindow::Draw()
 
 	int y = m_area.y - m_scroll;
 	int lineIdx = 0;
+	int fileHeight = CalcLogHeight();
+	int startLine = max(0, m_scroll / settings->lineHeight);
+	int endLine = min((m_area.h + m_scroll) / settings->lineHeight + 1, fileHeight);
 	for (int i = 0; i < LF_MAX; i++)
 	{
-		auto &gc = m_gc[i];
-
-		if (m_geTitle[i] == nullptr)
+		auto& gc = m_gc[i];
+		if (lineIdx >= startLine && lineIdx < endLine)
 		{
-			if (m_gcLines[i].empty())
+			if (m_geTitle[i] == nullptr)
 			{
-				SDL_Color col = settings->opCodeColor;
-				col.r = col.r * 2 / 3;
-				col.g = col.g * 2 / 3;
-				col.b = col.b * 2 / 3;
-				m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s", m_groupOpen[i] ? '-' : '+', s_titles[i]).c_str(), col, 0, 0);
+				if (m_gcLines[i].empty())
+				{
+					SDL_Color col = settings->opCodeColor;
+					col.r = col.r * 2 / 3;
+					col.g = col.g * 2 / 3;
+					col.b = col.b * 2 / 3;
+					m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s", m_groupOpen[i] ? '-' : '+', s_titles[i]).c_str(), col, 0, 0);
+				}
+				else
+				{
+					m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s (%d)", m_groupOpen[i] ? '-' : '+', s_titles[i], m_gcLines[i].size()).c_str(), settings->opCodeColor, 0, 0);
+				}
 			}
-			else
-			{
-				m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s (%d)", m_groupOpen[i] ? '-' : '+', s_titles[i], m_gcLines[i].size()).c_str(), settings->opCodeColor, 0, 0);
-			}
-		}
 
-		DrawLine(lineIdx, y, lineIdx == m_highlightRow);
-		auto ge = m_geTitle[i];
-		SDL_Rect quad = { ge->GetRect().x + m_area.x + settings->textXMargin, ge->GetRect().y + y + settings->textYMargin, ge->GetRect().w, ge->GetRect().h };
-		SDL_RenderCopy(gApp->GetRenderer(), ge->GetTexture(), NULL, &quad);
+			DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+			auto ge = m_geTitle[i];
+			SDL_Rect quad = { ge->GetRect().x + m_area.x + settings->textXMargin, ge->GetRect().y + y + settings->textYMargin, ge->GetRect().w, ge->GetRect().h };
+			SDL_RenderCopy(gApp->GetRenderer(), ge->GetTexture(), NULL, &quad);
+		}
 		y += settings->lineHeight;
+
 		lineIdx++;
 
 		if (m_groupOpen[i])
 		{
 			for (int ii = 0; ii < gc->Size(); ii++)
 			{
-				DrawLine(lineIdx, y, lineIdx == m_highlightRow);
-				gc->DrawElemAt(ii, m_area.x + settings->textXMargin, y + settings->textYMargin);
+				if (lineIdx >= startLine && lineIdx < endLine)
+				{
+					DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+					gc->DrawElemAt(ii, m_area.x + settings->textXMargin, y + settings->textYMargin);
+				}
 				y += settings->lineHeight;
-
 				lineIdx++;
 			}
 		}

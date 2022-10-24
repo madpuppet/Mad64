@@ -20,6 +20,10 @@ public:
 	{
 		m_onEnter = onEnter;
 	}
+	void SetOnChange(DMFastDelegate::FastDelegate1<const string&> onChange)
+	{
+		m_onChange = onChange;
+	}
 
 	enum FlashMode
 	{
@@ -34,6 +38,7 @@ public:
 	void OnKeyDown(SDL_Event* e);
 	void Visualize();
 	void Flash(FlashMode mode) { m_flashTime = 1.0f; m_flashMode = mode; }
+	string& GetText() { return m_text; }
 
 protected:
 	string m_title;
@@ -49,4 +54,5 @@ protected:
 
 	GraphicChunk* m_gc;
 	DMFastDelegate::FastDelegate1<const string &> m_onEnter;
+	DMFastDelegate::FastDelegate1<const string&> m_onChange;
 };

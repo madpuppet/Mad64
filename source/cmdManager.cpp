@@ -120,7 +120,9 @@ void CmdChangeLines::Do()
 	}
 
 	m_file->UpdateDirty(1);
-	gApp->GetCompiler()->Compile(m_file);
+
+	if (HasExtension(m_file->GetPath().c_str(), ".asm"))
+		gApp->GetCompiler()->Compile(m_file);
 }
 
 void CmdChangeLines::Undo()
@@ -166,7 +168,9 @@ void CmdChangeLines::Undo()
 	gApp->GetEditWindow()->GotoLineCol(m_oldActiveLine, m_oldActiveColumn, MARK_None, true);
 
 	m_file->UpdateDirty(-1);
-	gApp->GetCompiler()->Compile(m_file);
+
+	if (HasExtension(m_file->GetPath().c_str(), ".asm"))
+		gApp->GetCompiler()->Compile(m_file);
 }
 
 void CmdChangeLines::PushAdd(int line, string& chars)

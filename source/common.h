@@ -38,6 +38,20 @@ extern void CopyToClipboard(vector<string>& buffer);
 extern void CopyFromClipboard(vector<string>& buffer);
 extern char KeySymToAscii(const SDL_Keysym &sym);
 
+inline size_t StrFind(const string& haystack, const string& needle, size_t offset = 0)
+{
+	size_t needleSize = needle.size();
+	if (haystack.size() < needleSize || needleSize == 0)
+		return string::npos;
+	size_t maxidx = haystack.size() - needle.size();
+	for (size_t i = offset; i <= maxidx; i++)
+	{
+		if (SDL_strncasecmp(&haystack[i], &needle[0], needleSize)==0)
+			return i;
+	}
+	return string::npos;
+}
+
 extern string FormatString(const char* pFormat, ...);
 #define STR(...)  FormatString(__VA_ARGS__);
 

@@ -69,6 +69,7 @@ protected:
     Compiler* m_compiler;
     bool m_quit;
     bool m_repaint;
+    bool m_fullscreen;
     AppSettings* m_settings;
 
     enum InputCapture

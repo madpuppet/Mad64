@@ -86,6 +86,8 @@ void TextInput::OnKeyDown(SDL_Event* e)
 			{
 				m_text.erase(--m_cursorPos, 1);
 				m_cursorAnim = 0;
+				if (m_onChange)
+					m_onChange(m_text);
 				Visualize();
 			}
 			return;
@@ -94,6 +96,8 @@ void TextInput::OnKeyDown(SDL_Event* e)
 			{
 				m_text.erase(m_cursorPos, 1);
 				m_cursorAnim = 0;
+				if (m_onChange)
+					m_onChange(m_text);
 				Visualize();
 			}
 			return;
@@ -109,6 +113,8 @@ void TextInput::OnKeyDown(SDL_Event* e)
 		ch = KeySymToAscii(e->key.keysym);
 		m_text.insert(m_cursorPos++, 1, ch);
 		m_cursorAnim = 0;
+		if (m_onChange)
+			m_onChange(m_text);
 		Visualize();
 	}
 }

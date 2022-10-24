@@ -13,6 +13,7 @@ Application *gApp;
 Application::Application()
 {
     gApp = this;
+    m_fullscreen = false;
 
     //Create window
     m_window = SDL_CreateWindow("MAD64", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
@@ -106,7 +107,7 @@ void Application::Update()
 
 void Application::Draw()
 {
-    SDL_SetRenderDrawColor(m_renderer, 255, 0, 255, 255);
+    SDL_SetRenderDrawColor(m_renderer, 0, 0, 64, 255);
     SDL_RenderFillRect(m_renderer, NULL);
     m_editWindow->Draw();
     SDL_RenderPresent(m_renderer);
@@ -327,6 +328,18 @@ void Application::OnKeyDown(SDL_Event* e)
             return;
         }
         break;
+    case SDLK_F11:
+        m_fullscreen = !m_fullscreen;
+        if (m_fullscreen)
+        {
+            SDL_SetWindowFullscreen(m_window, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+        }
+        else
+        {
+            SDL_SetWindowFullscreen(m_window, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+            
+        }
+        return;
     case SDLK_F5:
         {
             auto file = m_editWindow->GetActiveFile();

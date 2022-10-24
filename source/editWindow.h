@@ -124,7 +124,9 @@ protected:
 	TextInput* m_searchBox;
 	TextInput* m_replaceBox;
 	void OnSearchEnter(const string& text);
+	void OnSearchChange(const string& text);
 	void OnReplaceEnter(const string& text);
+	vector<int> m_searchFoundLines;
 
 	bool m_keyMarking;
 	bool m_mouseMarking;
