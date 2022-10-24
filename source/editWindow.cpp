@@ -273,7 +273,16 @@ void EditWindow::Draw()
 
 void EditWindow::OnResize()
 {
+	// clamp the divides so they are on screen
+	auto settings = gApp->GetSettings();
+	int windowWidth, windowHeight;
+	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, &windowHeight);
+	settings->xPosContextHelp = min(settings->xPosContextHelp, windowWidth - 16);
+	settings->xPosText = min(settings->xPosText, settings->xPosContextHelp-32);
+	settings->xPosDecode = min(settings->xPosDecode, settings->xPosText - 16);
+
 	CalcRects();
+
 }
 
 void EditWindow::CalcRects()
@@ -461,11 +470,6 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 				}
 			}
 		}
-		else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
-		{
-			gApp->GetLogWindow()->OnMouseDown(e);
-			return;
-		}
 		else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
 		{
 			m_searchBox->SetActive(true);
@@ -495,6 +499,11 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 			// drag third divide
 			m_dragMode = DRAG_DivideContext;
 			m_dragOffset = e->button.x - settings->xPosContextHelp;
+		}
+		else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
+		{
+			gApp->GetLogWindow()->OnMouseDown(e);
+			return;
 		}
 		else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
 		{
@@ -582,28 +591,19 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 		{
 		case DRAG_DivideDecode:
 			{
-				int newLoc = SDL_clamp(e->button.x + m_dragOffset, 16, windowWidth - 48);
-				settings->xPosDecode = newLoc;
-				settings->xPosText = max(settings->xPosText, newLoc+16);
-				settings->xPosContextHelp = max(settings->xPosContextHelp, newLoc+32);
+				settings->xPosDecode = SDL_clamp(e->button.x + m_dragOffset, 16, settings->xPosText - 16);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideText:
 			{
-				int newLoc = SDL_clamp(e->button.x + m_dragOffset, 32, windowWidth - 32);
-				settings->xPosDecode = min(settings->xPosDecode, newLoc-16);
-				settings->xPosText = newLoc;
-				settings->xPosContextHelp = max(settings->xPosContextHelp, newLoc+16);
+				settings->xPosText = SDL_clamp(e->button.x + m_dragOffset, settings->xPosDecode + 16, settings->xPosContextHelp - 32);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideContext:
 			{
-				int newLoc = SDL_clamp(e->button.x + m_dragOffset, 48, windowWidth-16);
-				settings->xPosDecode = min(settings->xPosDecode, newLoc-32);
-				settings->xPosText = min(settings->xPosText, newLoc-16);
-				settings->xPosContextHelp = newLoc;
+				settings->xPosContextHelp = SDL_clamp(e->button.x + m_dragOffset, settings->xPosText + 32, windowWidth - 16);
 				CalcRects();
 			}
 			return;
