@@ -35,6 +35,9 @@ EditWindow::EditWindow()
 	m_searchBox = new TextInput(0,0,"S",DELEGATE(EditWindow::OnSearchEnter));
 	m_replaceBox = new TextInput(0, 0, "R", DELEGATE(EditWindow::OnReplaceEnter));
 
+	m_mouseX = 0;
+	m_mouseY = 0;
+
 	CalcRects();
 	InitStatus();
 }
@@ -138,13 +141,14 @@ void EditWindow::Draw()
 		for (int i = startLine; i < endLine; i++)
 		{
 			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+			int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
+			SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+			SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 128 - ((i & 1) ? 16 : 0), 255);
+			SDL_RenderFillRect(r, &lineQuad);
+
 			auto gc = gApp->GetCompiler()->GetMemAddrGC(file, i, sourceVersion);
 			if (gc)
 			{
-				int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
-				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 128 - ((i & 1) ? 16 : 0), 255);
-				SDL_RenderFillRect(r, &lineQuad);
 				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
 		}
@@ -220,8 +224,6 @@ void EditWindow::Draw()
 				SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
 			}
 
-			// - mem addr
-			// - machine code
 			// - text
 			if (line->GetGCText())
 				line->GetGCText()->DrawAt(settings->xPosText + settings->textXMargin, y + settings->textYMargin);
@@ -245,7 +247,6 @@ void EditWindow::Draw()
 		}
 		SDL_RenderFillRect(r, &Bar);
 	}
-
 	SDL_RenderSetClipRect(r, nullptr);
 
 	// - context help
@@ -255,11 +256,14 @@ void EditWindow::Draw()
 	DrawStatus();
 
 	// draw search boxes
+	SDL_Rect sarRect = { settings->xPosContextHelp, settings->lineHeight, windowWidth - settings->xPosContextHelp, settings->lineHeight };
+	SDL_SetRenderDrawColor(r, 32, 64, 32, 255);
+	SDL_RenderFillRect(r, &sarRect);
 	m_searchBox->Draw();
 	m_replaceBox->Draw();
 
 	// draw context bar split
-	SDL_Rect divider = { settings->xPosContextHelp, settings->lineHeight * 2 + settings->textYMargin * 2, windowWidth - settings->xPosContextHelp, 3 };
+	SDL_Rect divider = { settings->xPosContextHelp, settings->lineHeight * 2 - 1, windowWidth - settings->xPosContextHelp, 3 };
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &divider);
 
@@ -297,11 +301,9 @@ void EditWindow::CalcRects()
 	m_decodeRect = { settings->xPosDecode, settings->lineHeight, settings->xPosText - settings->xPosDecode, editHeight };
 	m_sourceEditRect = { settings->xPosText, settings->lineHeight, settings->xPosContextHelp - settings->xPosText, editHeight };
 	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
-	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight+2);
-	m_replaceBox->SetPos(settings->xPosContextHelp + 200, settings->lineHeight+2);
-
-	int y = m_searchBox->GetArea().y + m_searchBox->GetArea().h + settings->textYMargin + settings->lineHeight;
-	m_contextHelpRect = { settings->xPosContextHelp, y, windowWidth - settings->xPosContextHelp, editHeight - y };
+	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight);
+	m_replaceBox->SetPos(settings->xPosContextHelp + 200, settings->lineHeight);
+	m_contextHelpRect = { settings->xPosContextHelp, settings->lineHeight * 2, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
 
 	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
 }
@@ -393,10 +395,17 @@ void EditWindow::OnFileClosed(SourceFile* file)
 
 void EditWindow::OnMouseWheel(SDL_Event* e)
 {
-	if (m_activeSourceFileItem)
+	if (Contains(m_sourceEditRect,m_mouseX, m_mouseY))
 	{
-		m_activeSourceFileItem->targetScroll += (e->wheel.preciseY * -80.0f);
-		ClampTargetScroll();
+		if (m_activeSourceFileItem)
+		{
+			m_activeSourceFileItem->targetScroll += (e->wheel.preciseY * -80.0f);
+			ClampTargetScroll();
+		}
+	}
+	else if (Contains(m_contextHelpRect, m_mouseX, m_mouseY))
+	{
+		gApp->GetLogWindow()->OnMouseWheel(e);
 	}
 }
 
@@ -432,11 +441,6 @@ void EditWindow::Update()
 
 	m_searchBox->Update();
 	m_replaceBox->Update();
-}
-
-bool Contains(const SDL_Rect& rect, int x, int y)
-{
-	return (x >= rect.x && x < (rect.x + rect.w) && y >= rect.y && y < (rect.y + rect.h));
 }
 
 void EditWindow::OnMouseDown(SDL_Event* e)
@@ -502,7 +506,16 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 		}
 		else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
 		{
-			gApp->GetLogWindow()->OnMouseDown(e);
+			if (e->button.x > m_contextHelpRect.x + m_contextHelpRect.w - settings->scrollBarWidth)
+			{
+				m_dragMode = DRAG_LogVertScroll;
+				printf("DOWN!");
+				gApp->GetLogWindow()->SnapScrollBarToMouseY(e->button.y);
+			}
+			else
+			{
+				gApp->GetLogWindow()->OnMouseDown(e);
+			}
 			return;
 		}
 		else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
@@ -547,7 +560,11 @@ void EditWindow::OnMouseUp(SDL_Event* e)
 	m_autoScroll = 0;
 	m_marked = m_mouseMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	m_mouseMarking = false;
+	printf("UP!");
+
 	m_dragMode = DRAG_None;
+
+	gApp->GetLogWindow()->OnMouseUp(e);
 }
 
 void EditWindow::ProcessMouseMarking(int x, int y)
@@ -577,13 +594,16 @@ void EditWindow::ProcessMouseMarking(int x, int y)
 
 void EditWindow::OnMouseMotion(SDL_Event* e)
 {
+	m_mouseX = e->motion.x;
+	m_mouseY = e->motion.y;
+
 	int windowWidth;
 	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, 0);
 
 	auto settings = gApp->GetSettings();
 	if (m_mouseMarking)
 	{
-		ProcessMouseMarking(e->button.x, e->button.y);
+		ProcessMouseMarking(e->motion.x, e->motion.y);
 	}
 	else if (m_dragMode != DRAG_None)
 	{
@@ -591,30 +611,34 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 		{
 		case DRAG_DivideDecode:
 			{
-				settings->xPosDecode = SDL_clamp(e->button.x + m_dragOffset, 16, settings->xPosText - 16);
+				settings->xPosDecode = SDL_clamp(e->motion.x + m_dragOffset, 16, settings->xPosText - 16);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideText:
 			{
-				settings->xPosText = SDL_clamp(e->button.x + m_dragOffset, settings->xPosDecode + 16, settings->xPosContextHelp - 32);
+				settings->xPosText = SDL_clamp(e->motion.x + m_dragOffset, settings->xPosDecode + 16, settings->xPosContextHelp - 32);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideContext:
 			{
-				settings->xPosContextHelp = SDL_clamp(e->button.x + m_dragOffset, settings->xPosText + 32, windowWidth - 16);
+				settings->xPosContextHelp = SDL_clamp(e->motion.x + m_dragOffset, settings->xPosText + 32, windowWidth - 16);
 				CalcRects();
 			}
 			return;
 		case DRAG_EditVertScroll:
-			SnapScrollBarToMouseY(e->button.y);
+			SnapScrollBarToMouseY(e->motion.y);
+			break;
+		case DRAG_LogVertScroll:
+			gApp->GetLogWindow()->SnapScrollBarToMouseY(e->motion.y);
 			break;
 		}
 	}
 	else
 	{
-		SelectCursor(e->button.x, e->button.y);
+		gApp->GetLogWindow()->OnMouseMotion(e);
+		SelectCursor(e->motion.x, e->motion.y);
 	}
 }
 
@@ -661,11 +685,19 @@ void EditWindow::SelectCursor(int x, int y)
 	}
 	else if (Contains(m_contextHelpRect, x, y))
 	{
-		int line;
-		if (gApp->GetLogWindow()->FindLogLineAt(y, line))
+		if (x > m_contextHelpRect.x + m_contextHelpRect.w - settings->scrollBarWidth)
 		{
-			SDL_SetCursor(m_cursorHand);
+			SDL_SetCursor(m_cursorVert);
 			return;
+		}
+		else
+		{
+			int line;
+			if (gApp->GetLogWindow()->FindLogLineAt(y, line))
+			{
+				SDL_SetCursor(m_cursorHand);
+				return;
+			}
 		}
 	}
 	SDL_SetCursor(m_cursorArrow);

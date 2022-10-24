@@ -5,9 +5,10 @@
 class CompilerLabel
 {
 public:
-    CompilerLabel(const string &name, i64 value, bool isLocal=false) : m_name(name), m_value(value), m_isLocal(isLocal) {}
+    CompilerLabel(const string &name, i64 value, int lineNmbr = -1, bool isLocal=false) : m_name(name), m_value(value), m_lineNmbr(lineNmbr), m_isLocal(isLocal) {}
     string m_name;
     i64 m_value;
+    int m_lineNmbr;
     bool m_isLocal;
 };
 

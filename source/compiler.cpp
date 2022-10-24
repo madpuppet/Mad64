@@ -3,6 +3,25 @@
 #include "graphicChunk.h"
 #include <algorithm>
 
+char s_asciiToScreenCode[] = {
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 00
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 10
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 20
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 30
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 40
+    0,0,0,0,0,0,0,0, 0,0,0,27,0,0,0,0,       // 50
+    0,1,2,3,4,5,6,7, 8,9,10,11,12,13,14,15,       // 60
+    16,17,18,19,20,21,22,23, 24,25,26,0,0,0,0,0,       // 70
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 80
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 90
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // a0
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // b0
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // c0
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // d0
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // e0
+    0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0        // f0
+};
+
 CompilerLabel s_systemLabels[] =
 {
     CompilerLabel("vic.sprite0X", 0xd000),  CompilerLabel("vic.sprite0Y", 0xd001),  CompilerLabel("vic.sprite1X", 0xd002),  CompilerLabel("vic.sprite1Y", 0xd003),
@@ -699,14 +718,14 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         // local address label
         li->label = fifo.Pop();
 
-        if (fifo.Peek() != ":")
+        if (fifo.Pop() != ":")
             ERR("Expected ':' at end of labels.");
 
         // address label
         li->type = LT_Label;
         li->memAddr = currentMemAddr;
         li->operand = li->memAddr;
-        si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, true));
+        si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr, true));
     }
     else if (StrEqual(token, "dc.b") || StrEqual(token, ".byte") || StrEqual(token, "byte"))
     {
@@ -756,7 +775,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
                 ERR("Unexpected token '%s' in data bytes", fifo.Peek().c_str());
             }
         }
-        currentMemAddr += (int)li->dataExpr.size();
+        currentMemAddr += (int)li->dataExpr.size() * 2;
     }
     else if (StrEqual(token, ".text"))
     {
@@ -764,10 +783,15 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         li->memAddr = currentMemAddr;
 
         string text = fifo.Pop();
-        if (text.empty() || text.front() != '"' || text.back() != '"')
+        if (text.size() < 3 || text.front() != '"' || text.back() != '"')
             ERR("Malformed text");
-        for (auto c : text)
-            li->data.push_back((u8)c);
+        string subText = text.substr(1, text.size() - 2);
+        for (auto c : subText)
+        {
+            // petsci encode
+            li->data.push_back(s_asciiToScreenCode[c]);
+        }
+        currentMemAddr += (int)li->data.size();
     }
     else
     {
@@ -790,22 +814,25 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             i64 value;
             if (EvaluateExpression(si, li, li->operandExpr, value))
             {
-                si->m_labels.push_back(new CompilerLabel(li->label, value));
+                si->m_labels.push_back(new CompilerLabel(li->label, value, li->lineNmbr));
                 li->operandEvaluated = true;
             }
         }
         else
         {
             // value by address
-            if (fifo.Peek() != ":")
+            if (fifo.Pop() != ":")
                 ERR("Cannot evaluate token '%s' - Expected ':' if its a label.", token.c_str());
 
             // address label
             li->type = LT_Label;
             li->memAddr = currentMemAddr;
-            si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr));
+            si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr));
         }
     }
+
+    if (!fifo.IsEmpty())
+        ERR("Extra text at end of line.");
 }
 
 bool Compiler::ResolveExpressionToken(CompilerSourceInfo *si, CompilerExpressionToken *token)
@@ -962,7 +989,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             if (!EvaluateExpression(si, li, li->operandExpr, li->operand))
                 return false;
             li->operandEvaluated = true;
-            si->m_labels.push_back(new CompilerLabel(li->label, li->operand));
+            si->m_labels.push_back(new CompilerLabel(li->label, li->operand, li->lineNmbr));
         }
     }
     else if (li->type == LT_DataBytes)
@@ -995,9 +1022,6 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             }
             li->dataEvaluated = true;
         }
-    }
-    else if (li->type == LT_DataText)
-    {
     }
     return true;
 
@@ -1099,7 +1123,7 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
                 if (sl->data.size() > 8)
                 {
                     dataCol = { 255, 255, 64, 255 };
-                    string text = FormatString("%d bytes", sl->data.size());
+                    string text = FormatString(".. %d bytes", sl->data.size());
                     sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 8 * 3), 0));
                 }
             }
@@ -1173,7 +1197,7 @@ void Compiler::Compile(SourceFile* file)
     lw->ClearLog(LogWindow::LF_LabelHelp);
     for (auto l : sourceInfo->m_labels)
     {
-        lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x", l->m_name.c_str(), l->m_value));
+        lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
     }
 
     FlushErrors();
@@ -1467,9 +1491,8 @@ void Compiler::PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, Compile
         else if (opc->params == 2)
         {
             PopExpressionValue(fifo, li, expr, priority);
-            if (fifo.Peek() != ":")
+            if (fifo.Pop() != ":")
                 ERR("Expected ternary ':'");
-            fifo.Pop();
             PopExpressionValue(fifo, li, expr, priority);
         }
     }

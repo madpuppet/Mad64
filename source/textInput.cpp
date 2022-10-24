@@ -120,12 +120,11 @@ void TextInput::Visualize()
 	m_gc->Clear();
 
 	SDL_Color col = { 255,255,255,255 };
-	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + gApp->GetSettings()->textYMargin);
-	int x2 = m_pos.x + geTitle->GetRect().w + 16;
+	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + settings->lineHeight/4);
 	m_gc->Add(geTitle);
 
-	m_area = { x2, m_pos.y+2, 150, settings->lineHeight-4 };
-	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_area.y + gApp->GetSettings()->textYMargin);
+	m_area = { m_pos.x + geTitle->GetRect().w + 16, m_pos.y+2, 150, settings->lineHeight-4 };
+	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_pos.y + settings->lineHeight / 4);
 	m_gc->Add(ge);
 }
 

@@ -70,5 +70,15 @@ protected:
     bool m_quit;
     bool m_repaint;
     AppSettings* m_settings;
+
+    enum InputCapture
+    {
+        Capture_None,
+        Capture_EditWindow,
+        Capture_LogWindow
+    };
+    InputCapture m_mouseCapture;
+    InputCapture m_keyCapture;
+
 };
 extern Application *gApp;

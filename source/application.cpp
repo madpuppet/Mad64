@@ -45,6 +45,9 @@ Application::Application()
         {
             LoadFile(p.c_str());
         }
+
+        m_mouseCapture = Capture_None;
+        m_keyCapture = Capture_None;
     }
 }
 
@@ -98,11 +101,12 @@ int Application::MainLoop()
 void Application::Update()
 {
     m_editWindow->Update();
+    m_logWindow->Update();
 }
 
 void Application::Draw()
 {
-    SDL_SetRenderDrawColor(m_renderer, 0, 0, 100, 255);
+    SDL_SetRenderDrawColor(m_renderer, 255, 0, 255, 255);
     SDL_RenderFillRect(m_renderer, NULL);
     m_editWindow->Draw();
     SDL_RenderPresent(m_renderer);

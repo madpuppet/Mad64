@@ -20,7 +20,10 @@ public:
 	void OnResize();
 	void OnEvent(SDL_Event* e);
 	void OnKeyDown(SDL_Event* e);
+
+	// return TRUE to capture input to this window in future
 	void OnMouseDown(SDL_Event* e);
+
 	void OnMouseUp(SDL_Event* e);
 	void OnMouseMotion(SDL_Event* e);
 	void OnMouseWheel(SDL_Event* e);
@@ -135,6 +138,9 @@ protected:
 	int m_autoScroll;
 	int m_autoScroll_mouseX;
 	int m_autoScroll_mouseY;
+	
+	// track mouse move for wheel events
+	int m_mouseX, m_mouseY;
 
 	enum DragMode
 	{
@@ -142,7 +148,8 @@ protected:
 		DRAG_DivideDecode,
 		DRAG_DivideText,
 		DRAG_DivideContext,
-		DRAG_EditVertScroll
+		DRAG_EditVertScroll,
+		DRAG_LogVertScroll
 	};
 	DragMode m_dragMode;
 	int m_dragOffset;

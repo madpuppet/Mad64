@@ -55,6 +55,11 @@ public:
 	u64 m_start;
 };
 
+inline bool Contains(const SDL_Rect& rect, int x, int y)
+{
+	return (x >= rect.x && x < (rect.x + rect.w) && y >= rect.y && y < (rect.y + rect.h));
+}
+
 #include "graphicChunk.h"
 #include "sourceFile.h"
 #include "application.h"

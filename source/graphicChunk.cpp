@@ -90,6 +90,20 @@ void GraphicChunk::DrawAt(i32 x, i32 y)
     }
 }
 
+void GraphicChunk::DrawElemAt(int i, i32 x, i32 y)
+{
+    if (i < elements.size())
+    {
+        auto ge = elements[i];
+        if (ge->IsEnabled())
+        {
+            SDL_Rect quad = { ge->GetRect().x + x, ge->GetRect().y + y, ge->GetRect().w, ge->GetRect().h };
+            SDL_RenderCopy(gApp->GetRenderer(), ge->GetTexture(), NULL, &quad);
+        }
+    }
+}
+
+
 GraphicChunk::~GraphicChunk()
 {
     Clear();
