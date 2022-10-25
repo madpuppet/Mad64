@@ -24,7 +24,7 @@ char s_asciiToScreenCode[] = {
 
 CompilerLabel s_systemLabels[] =
 {
-    CompilerLabel("PI", M_PI),
+    CompilerLabel("PI", M_PI), CompilerLabel("I", 0),
 
     CompilerLabel("vic.sprite0X", 0xd000),  CompilerLabel("vic.sprite0Y", 0xd001),  CompilerLabel("vic.sprite1X", 0xd002),  CompilerLabel("vic.sprite1Y", 0xd003),
     CompilerLabel("vic.sprite2X", 0xd004),  CompilerLabel("vic.sprite2Y", 0xd005),  CompilerLabel("vic.sprite3X", 0xd006),  CompilerLabel("vic.sprite3Y", 0xd007),
@@ -639,6 +639,47 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
     return nullptr;
 }
 
+void Compiler::CmdImport_Parse(TokenFifo &fifo, CompilerSourceInfo *si, CompilerLineInfo *li, u32& currentMemAddr)
+{
+    string filename = fifo.Pop();
+    if (filename.empty())
+        ERR("No filename specified");
+
+    string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
+    FILE* fh = fopen(path.c_str(), "rb");
+    if (fh)
+    {
+        fseek(fh, 0, SEEK_END);
+        int size = ftell(fh);
+        fseek(fh, 0, SEEK_SET);
+
+        if (size == 0)
+            ERR("Import file size is 0");
+
+        u8* data = (u8*)SDL_malloc(size);
+        int readSize = (int)fread(data, size, 1, fh);
+        if (readSize != 1)
+        {
+            fclose(fh);
+            SDL_free(data);
+            ERR("Error reading file");
+        }
+
+        for (int i = 0; i < size; i++)
+            li->data.push_back(data[i]);
+
+        li->type = LT_DataBytes;
+        li->memAddr = currentMemAddr;
+        currentMemAddr += size;
+        SDL_free(data);
+        fclose(fh);
+    }
+    else
+    {
+        ERR("Unable to open file %s", path.c_str());
+    }
+}
+
 void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine *sourceLine, u32& currentMemAddr)
 {
     auto tokens = sourceLine->GetTokens();
@@ -649,65 +690,128 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         li->type = LT_Comment;
         return;
     }
-    else if (StrEqual(token, "#"))
+    else if (StrEqual(token, ".import"))
     {
-        string pragma = fifo.Pop();
-        if (StrEqual(pragma, "import"))
+        string filename = fifo.Pop();
+        if (filename.empty())
+            ERR("No filename specified");
+
+        string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
+        FILE* fh = fopen(path.c_str(), "rb");
+        if (fh)
         {
-            string filename = fifo.Pop();
-            if (filename.empty())
-                ERR("No filename specified");
+            fseek(fh, 0, SEEK_END);
+            int size = ftell(fh);
+            fseek(fh, 0, SEEK_SET);
 
-            string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
-            FILE* fh = fopen(path.c_str(), "rb");
-            if (fh)
+            if (size == 0)
+                ERR("Import file size is 0");
+
+            u8* data = (u8*)SDL_malloc(size);
+            int readSize = (int)fread(data, size, 1, fh);
+            if (readSize != 1)
             {
-                fseek(fh, 0, SEEK_END);
-                int size = ftell(fh);
-                fseek(fh, 0, SEEK_SET);
-
-                if (size == 0)
-                    ERR("Import file size is 0");
-
-                u8* data = (u8*)SDL_malloc(size);
-                int readSize = (int)fread(data, size, 1, fh);
-                if (readSize != 1)
-                {
-                    fclose(fh);
-                    SDL_free(data);
-                    ERR("Error reading file");
-                }
-
-                for (int i = 0; i < size; i++)
-                    li->data.push_back(data[i]);
-
-                li->type = LT_DataBytes;
-                li->memAddr = currentMemAddr;
-                currentMemAddr += size;
-                SDL_free(data);
                 fclose(fh);
+                SDL_free(data);
+                ERR("Error reading file");
             }
-            else
-            {
-                ERR("Unable to open file %s", path.c_str());
-            }
+
+            for (int i = 0; i < size; i++)
+                li->data.push_back(data[i]);
+
+            li->type = LT_DataBytes;
+            li->dataEvaluated = true;
+            li->memAddr = currentMemAddr;
+            currentMemAddr += size;
+            SDL_free(data);
+            fclose(fh);
+        }
+        else
+        {
+            ERR("Unable to open file %s", path.c_str());
         }
         return;
     }
+    else if (StrEqual(token, ".basicStartup"))
+    {
+        li->type = LT_BasicStartup;
+        li->memAddr = 0x801;
+        li->dataEvaluated = false;
+
+        if (fifo.Pop() == "(")
+        {
+            li->dataExpr.push_back(new CompilerExpression());
+            PopExpressionValue(fifo, li, li->dataExpr[0], 0);
+            if (li->error)
+                return;
+
+            if (fifo.Pop() != ")")
+                ERR("Expected close bracket");
+        }
+        else
+        {
+            li->dataExpr.push_back(new CompilerExpression(0x801 + 13));
+        }
+
+        currentMemAddr = 0x801 + 13;
+    }
+    else if (StrEqual(token, ".generate.b"))
+    {
+        li->type = LT_GenerateBytes;
+        li->memAddr = currentMemAddr;
+        li->dataEvaluated = false;
+
+        li->dataExpr.push_back(new CompilerExpression());
+        PopExpressionValue(fifo, li, li->dataExpr[0], 0);
+        if (li->error)
+            return;
+
+        double startVal;
+        if (!EvaluateExpression(si, li, li->dataExpr[0], startVal))
+            ERR("Generate.b START param is not evaluable on first pass");
+        li->cmdParams.push_back(startVal);
+            
+        if (fifo.Pop() != ",")
+            ERR("Expected comma before START param");
+
+        li->dataExpr.push_back(new CompilerExpression());
+        PopExpressionValue(fifo, li, li->dataExpr[1], 0);
+        if (li->error)
+            return;
+
+        double endVal;
+        if (!EvaluateExpression(si, li, li->dataExpr[1], endVal))
+            ERR("Generate.b END param is not be evaluable on first pass");
+        li->cmdParams.push_back(endVal);
+
+        if (fifo.Pop() != ",")
+            ERR("Expected comma before END param");
+
+        li->dataExpr.push_back(new CompilerExpression());
+        PopExpressionValue(fifo, li, li->dataExpr[2], 0);
+        if (li->error)
+            return;
+
+        int length = (int)endVal - (int)startVal + 1;
+        if (length <= 0)
+            ERR("Generate.b has zero length");
+
+        currentMemAddr += length;
+    }
     else if (StrEqual(token, "*"))
     {
-        li->operandExpr = new CompilerExpression();
+        li->dataExpr.push_back(new CompilerExpression());
 
         string& tok1 = fifo.Pop();
         if (!StrEqual(tok1, "="))
             ERR("Expected '=' after '*'");
 
-        PopExpressionValue(fifo, li, li->operandExpr, 0);
+        PopExpressionValue(fifo, li, li->dataExpr[0], 0);
         if (li->error)
             return;
 
         double addr;
-        if (!EvaluateExpression(si, li, li->operandExpr, addr))
+        if (!EvaluateExpression(si, li, li->dataExpr[0], addr))
             return;
 
         currentMemAddr = (int)addr;
@@ -723,8 +827,8 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         li->addressMode = AM_Implied;
         li->opcode = 0;
         li->operandValue = 0;
-        li->operandEvaluated = false;
-        li->operandExpr = new CompilerExpression();
+        li->dataExpr.push_back(new CompilerExpression());
+        li->dataEvaluated = false;
 
         if (fifo.Peek().empty())
         {
@@ -737,14 +841,14 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             fifo.Pop();
             li->addressMode = AM_Immediate;
 
-            PopExpressionValue(fifo, li, li->operandExpr, 0);
+            PopExpressionValue(fifo, li, li->dataExpr[0], 0);
         }
         else if (StrEqual(fifo.Peek(), "("))
         {
             fifo.Pop();
 
             // indirect, indirectY, indirectX
-            PopExpressionValue(fifo, li, li->operandExpr, 0);
+            PopExpressionValue(fifo, li, li->dataExpr[0], 0);
 
             if (fifo.Peek() == ",")
             {
@@ -777,7 +881,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         else
         {
             // zeroPage, zeroPageX, absoluteX, absoluteY, relative
-            PopExpressionValue(fifo, li, li->operandExpr, 0);
+            PopExpressionValue(fifo, li, li->dataExpr[0], 0);
 
             if (FindOpcode(token, AM_Relative))
             {
@@ -787,7 +891,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             {
                 // if we can't evaluate it now, then we consider it absolute addressing
                 double value;
-                bool canEvaluate = EvaluateExpression(si, li, li->operandExpr, value);
+                bool canEvaluate = EvaluateExpression(si, li, li->dataExpr[0], value);
                 bool isZeroPage = (canEvaluate && value >= -128 && value <= 255);
 
                 if (fifo.Peek() == ",")
@@ -915,15 +1019,15 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
 
             // value by assignment
             li->type = LT_Variable;
-            li->operandExpr = new CompilerExpression();
+            li->dataExpr.push_back(new CompilerExpression());
 
-            PopExpressionValue(fifo, li, li->operandExpr, 0);
+            PopExpressionValue(fifo, li, li->dataExpr[0], 0);
 
             double value;
-            if (EvaluateExpression(si, li, li->operandExpr, value))
+            if (EvaluateExpression(si, li, li->dataExpr[0], value))
             {
                 si->m_labels.push_back(new CompilerLabel(li->label, value, li->lineNmbr));
-                li->operandEvaluated = true;
+                li->dataEvaluated = true;
             }
         }
         else
@@ -1059,6 +1163,8 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
     return true;
 }
 
+
+
 bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine)
 {
     if (li->error)
@@ -1066,16 +1172,16 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
 
     if (li->type == LT_Instruction)
     {
-        if (!li->operandEvaluated)
+        if (!li->dataEvaluated)
         {
             int instructionLength = gAddressingModeSize[li->addressMode];
             if (instructionLength > 1)
             {
-                if (!EvaluateExpression(si, li, li->operandExpr, li->operand))
+                if (!EvaluateExpression(si, li, li->dataExpr[0], li->operand))
                     return false;
             }
 
-            li->operandEvaluated = true;
+            li->dataEvaluated = true;
             li->data.push_back(li->opcode);
             if (instructionLength == 2)
             {
@@ -1099,11 +1205,11 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
     }
     else if (li->type == LT_Variable)
     {
-        if (!li->operandEvaluated)
+        if (!li->dataEvaluated)
         {
-            if (!EvaluateExpression(si, li, li->operandExpr, li->operand))
+            if (!EvaluateExpression(si, li, li->dataExpr[0], li->operand))
                 return false;
-            li->operandEvaluated = true;
+            li->dataEvaluated = true;
             si->m_labels.push_back(new CompilerLabel(li->label, li->operand, li->lineNmbr));
         }
     }
@@ -1111,6 +1217,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
     {
         if (!li->dataEvaluated)
         {
+            li->data.clear();
             for (int i = 0; i < li->dataExpr.size(); i++)
             {
                 double value;
@@ -1126,6 +1233,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
     {
         if (!li->dataEvaluated)
         {
+            li->data.clear();
             for (int i = 0; i < li->dataExpr.size(); i++)
             {
                 double value;
@@ -1134,6 +1242,59 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
 
                 li->data.push_back((u8)value & 0xff);
                 li->data.push_back((u8)((u16)value >> 8));
+            }
+            li->dataEvaluated = true;
+        }
+    }
+    else if (li->type == LT_BasicStartup)
+    {
+        if (!li->dataEvaluated)
+        {
+            double value;
+            if (!EvaluateExpression(si, li, li->dataExpr[0], value))
+                return false;
+            li->dataEvaluated = true;
+
+            int addr = (int)value;
+            if (addr < 0x801 + 13 || addr > 65535)
+                ERR_RF("BAD Basic startup address. should be 081e to ffff");
+
+            li->data.push_back(0x0b);
+            li->data.push_back(0x08);
+            li->data.push_back(0x0A);
+            li->data.push_back(0x00);
+            li->data.push_back(0x9E);
+            
+            char num[16];
+            SDL_snprintf(num, 16, "%d", addr);
+            int length = (int)strlen(num);
+            for (int i = 0; i < length; i++)
+                li->data.push_back(num[i]);
+            for (int i = 0; i < 10 - length; i++)
+                li->data.push_back(0);
+        }
+    }
+    else if (li->type == LT_GenerateBytes)
+    {
+        if (!li->dataEvaluated)
+        {
+            string name = "I";
+            auto it = FindLabel(si, name, LabelResolve_Global, 0);
+            li->data.clear();
+
+            // copy the expression because we need to reset it after every evaluation
+            for (int i = (int)li->cmdParams[0]; i <= (int)li->cmdParams[1]; i++)
+            {
+                it->m_value = (double)i;
+                double value;
+                auto expr = li->dataExpr[2]->Clone();
+                bool success = EvaluateExpression(si, li, expr, value);
+                delete expr;
+
+                if (!success)
+                    return false;
+
+                li->data.push_back((u8)value & 0xff);
             }
             li->dataEvaluated = true;
         }
@@ -1230,16 +1391,16 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
             if (sl->data.size() > 0)
             {
                 char buffer[16];
-                for (int i = 0; i < min((int)sl->data.size(), 8); i++)
+                for (int i = 0; i < min((int)sl->data.size(), 16); i++)
                 {
                     SDL_snprintf(buffer, 16, "%02x", sl->data[i]);
                     sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, dataCol, gApp->GetWhiteSpaceWidth() * (3 + i * 3), 0));
                 }
-                if (sl->data.size() > 8)
+                if (sl->data.size() > 16)
                 {
                     dataCol = { 255, 255, 64, 255 };
                     string text = FormatString(".. %d bytes", sl->data.size());
-                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 8 * 3), 0));
+                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), 0));
                 }
             }
         }

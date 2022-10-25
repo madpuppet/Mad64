@@ -23,7 +23,10 @@ enum CompilerLineType
     LT_DataBytes,
     LT_DataWords,
     LT_DataText,
-    LT_Instruction
+    LT_GenerateBytes,
+    LT_GenerateWords,
+    LT_Instruction,
+    LT_BasicStartup
 };
 
 // OPERANDS
@@ -73,6 +76,7 @@ struct CompilerExpressionToken
 {
     CompilerExpressionToken(double _value) : resolve(LabelResolve_Done), value(_value) {}
     CompilerExpressionToken(string _label, LabelResolve _resolve, u32 _lineAddr) : resolve(_resolve), label(_label), value(_lineAddr) {}
+    CompilerExpressionToken(const CompilerExpressionToken& o) : resolve(o.resolve), value(o.value), label(o.label) {}
 
     LabelResolve resolve;
     double value;
@@ -81,6 +85,26 @@ struct CompilerExpressionToken
 
 struct CompilerExpression
 {
+    CompilerExpression() {}
+    CompilerExpression(double value)
+    {
+        m_tokens.push_back(new CompilerExpressionToken(value));
+    }
+    ~CompilerExpression()
+    {
+        for (auto t : m_tokens)
+            delete t;
+    }
+    CompilerExpression* Clone()
+    {
+        CompilerExpression* c = new CompilerExpression();
+        for (auto t : m_tokens)
+            c->m_tokens.push_back(new CompilerExpressionToken(*t));
+        c->m_operators = m_operators;
+        c->m_operatorPri = m_operatorPri;
+        return c;
+    }
+
     vector<CompilerExpressionToken*> m_tokens;
     vector<CompilerExpressionOpcode*> m_operators;
     vector<int> m_operatorPri;
@@ -89,7 +113,7 @@ struct CompilerExpression
 class CompilerLineInfo
 {
 public:
-    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), operandEvaluated(false), error(false), labelResolve(LabelResolve_Done)
+    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelResolve(LabelResolve_Done)
     {
         gcMemAddr = new GraphicChunk();
         gcDecode = new GraphicChunk();
@@ -98,6 +122,8 @@ public:
     {
         delete gcMemAddr;
         delete gcDecode;
+        for (auto e : dataExpr)
+            delete e;
     }
 
     int lineNmbr;
@@ -107,9 +133,7 @@ public:
     int opcode;
 
     AddressingMode addressMode;
-    CompilerExpression *operandExpr;
     int operandValue;
-    bool operandEvaluated;
 
     double operand;
     string label;
@@ -117,6 +141,7 @@ public:
 
     vector<CompilerExpression*> dataExpr;
     bool dataEvaluated;
+    vector<double> cmdParams;
 
     std::vector<u8> data;
 
@@ -220,7 +245,6 @@ struct TokenFifo
     string m_end;
 };
 
-
 #define ERR(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return; }
 #define ERR_RF(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return false; }
 #define ERR_NOLINE(...)  { string error = FormatString(__VA_ARGS__); Error(error, 0); return; }
@@ -305,10 +329,7 @@ public:
     bool EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, double& value);
     bool ResolveExpressionToken(CompilerSourceInfo* si, CompilerExpressionToken* token);
 
-    void CmdImport_Parse();
-    void CmdImport_Evaluate();
-    void CmdGenerate_Parse();
-    void CmdGenerate_Evaluate();
+    void CmdImport_Parse(TokenFifo& fifo, CompilerSourceInfo* si, CompilerLineInfo* li, u32& currentMemAddr);
 
     struct ErrorItem
     {
