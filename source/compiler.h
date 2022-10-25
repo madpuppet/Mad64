@@ -5,9 +5,9 @@
 class CompilerLabel
 {
 public:
-    CompilerLabel(const string &name, i64 value, int lineNmbr = -1, bool isLocal=false) : m_name(name), m_value(value), m_lineNmbr(lineNmbr), m_isLocal(isLocal) {}
+    CompilerLabel(const string &name, double value, int lineNmbr = -1, bool isLocal=false) : m_name(name), m_value(value), m_lineNmbr(lineNmbr), m_isLocal(isLocal) {}
     string m_name;
-    i64 m_value;
+    double m_value;
     int m_lineNmbr;
     bool m_isLocal;
 };
@@ -52,21 +52,30 @@ enum LabelResolve
     LabelResolve_Forwards
 };
 
+enum CompilerExpressionOpcodeType
+{
+    CEOT_Prefix,
+    CEOT_Binary,
+    CEOT_Func,
+    CEOT_Ternary
+};
+
 struct CompilerExpressionOpcode
 {
     const char* text;
     int params;
     int priority;
-    i64(*Evaluate)(i64 a, i64 b, i64 c);
+    CompilerExpressionOpcodeType type;
+    double(*Evaluate)(double a, double b, double c);
 };
 
 struct CompilerExpressionToken
 {
-    CompilerExpressionToken(i64 _value) : resolve(LabelResolve_Done), value(_value) {}
+    CompilerExpressionToken(double _value) : resolve(LabelResolve_Done), value(_value) {}
     CompilerExpressionToken(string _label, LabelResolve _resolve, u32 _lineAddr) : resolve(_resolve), label(_label), value(_lineAddr) {}
 
     LabelResolve resolve;
-    i64 value;
+    double value;
     string label;
 };
 
@@ -102,7 +111,7 @@ public:
     int operandValue;
     bool operandEvaluated;
 
-    i64 operand;
+    double operand;
     string label;
     LabelResolve labelResolve;
 
@@ -286,15 +295,20 @@ public:
 	// 64k of ram
 	u8 m_ram[65536];
 
+    // expression opcodes that follow a value - ie.  a * b,  a + b
     CompilerExpressionOpcode *FindExprOpcode(string& token);
+
+    // expression opcodes that precide a value - ie. !a,  sin(a)
+    CompilerExpressionOpcode* FindPrefixExprOpcode(string& token);
+
     void PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, CompilerExpression* expr, int priority);
-    bool EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, i64& value);
+    bool EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, double& value);
     bool ResolveExpressionToken(CompilerSourceInfo* si, CompilerExpressionToken* token);
 
     void CmdImport_Parse();
     void CmdImport_Evaluate();
     void CmdGenerate_Parse();
-    void CmdGenearte_Evaluate();
+    void CmdGenerate_Evaluate();
 
     struct ErrorItem
     {

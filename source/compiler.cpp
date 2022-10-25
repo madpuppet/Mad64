@@ -24,6 +24,8 @@ char s_asciiToScreenCode[] = {
 
 CompilerLabel s_systemLabels[] =
 {
+    CompilerLabel("PI", M_PI),
+
     CompilerLabel("vic.sprite0X", 0xd000),  CompilerLabel("vic.sprite0Y", 0xd001),  CompilerLabel("vic.sprite1X", 0xd002),  CompilerLabel("vic.sprite1Y", 0xd003),
     CompilerLabel("vic.sprite2X", 0xd004),  CompilerLabel("vic.sprite2Y", 0xd005),  CompilerLabel("vic.sprite3X", 0xd006),  CompilerLabel("vic.sprite3Y", 0xd007),
     CompilerLabel("vic.sprite4X", 0xd008),  CompilerLabel("vic.sprite4Y", 0xd009),  CompilerLabel("vic.sprite5X", 0xd00a),  CompilerLabel("vic.sprite5Y", 0xd00b),
@@ -59,125 +61,222 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("sid.envelope3Output", 0xd41c)
 };
 
-i64 ExprAdd(i64 a, i64 b, i64 c)
+double ExprAdd(double a, double b, double c)
 {
     return a + b;
 }
-i64 ExprSub(i64 a, i64 b, i64 c)
+double ExprSub(double a, double b, double c)
 {
     return a - b;
 }
-i64 ExprDiv(i64 a, i64 b, i64 c)
+double ExprDiv(double a, double b, double c)
 {
+    if (abs(b) < 1.192092896e-20F)
+        return 0.0;
+
     return a / b;
 }
-i64 ExprMul(i64 a, i64 b, i64 c)
+double ExprMul(double a, double b, double c)
 {
     return a * b;
 }
-i64 ExprMod(i64 a, i64 b, i64 c)
+double ExprMod(double a, double b, double c)
 {
-    return a % b;
+    if ((u32)b == 0)
+        return 0.0;
+
+    return (double)((u32)a % (u32)b);
 }
-i64 ExprRShift(i64 a, i64 b, i64 c)
+double ExprRShift(double a, double b, double c)
 {
-    return a >> b;
+    return (double)((u32)a >> (u32)b);
 }
-i64 ExprLShift(i64 a, i64 b, i64 c)
+double ExprLShift(double a, double b, double c)
 {
-    return a << b;
+    return (double)((u32)a << (u32)b);
 }
-i64 ExprOr(i64 a, i64 b, i64 c)
+double ExprOr(double a, double b, double c)
 {
-    return a | b;
+    return (double)((u32)a | (u32)b);
 }
-i64 ExprAnd(i64 a, i64 b, i64 c)
+double ExprAnd(double a, double b, double c)
 {
-    return a & b;
+    return (double)((u32)a & (u32)b);
 }
-i64 ExprXor(i64 a, i64 b, i64 c)
+double ExprXor(double a, double b, double c)
 {
-    return a ^ b;
+    return (double)((u32)a ^ (u32)b);
 }
-i64 ExprNot(i64 a, i64 b, i64 c)
+double ExprNot(double a, double b, double c)
 {
-    return ~a;
+    return (double)(~(u64)a);
 }
-i64 ExprLowByte(i64 a, i64 b, i64 c)
+double ExprLowByte(double a, double b, double c)
 {
-    return a & 0xff;
+    return (double)((u32)a & 0xff);
 }
-i64 ExprHighByte(i64 a, i64 b, i64 c)
+double ExprHighByte(double a, double b, double c)
 {
-    return (a >> 8) & 0xff;
+    return (double)(((u32)a >> 8) & 0xff);
 }
-i64 ExprBoolNot(i64 a, i64 b, i64 c)
+double ExprBoolNot(double a, double b, double c)
 {
-    return a ? 0 : 1;
+    return a ? 0.0 : 1.0;
 }
-i64 ExprBoolOr(i64 a, i64 b, i64 c)
+double ExprBoolOr(double a, double b, double c)
 {
-    return (a || b) ? 1 : 0;
+    return (a || b) ? 1.0 : 0.0;
 }
-i64 ExprBoolAnd(i64 a, i64 b, i64 c)
+double ExprBoolAnd(double a, double b, double c)
 {
-    return (a && b) ? 1 : 0;
+    return (a && b) ? 1.0 : 0.0;
 }
-i64 ExprTernary(i64 a, i64 b, i64 c)
+double ExprTernary(double a, double b, double c)
 {
     return a ? b : c;
 }
-i64 ExprBoolLess(i64 a, i64 b, i64 c)
+double ExprBoolLess(double a, double b, double c)
 {
-    return (a < b) ? 1 : 0;
+    return (a < b) ? 1.0 : 0.0;
 }
-i64 ExprBoolLessEqual(i64 a, i64 b, i64 c)
+double ExprBoolLessEqual(double a, double b, double c)
 {
-    return (a <= b) ? 1 : 0;
+    return (a <= b) ? 1.0 : 0;
 }
-i64 ExprBoolGreater(i64 a, i64 b, i64 c)
+double ExprBoolGreater(double a, double b, double c)
 {
-    return (a > b) ? 1 : 0;
+    return (a > b) ? 1.0 : 0.0;
 }
-i64 ExprBoolGreaterEqual(i64 a, i64 b, i64 c)
+double ExprBoolGreaterEqual(double a, double b, double c)
 {
-    return (a >= b) ? 1 : 0;
+    return (a >= b) ? 1.0 : 0.0;
 }
-i64 ExprBoolEqual(i64 a, i64 b, i64 c)
+double ExprBoolEqual(double a, double b, double c)
 {
-    return (a == b) ? 1 : 0;
+    return (a == b) ? 1.0 : 0.0;
 }
-i64 ExprBoolNotEqual(i64 a, i64 b, i64 c)
+double ExprBoolNotEqual(double a, double b, double c)
 {
-    return (a != b) ? 1 : 0;
+    return (a != b) ? 1.0 : 0.0;
+}
+
+double ExprRound(double a, double b, double c)
+{
+    return round(a);
+}
+
+double ExprFloor(double a, double b, double c)
+{
+    return floor(a);
+}
+
+double ExprFMod(double a, double b, double c)
+{
+    return fmod(a,b);
+}
+
+double ExprSin(double a, double b, double c)
+{
+    return sin(a);
+}
+
+double ExprCos(double a, double b, double c)
+{
+    return cos(a);
+}
+
+double ExprTan(double a, double b, double c)
+{
+    return tan(a);
+}
+
+double ExprATan(double a, double b, double c)
+{
+    return atan(a);
+}
+
+double ExprACos(double a, double b, double c)
+{
+    // avoid NaNs
+    if (a < -1.0 || a > 1.0)
+        return 0.0;
+
+    return acos(a);
+}
+
+double ExprASin(double a, double b, double c)
+{
+    // avoid NaNs
+    if (a < -1.0 || a > 1.0)
+        return 0.0;
+
+    return asin(a);
+}
+
+double ExprATan2(double a, double b, double c)
+{
+    return atan2(a,b);
+}
+
+double ExprRand(double a, double b, double c)
+{
+    int range = (int)(b - a + 1.0);
+    if (range == 0)
+        return a;
+
+    return a + rand() % range;
+}
+
+double ExprRadToDeg(double a, double b, double c)
+{
+    return a * 180.0 / M_PI;
+}
+
+double ExprDegToRad(double a, double b, double c)
+{
+    return a * M_PI / 180.0;
 }
 
 CompilerExpressionOpcode s_exprOpcodes[] = {
-    {"~",  1, 15, &ExprNot},
-    {"!",  1, 15, &ExprBoolNot},
-    {"/",  2, 14, &ExprDiv},
-    {"*",  2, 14, &ExprMul},
-    {"%",  2, 14, &ExprMod},
-    {"+",  2, 13, &ExprAdd},
-    {"-",  2, 13, &ExprSub},
-    {">>", 2, 12, &ExprRShift},
-    {"<<", 2, 12, &ExprLShift},
-    {"<",  2, 11, &ExprBoolLess},
-    {"<=", 2, 11, &ExprBoolLessEqual},
-    {">",  2, 11, &ExprBoolGreater},
-    {">=", 2, 11, &ExprBoolGreaterEqual},
-    {"==", 2, 10, &ExprBoolEqual},
-    {"!=", 2, 10, &ExprBoolNotEqual},
-    {"&",  2, 9,  &ExprAnd},
-    {"^",  2, 8,  &ExprXor},
-    {"|",  2, 7,  &ExprOr},
-    {"&&", 2, 6,  &ExprBoolAnd},
-    {"||", 2, 5,  &ExprBoolOr},
-    {"?",  3, 4,  &ExprTernary}
+    {"/",  2, 11, CEOT_Binary, &ExprDiv},
+    {"*",  2, 11, CEOT_Binary, &ExprMul},
+    {"%",  2, 11, CEOT_Binary, &ExprMod},
+    {"+",  2, 10, CEOT_Binary, &ExprAdd},
+    {"-",  2, 10, CEOT_Binary, &ExprSub},
+    {">>", 2, 9, CEOT_Binary, &ExprRShift},
+    {"<<", 2, 9, CEOT_Binary, &ExprLShift},
+    {"<",  2, 8, CEOT_Binary, &ExprBoolLess},
+    {"<=", 2, 8, CEOT_Binary, &ExprBoolLessEqual},
+    {">",  2, 8, CEOT_Binary, &ExprBoolGreater},
+    {">=", 2, 8, CEOT_Binary, &ExprBoolGreaterEqual},
+    {"==", 2, 7, CEOT_Binary, &ExprBoolEqual},
+    {"!=", 2, 7, CEOT_Binary, &ExprBoolNotEqual},
+    {"&",  2, 6,  CEOT_Binary, &ExprAnd},
+    {"^",  2, 5,  CEOT_Binary, &ExprXor},
+    {"|",  2, 4,  CEOT_Binary, &ExprOr},
+    {"&&", 2, 3,  CEOT_Binary, &ExprBoolAnd},
+    {"||", 2, 2,  CEOT_Binary, &ExprBoolOr},
+    {"?",  3, 1,  CEOT_Ternary, &ExprTernary}
 };
-CompilerExpressionOpcode s_exprLowByte = { "<", 1, 15, &ExprLowByte };
-CompilerExpressionOpcode s_exprHighByte = { ">", 1, 15, &ExprHighByte };
-
+CompilerExpressionOpcode s_exprPrefixOpcodes[] = {
+    { "<", 1, 12, CEOT_Prefix, &ExprLowByte },
+    { ">", 1, 12, CEOT_Prefix, &ExprHighByte },
+    { "~",  1, 12, CEOT_Prefix, &ExprNot},
+    { "!",  1, 12, CEOT_Prefix, &ExprBoolNot},
+    {"round", 1, 13, CEOT_Func, &ExprRound},
+    {"floor", 1, 13, CEOT_Func, &ExprFloor},
+    {"mod", 2, 13, CEOT_Func, &ExprFMod},
+    {"sin", 1, 13, CEOT_Func, &ExprSin},
+    {"cos", 1, 13, CEOT_Func, &ExprCos},
+    {"tan", 1, 13, CEOT_Func, &ExprTan},
+    {"asin", 1, 13, CEOT_Func, &ExprASin},
+    {"acos", 1, 13, CEOT_Func, &ExprACos},
+    {"atan", 1, 13, CEOT_Func, &ExprATan},
+    {"atan2", 2, 13, CEOT_Func, &ExprATan2},
+    {"rand", 2, 13, CEOT_Func, &ExprRand},
+    {"DegToRad", 1, 13, CEOT_Func, &ExprDegToRad},
+    {"RadToDeg", 1, 13, CEOT_Func, &ExprRadToDeg}
+};
 
 CompilerExpressionOpcode* Compiler::FindExprOpcode(string& token)
 {
@@ -189,6 +288,15 @@ CompilerExpressionOpcode* Compiler::FindExprOpcode(string& token)
     return nullptr;
 }
 
+CompilerExpressionOpcode* Compiler::FindPrefixExprOpcode(string& token)
+{
+    for (int i = 0; i < sizeof(s_exprPrefixOpcodes) / sizeof(CompilerExpressionOpcode); i++)
+    {
+        if (StrEqual(token, s_exprPrefixOpcodes[i].text))
+            return &s_exprPrefixOpcodes[i];
+    }
+    return nullptr;
+}
 
 int gAddressingModeSize[] =
 {
@@ -598,7 +706,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         if (li->error)
             return;
 
-        i64 addr;
+        double addr;
         if (!EvaluateExpression(si, li, li->operandExpr, addr))
             return;
 
@@ -678,7 +786,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             else
             {
                 // if we can't evaluate it now, then we consider it absolute addressing
-                i64 value;
+                double value;
                 bool canEvaluate = EvaluateExpression(si, li, li->operandExpr, value);
                 bool isZeroPage = (canEvaluate && value >= -128 && value <= 255);
 
@@ -811,7 +919,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
 
             PopExpressionValue(fifo, li, li->operandExpr, 0);
 
-            i64 value;
+            double value;
             if (EvaluateExpression(si, li, li->operandExpr, value))
             {
                 si->m_labels.push_back(new CompilerLabel(li->label, value, li->lineNmbr));
@@ -849,7 +957,7 @@ bool Compiler::ResolveExpressionToken(CompilerSourceInfo *si, CompilerExpression
     return true;
 }
 
-bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, i64 &value)
+bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, double &value)
 {
     int tokenIdx = 0;
     int operatorIdx = 0;
@@ -863,6 +971,15 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
         }
         else
         {
+            if (expr->m_tokens.empty())
+                return false;
+
+            if (tokenIdx < 0)
+                return false;
+
+            if (tokenIdx >= expr->m_tokens.size())
+                return false;
+
             auto op = expr->m_operators[operatorIdx];
             if (op->params == 1)
             {
@@ -870,7 +987,7 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
                 if (!ResolveExpressionToken(si, token))
                     return false;
 
-                i64 value = op->Evaluate(token->value, 0, 0);
+                double value = op->Evaluate(token->value, 0, 0);
 
                 auto newToken = new CompilerExpressionToken(value);
                 expr->m_tokens[tokenIdx] = newToken;
@@ -889,7 +1006,7 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
                 if (!ResolveExpressionToken(si, inTok2))
                     return false;
 
-                i64 value = op->Evaluate(inTok1->value, inTok2->value, 0);
+                double value = op->Evaluate(inTok1->value, inTok2->value, 0);
 
                 auto newToken = new CompilerExpressionToken(value);
                 expr->m_tokens.erase(expr->m_tokens.begin() + tokenIdx, expr->m_tokens.begin() + (tokenIdx + 2));
@@ -913,7 +1030,7 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
                 if (!ResolveExpressionToken(si, inTok3))
                     return false;
 
-                i64 value = op->Evaluate(inTok1->value, inTok2->value, inTok3->value);
+                double value = op->Evaluate(inTok1->value, inTok2->value, inTok3->value);
 
                 auto newToken = new CompilerExpressionToken(value);
                 expr->m_tokens.erase(expr->m_tokens.begin() + tokenIdx, expr->m_tokens.begin() + (tokenIdx + 2));
@@ -925,11 +1042,9 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
 
             expr->m_operators.erase(expr->m_operators.begin() + operatorIdx);
             expr->m_operatorPri.erase(expr->m_operatorPri.begin() + operatorIdx);
-            if (operatorIdx > 0)
-            {
-                operatorIdx--;
-                tokenIdx--;
-            }
+
+            operatorIdx = 0;
+            tokenIdx = 0;
         }
     }
 
@@ -970,15 +1085,15 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
                 if (li->operand > 255)
                     ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, gAddressingModeName[li->addressMode]);
 
-                li->data.push_back(li->operand & 0xff);
+                li->data.push_back((u8)(li->operand) & 0xff);
             }
             else if (instructionLength == 3)
             {
-                if (li->operand < -32768 || li->operand > 65535)
+                if ((i32)li->operand < -32768 || (i32)li->operand > 65535)
                     ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, gAddressingModeName[li->addressMode]);
 
-                li->data.push_back((u8)(li->operand & 0xff));
-                li->data.push_back((u8)((li->operand >> 8) & 0xff));
+                li->data.push_back((u8)li->operand);
+                li->data.push_back((u8)((u16)li->operand >> 8));
             }
         }
     }
@@ -998,11 +1113,11 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         {
             for (int i = 0; i < li->dataExpr.size(); i++)
             {
-                i64 value;
+                double value;
                 if (!EvaluateExpression(si, li, li->dataExpr[i], value))
                     return false;
 
-                li->data.push_back(value & 0xff);
+                li->data.push_back((u8)value & 0xff);
             }
             li->dataEvaluated = true;
         }
@@ -1013,12 +1128,12 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         {
             for (int i = 0; i < li->dataExpr.size(); i++)
             {
-                i64 value;
+                double value;
                 if (!EvaluateExpression(si, li, li->dataExpr[i], value))
                     return false;
 
-                li->data.push_back((u8)(value & 0xff));
-                li->data.push_back((u8)(value >> 8));
+                li->data.push_back((u8)value & 0xff);
+                li->data.push_back((u8)((u16)value >> 8));
             }
             li->dataEvaluated = true;
         }
@@ -1197,7 +1312,10 @@ void Compiler::Compile(SourceFile* file)
     lw->ClearLog(LogWindow::LF_LabelHelp);
     for (auto l : sourceInfo->m_labels)
     {
-        lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
+        if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0))<0.0000001 && abs(l->m_value) < 1000000000.0f)
+            lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr);
+        else
+            lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
     }
 
     FlushErrors();
@@ -1368,6 +1486,8 @@ TokenisedFile::~TokenisedFile()
 
 void Compiler::PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, CompilerExpression* expr, int priority)
 {
+    CompilerExpressionOpcode *opc;
+
     if (fifo.Peek() == "(")
     {
         fifo.Pop();
@@ -1424,42 +1544,46 @@ void Compiler::PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, Compile
         else if ((token[0] >= '0' && token[0] <= '9') || token[0] == '.' || token[0] == '-' || token[0] == '+')
         {
             // value
-            i64 value = 0;
+            double value = 0;
             if (token == "-")
             {
-                value = -atoi(fifo.Pop().c_str());
+                value = -atof(fifo.Pop().c_str());
             }
             else if (token == "+")
             {
-                value = atoi(fifo.Pop().c_str());
+                value = atof(fifo.Pop().c_str());
             }
             else
             {
-                value = atoi(token.c_str());
+                value = atof(token.c_str());
             }
             expr->m_tokens.push_back(new CompilerExpressionToken(value));
         }
-        else if (token == "~" || token == "!")
+        else if ((opc = FindPrefixExprOpcode(token)) != nullptr)
         {
-            CompilerExpressionOpcode* opc = FindExprOpcode(token);
-            expr->m_operators.push_back(opc);
-            expr->m_operatorPri.push_back(priority + opc->priority);
+            if (opc->type == CEOT_Prefix)
+            {
+                expr->m_operators.push_back(opc);
+                expr->m_operatorPri.push_back(priority + opc->priority);
+                PopExpressionValue(fifo, li, expr, priority);
+            }
+            else // must be a function
+            {
+                expr->m_operators.push_back(opc);
+                expr->m_operatorPri.push_back(priority + opc->priority);
+                if (fifo.Pop() != "(")
+                    ERR("Expected open brackets after function");
+                PopExpressionValue(fifo, li, expr, priority+16);
 
-            PopExpressionValue(fifo, li, expr, priority);
-        }
-        else if (token == ">")
-        {
-            CompilerExpressionOpcode* opc = &s_exprHighByte;
-            expr->m_operators.push_back(opc);
-            expr->m_operatorPri.push_back(priority + opc->priority);
-            PopExpressionValue(fifo, li, expr, priority);
-        }
-        else if (token == "<")
-        {
-            CompilerExpressionOpcode* opc = &s_exprLowByte;
-            expr->m_operators.push_back(opc);
-            expr->m_operatorPri.push_back(priority + opc->priority);
-            PopExpressionValue(fifo, li, expr, priority);
+                if (opc->params == 2)
+                {
+                    if (fifo.Pop() != ",")
+                        ERR("Expected comma between function params");
+                    PopExpressionValue(fifo, li, expr, priority+16);
+                }
+                if (fifo.Pop() != ")")
+                    ERR("Expected close brackets after function params");
+            }
         }
         else
         {
