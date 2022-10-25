@@ -82,6 +82,7 @@ AppSettings::AppSettings()
     xPosText = 185;
     xPosContextHelp = 1600;
     scrollBarWidth = 20;
+    loadedFilePaths.push_back("readme.txt");
 }
 
 bool AppSettings::Load()

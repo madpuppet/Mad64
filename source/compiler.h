@@ -291,6 +291,11 @@ public:
     bool EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, i64& value);
     bool ResolveExpressionToken(CompilerSourceInfo* si, CompilerExpressionToken* token);
 
+    void CmdImport_Parse();
+    void CmdImport_Evaluate();
+    void CmdGenerate_Parse();
+    void CmdGenearte_Evaluate();
+
     struct ErrorItem
     {
         string text;

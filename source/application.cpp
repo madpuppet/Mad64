@@ -10,13 +10,16 @@ const int SCREEN_HEIGHT = 1080;
 
 Application *gApp;
 
+#define APP_TITLE "MAD64"
+#define VERSION "2022.03"
+
 Application::Application()
 {
     gApp = this;
     m_fullscreen = false;
 
     //Create window
-    m_window = SDL_CreateWindow("MAD64", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    m_window = SDL_CreateWindow(APP_TITLE " v" VERSION, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
     {
         printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -269,7 +272,10 @@ void Application::CreateNewFile()
     {
         auto source = new SourceFile(ofn.lpstrFile);
         m_sourceFiles.push_back(source);
-
+        auto newLine = new SourceLine();
+        newLine->Tokenize();
+        newLine->VisualizeText();
+        source->GetLines().push_back(newLine);
         m_editWindow->OnFileLoaded(source);
     }
 }

@@ -272,16 +272,6 @@ void LogWindow::OnMouseMotion(SDL_Event* event)
 		m_highlightRow = -1;
 	else
 		m_highlightRow = (y - m_area.y + m_scroll) / settings->lineHeight;
-
-	// autoScroll
-	int topDx = SDL_clamp(y - (m_area.y + 40), -40, 0);
-	int bottomDx = SDL_clamp(y - (m_area.y + m_area.h - 40), 0, 40);
-	if (topDx < 0)
-		m_autoScroll = 40 * topDx;
-	else if (bottomDx > 0)
-		m_autoScroll = 40 * bottomDx;
-	else
-		m_autoScroll = 0;
 }
 
 
