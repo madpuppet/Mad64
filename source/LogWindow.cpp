@@ -1,7 +1,7 @@
 #include "common.h"
 #include "LogWindow.h"
 
-static const char* s_titles[] = { "Contextual Help", "Compiler", "Labels", "Memory"};
+static const char* s_titles[] = { "Compiler", "Labels","Contextual Help",  "Memory"};
 
 LogWindow::LogWindow()
 {
@@ -30,7 +30,19 @@ LogWindow::~LogWindow()
 void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
 {
 	auto settings = gApp->GetSettings();
-	SDL_Color color = (colIdx == 0) ? settings->helpTitleColor : settings->helpBodyColor;
+	SDL_Color color;
+	switch (colIdx)
+	{
+		case 0:
+			color = settings->helpTitleColor;
+			break;
+		case 1:
+			color = settings->helpBodyColor1;
+			break;
+		case 2:
+			color = settings->helpBodyColor2;
+			break;
+	}
 	m_gc[filter]->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), color, 0, 0));
 	m_gcLines[filter].push_back(lineNmbr);
 }

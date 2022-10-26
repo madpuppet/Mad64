@@ -292,6 +292,9 @@ void Application::CreateNewFile()
         newLine->VisualizeText();
         source->GetLines().push_back(newLine);
         m_editWindow->OnFileLoaded(source);
+
+        m_settings->loadedFilePaths.push_back(name);
+        m_settings->Save();
     }
 }
 

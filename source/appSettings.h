@@ -29,7 +29,8 @@ public:
     SDL_Color numericColor;
     SDL_Color helpGroupColor;
     SDL_Color helpTitleColor;
-    SDL_Color helpBodyColor;
+    SDL_Color helpBodyColor1;
+    SDL_Color helpBodyColor2;
 
     vector<string> loadedFilePaths;
     string activeFilePath;

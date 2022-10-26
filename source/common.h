@@ -51,6 +51,20 @@ inline size_t StrFind(const string& haystack, const string& needle, size_t offse
 	}
 	return string::npos;
 }
+inline size_t StrFind(const char *haystack, const string& needle, size_t offset = 0)
+{
+	size_t needleSize = needle.size();
+	size_t haystackSize = strlen(haystack);
+	if (haystackSize < needleSize || needleSize == 0)
+		return string::npos;
+	size_t maxidx = haystackSize - needle.size();
+	for (size_t i = offset; i <= maxidx; i++)
+	{
+		if (SDL_strncasecmp(&haystack[i], &needle[0], needleSize) == 0)
+			return i;
+	}
+	return string::npos;
+}
 
 extern string FormatString(const char* pFormat, ...);
 #define STR(...)  FormatString(__VA_ARGS__);

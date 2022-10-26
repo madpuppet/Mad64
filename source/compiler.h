@@ -1,5 +1,6 @@
 #pragma once
 #include "thread.h"
+#include "contextualHelp.h"
 
 // compiler label only get added to labels list once they are evaluated
 class CompilerLabel
@@ -171,7 +172,6 @@ public:
 struct CompilerOpcode
 {
     const char* name;
-    const char** help;
     AddressingMode addressMode;
     u8 opc;
     u8 cycles;
@@ -333,7 +333,7 @@ public:
     void CmdImport_Parse(TokenFifo& fifo, CompilerSourceInfo* si, CompilerLineInfo* li, u32& currentMemAddr);
 
     void AddLabelsContaining(CompilerSourceInfo* cs, vector<CompilerLabel*>& labels, const string& token);
-    void AddOpcodesContaining(vector<CompilerOpcode*>& opcodes, const string& token);
+    void AddCommandsContaining(vector<CommandHelp*>& commands, const string& token);
 
 
     struct ErrorItem

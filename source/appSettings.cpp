@@ -80,7 +80,8 @@ AppSettings::AppSettings()
     opCodeColor = { 255, 200, 50, 255 };
     helpGroupColor = { 255, 200, 50, 255 };
     helpTitleColor = { 160, 160, 50, 255 };
-    helpBodyColor = { 64, 128, 50, 255 };
+    helpBodyColor1 = { 128, 64, 255, 255 };
+    helpBodyColor2 = { 128, 64, 128, 255 };
     xPosDecode = 57;
     xPosText = 185;
     xPosContextHelp = 1600;
@@ -196,11 +197,17 @@ bool AppSettings::Load()
                     ReadColor(value, r, g, b);
                     helpTitleColor = { r, g, b, 255 };
                 }
-                else if (SDL_strcasecmp(token, "helpBodyColor") == 0)
+                else if (SDL_strcasecmp(token, "helpBodyColor1") == 0)
                 {
                     u8 r, g, b;
                     ReadColor(value, r, g, b);
-                    helpBodyColor = { r, g, b, 255 };
+                    helpBodyColor1 = { r, g, b, 255 };
+                }
+                else if (SDL_strcasecmp(token, "helpBodyColor2") == 0)
+                {
+                    u8 r, g, b;
+                    ReadColor(value, r, g, b);
+                    helpBodyColor2 = { r, g, b, 255 };
                 }
                 else if (SDL_strcasecmp(token, "vicePath") == 0)
                 {
@@ -277,7 +284,8 @@ bool AppSettings::Save()
         fprintf(fh, "numericColor=%d,%d,%d\n", numericColor.r, numericColor.g, numericColor.b);
         fprintf(fh, "helpGroupColor=%d,%d,%d\n", helpGroupColor.r, helpGroupColor.g, helpGroupColor.b);
         fprintf(fh, "helpTitleColor=%d,%d,%d\n", helpTitleColor.r, helpTitleColor.g, helpTitleColor.b);
-        fprintf(fh, "helpBodyColor=%d,%d,%d\n", helpBodyColor.r, helpBodyColor.g, helpBodyColor.b);
+        fprintf(fh, "helpBodyColor1=%d,%d,%d\n", helpBodyColor1.r, helpBodyColor1.g, helpBodyColor1.b);
+        fprintf(fh, "helpBodyColor2=%d,%d,%d\n", helpBodyColor2.r, helpBodyColor2.g, helpBodyColor2.b);
         if (!vicePath.empty())
         {
             fprintf(fh, "vicePath=%s\n", vicePath.c_str());
