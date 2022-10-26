@@ -99,14 +99,34 @@ void SourceFile::Visualize()
 
 bool SourceFile::Save()
 {
+    auto settings = gApp->GetSettings();
+    string settingsPath = settings->GetFilePath();
+    if (StrEqual(settingsPath, GetPath()))
+    {
+        vector<string> loadedFiles = settings->loadedFilePaths;
+        if (!SaveInternal())
+            return false;
+        settings->Load();
+        settings->loadedFilePaths = loadedFiles;
+        gApp->ReloadFont();
+        return true;
+    }
+    else
+    {
+        return SaveInternal();
+    }
+}
+
+bool SourceFile::SaveInternal()
+{
     FILE* fh = fopen(m_path.c_str(), "w");
     if (fh)
     {
-        for (int i=0; i<m_lines.size(); i++)
+        for (int i = 0; i < m_lines.size(); i++)
         {
             auto line = m_lines[i];
             string str(line->GetChars().data(), line->GetChars().size());
-            if (i == m_lines.size()-1)
+            if (i == m_lines.size() - 1)
                 fprintf(fh, "%s", str.c_str());
             else
                 fprintf(fh, "%s\n", str.c_str());

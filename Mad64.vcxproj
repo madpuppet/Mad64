@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -155,6 +155,7 @@
     <ClCompile Include="source\application.cpp" />
     <ClCompile Include="source\cmdManager.cpp" />
     <ClCompile Include="source\compiler.cpp" />
+    <ClCompile Include="source\contextualHelp.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
     <ClCompile Include="source\LogWindow.cpp" />
@@ -265,7 +266,9 @@
     <ClInclude Include="source\cmdManager.h" />
     <ClInclude Include="source\common.h" />
     <ClInclude Include="source\compiler.h" />
+    <ClInclude Include="source\contextualHelp.h" />
     <ClInclude Include="source\editWindow.h" />
+    <ClInclude Include="source\emulator.h" />
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\appSettings.h" />
     <ClInclude Include="source\logWindow.h" />

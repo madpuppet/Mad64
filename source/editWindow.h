@@ -20,6 +20,7 @@ public:
 	void OnResize();
 	void OnEvent(SDL_Event* e);
 	void OnKeyDown(SDL_Event* e);
+	void OnKeyUp(SDL_Event* e);
 
 	// return TRUE to capture input to this window in future
 	void OnMouseDown(SDL_Event* e);
@@ -128,9 +129,12 @@ protected:
 	void OnReplaceEnter(const string& text);
 	vector<int> m_searchFoundLines;
 
+	void UpdateContextualHelp();
+
 	bool m_keyMarking;
 	bool m_mouseMarking;
 	bool m_marked;
+	bool m_shiftDown;
 	int m_markStartLine;
 	int m_markStartColumn;
 	int m_markEndLine;

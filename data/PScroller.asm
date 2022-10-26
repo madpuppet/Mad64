@@ -394,8 +394,8 @@ extend_borders:
 
    lda #$fe
 @hack:
-   cmp vic.rasterCounter
-   bne @hack-
+    cmp vic.rasterCounter
+    bne @hack-
 
     lda #$18
     sta $d011
@@ -860,7 +860,7 @@ sprites:
     *=$2200
 xwave:
     ; Make data for a sine wave
-    .generate.b 0,255,round(70 + 16*sin(DegToRad(360*i/256)) + 16*sin(DegToRad(360*i/128)))
+    .generate.b 0,255,round(70 + 16*sin(rad(360*i/256)) + 16*sin(rad(360*i/128)))
    
 	* = $3000  "Sprites"
 

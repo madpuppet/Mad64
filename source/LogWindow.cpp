@@ -1,7 +1,7 @@
 #include "common.h"
 #include "LogWindow.h"
 
-static const char* s_titles[] = { "Instruction Details", "Warnings", "Labels", "Memory"};
+static const char* s_titles[] = { "Contextual Help", "Compiler", "Labels", "Memory"};
 
 LogWindow::LogWindow()
 {
@@ -27,10 +27,11 @@ LogWindow::~LogWindow()
 	}
 }
 
-void LogWindow::LogText(LogFilter filter, string text, int lineNmbr)
+void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
 {
 	auto settings = gApp->GetSettings();
-	m_gc[filter]->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), settings->commentColor, 0, 0));
+	SDL_Color color = (colIdx == 0) ? settings->helpTitleColor : settings->helpBodyColor;
+	m_gc[filter]->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), color, 0, 0));
 	m_gcLines[filter].push_back(lineNmbr);
 }
 
@@ -93,7 +94,7 @@ void LogWindow::Draw()
 			{
 				if (m_gcLines[i].empty())
 				{
-					SDL_Color col = settings->opCodeColor;
+					SDL_Color col = settings->helpGroupColor;
 					col.r = col.r * 2 / 3;
 					col.g = col.g * 2 / 3;
 					col.b = col.b * 2 / 3;
@@ -101,7 +102,8 @@ void LogWindow::Draw()
 				}
 				else
 				{
-					m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s (%d)", m_groupOpen[i] ? '-' : '+', s_titles[i], m_gcLines[i].size()).c_str(), settings->opCodeColor, 0, 0);
+					SDL_Color col = settings->helpGroupColor;
+					m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s (%d)", m_groupOpen[i] ? '-' : '+', s_titles[i], m_gcLines[i].size()).c_str(), col, 0, 0);
 				}
 			}
 
@@ -238,6 +240,17 @@ void LogWindow::SnapScrollBarToMouseY(int y)
 	ClampTargetScroll();
 }
 
+void LogWindow::LogTextArray(LogFilter filter, const char** textArray)
+{
+	const char** t = textArray;
+	int colIdx = 0;
+	while (*t)
+	{
+		LogText(filter, string(*t), -1, colIdx);
+		colIdx = 1;
+		t++;
+	}
+}
 
 void LogWindow::OnMouseDown(SDL_Event* event)
 {

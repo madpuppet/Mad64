@@ -1,8 +1,5 @@
-tempChar = $80
-tempVoice = $81
-
-*=$1000
-    sta tempChar
-    rts
-
- 
+.basicStartup
+    ldx #10
+    ldy #$ff
+loop:
+    sta vic.backgroundColor0    

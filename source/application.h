@@ -58,6 +58,7 @@ protected:
     // EVENTS
     void HandleEvent(SDL_Event* e);
     void OnKeyDown(SDL_Event* e);
+    void OnKeyUp(SDL_Event* e);
 
     // RESOURCES
     SDL_Window* m_window;

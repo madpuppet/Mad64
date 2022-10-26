@@ -171,6 +171,7 @@ public:
 struct CompilerOpcode
 {
     const char* name;
+    const char** help;
     AddressingMode addressMode;
     u8 opc;
     u8 cycles;
@@ -331,6 +332,10 @@ public:
 
     void CmdImport_Parse(TokenFifo& fifo, CompilerSourceInfo* si, CompilerLineInfo* li, u32& currentMemAddr);
 
+    void AddLabelsContaining(CompilerSourceInfo* cs, vector<CompilerLabel*>& labels, const string& token);
+    void AddOpcodesContaining(vector<CompilerOpcode*>& opcodes, const string& token);
+
+
     struct ErrorItem
     {
         string text;
@@ -339,6 +344,8 @@ public:
     vector<ErrorItem*> m_errors;
     void Error(const string &text, int lineNmbr);
     void FlushErrors();
+
+    void LogContextualHelp(SourceFile* sf, int line);
 
 protected:
     Semaphore m_compileRequested;

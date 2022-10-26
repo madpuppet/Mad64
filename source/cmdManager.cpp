@@ -112,17 +112,22 @@ void CmdChangeLines::Do()
 	}
 
 	gApp->GetEditWindow()->SetActiveFile(m_file);
+
+	m_file->UpdateDirty(1);
+
+	if (HasExtension(m_file->GetPath().c_str(), ".asm"))
+	{
+		gApp->GetCompiler()->Compile(m_file);
+		gApp->GetCompiler()->LogContextualHelp(m_file, m_newActiveLine);
+	}
+
+	// goto line AFTER compile so we get contextual help updated
 	gApp->GetEditWindow()->GotoLineCol(m_newActiveLine, m_newActiveColumn, MARK_None, true);
 
 	if (m_changeMarking)
 	{
 		gApp->GetEditWindow()->SetMarking(m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn);
 	}
-
-	m_file->UpdateDirty(1);
-
-	if (HasExtension(m_file->GetPath().c_str(), ".asm"))
-		gApp->GetCompiler()->Compile(m_file);
 }
 
 void CmdChangeLines::Undo()
@@ -164,13 +169,16 @@ void CmdChangeLines::Undo()
 		}
 	}
 
-	gApp->GetEditWindow()->SetActiveFile(m_file);
-	gApp->GetEditWindow()->GotoLineCol(m_oldActiveLine, m_oldActiveColumn, MARK_None, true);
-
 	m_file->UpdateDirty(-1);
 
 	if (HasExtension(m_file->GetPath().c_str(), ".asm"))
+	{
 		gApp->GetCompiler()->Compile(m_file);
+		gApp->GetCompiler()->LogContextualHelp(m_file, m_oldActiveLine);
+	}
+
+	gApp->GetEditWindow()->SetActiveFile(m_file);
+	gApp->GetEditWindow()->GotoLineCol(m_oldActiveLine, m_oldActiveColumn, MARK_None, true);
 }
 
 void CmdChangeLines::PushAdd(int line, string& chars)

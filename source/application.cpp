@@ -139,6 +139,7 @@ void Application::HandleEvent(SDL_Event *e)
         OnKeyDown(e);
         break;
     case SDL_KEYUP:
+        OnKeyUp(e);
         break;
     case SDL_WINDOWEVENT:
         m_editWindow->OnResize();
@@ -224,19 +225,7 @@ void Application::SaveFile()
     auto activeFile = m_editWindow->GetActiveFile();
     if (activeFile)
     {
-        string settingsPath = m_settings->GetFilePath();
-        if (StrEqual(settingsPath, activeFile->GetPath()))
-        {
-            vector<string> loadedFiles = m_settings->loadedFilePaths;
-            activeFile->Save();
-            m_settings->Load();
-            m_settings->loadedFilePaths = loadedFiles;
-            ReloadFont();
-        }
-        else
-        {
-            activeFile->Save();
-        }
+        activeFile->Save();
     }
 }
 
@@ -270,7 +259,33 @@ void Application::CreateNewFile()
     ofn.Flags = 0;
     if (GetSaveFileNameA(&ofn))
     {
-        auto source = new SourceFile(ofn.lpstrFile);
+        string name = ofn.lpstrFile;
+        if (ofn.nFilterIndex == 2)
+        {
+            if (!HasExtension(name.c_str(), ".asm"))
+            {
+                size_t last = name.find_last_of('.');
+                if (last != string::npos)
+                {
+                    name = name.substr(0, last);
+                }
+                name += ".asm";
+            }
+        }
+        else if (ofn.nFilterIndex == 3)
+        {
+            if (!HasExtension(name.c_str(), ".bas"))
+            {
+                size_t last = name.find_last_of('.');
+                if (last != string::npos)
+                {
+                    name = name.substr(0, last);
+                }
+                name += ".bas";
+            }
+        }
+
+        auto source = new SourceFile(name.c_str());
         m_sourceFiles.push_back(source);
         auto newLine = new SourceLine();
         newLine->Tokenize();
@@ -373,6 +388,11 @@ void Application::OnKeyDown(SDL_Event* e)
     }
 
     m_editWindow->OnKeyDown(e);
+}
+
+void Application::OnKeyUp(SDL_Event* e)
+{
+    m_editWindow->OnKeyUp(e);
 }
 
 int Application::GetCurrentIndent(string& chars)

@@ -50,6 +50,8 @@ public:
     void Visualize();
 
 protected:
+    bool SaveInternal();
+
     bool m_forceDirty;
     int m_dirtyCount;
     int m_sourceVersion;

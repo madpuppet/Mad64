@@ -78,6 +78,9 @@ AppSettings::AppSettings()
     commentColor = { 0, 255, 64, 255 };
     numericColor = { 200, 255, 50, 255 };
     opCodeColor = { 255, 200, 50, 255 };
+    helpGroupColor = { 255, 200, 50, 255 };
+    helpTitleColor = { 160, 160, 50, 255 };
+    helpBodyColor = { 64, 128, 50, 255 };
     xPosDecode = 57;
     xPosText = 185;
     xPosContextHelp = 1600;
@@ -181,12 +184,31 @@ bool AppSettings::Load()
                     ReadColor(value, r, g, b);
                     numericColor = { r, g, b, 255 };
                 }
+                else if (SDL_strcasecmp(token, "helpGroupColor") == 0)
+                {
+                    u8 r, g, b;
+                    ReadColor(value, r, g, b);
+                    helpGroupColor = { r, g, b, 255 };
+                }
+                else if (SDL_strcasecmp(token, "helpTitleColor") == 0)
+                {
+                    u8 r, g, b;
+                    ReadColor(value, r, g, b);
+                    helpTitleColor = { r, g, b, 255 };
+                }
+                else if (SDL_strcasecmp(token, "helpBodyColor") == 0)
+                {
+                    u8 r, g, b;
+                    ReadColor(value, r, g, b);
+                    helpBodyColor = { r, g, b, 255 };
+                }
                 else if (SDL_strcasecmp(token, "vicePath") == 0)
                 {
                     ReadString(value, vicePath);
                 }
                 else if (SDL_strcasecmp(token, "loadedFilePaths") == 0)
                 {
+                    loadedFilePaths.clear();
                     ReadStringArray(value, loadedFilePaths);
                 }
                 else if (SDL_strcasecmp(token, "activeFilePath") == 0)
@@ -253,6 +275,9 @@ bool AppSettings::Save()
         fprintf(fh, "opCodeColor=%d,%d,%d\n", opCodeColor.r, opCodeColor.g, opCodeColor.b);
         fprintf(fh, "commentColor=%d,%d,%d\n", commentColor.r, commentColor.g, commentColor.b);
         fprintf(fh, "numericColor=%d,%d,%d\n", numericColor.r, numericColor.g, numericColor.b);
+        fprintf(fh, "helpGroupColor=%d,%d,%d\n", helpGroupColor.r, helpGroupColor.g, helpGroupColor.b);
+        fprintf(fh, "helpTitleColor=%d,%d,%d\n", helpTitleColor.r, helpTitleColor.g, helpTitleColor.b);
+        fprintf(fh, "helpBodyColor=%d,%d,%d\n", helpBodyColor.r, helpBodyColor.g, helpBodyColor.b);
         if (!vicePath.empty())
         {
             fprintf(fh, "vicePath=%s\n", vicePath.c_str());

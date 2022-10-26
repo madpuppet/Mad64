@@ -590,15 +590,19 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 				int line, col;
 				if (MouseToRowCol(e->button.x, e->button.y, line, col))
 				{
-					m_activeSourceFileItem->activeLine = line;
-					m_activeSourceFileItem->activeColumn = col;
-					m_activeSourceFileItem->activeTargetX = e->button.x - m_sourceEditRect.x;
-
-					m_marked = m_mouseMarking = true;
-					m_markStartColumn = col;
-					m_markEndColumn = col;
-					m_markStartLine = line;
-					m_markEndLine = line;
+					if (m_shiftDown)
+					{
+						GotoLineCol(line, col, MARK_Mouse, true);
+					}
+					else
+					{
+						GotoLineCol(line, col, MARK_None, true);
+						m_marked = m_mouseMarking = true;
+						m_markStartColumn = col;
+						m_markEndColumn = col;
+						m_markStartLine = line;
+						m_markEndLine = line;
+					}
 				}
 			}
 		}
@@ -1002,6 +1006,10 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 				gApp->Cmd_DeleteChar();
 			}
 			return;
+		case SDLK_LSHIFT:
+		case SDLK_RSHIFT:
+			m_shiftDown = true;
+			return;
 		case SDLK_RETURN:
 			if (m_marked)
 			{
@@ -1021,6 +1029,17 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			}
 			gApp->Cmd_InsertChar(ch);
 		}
+	}
+}
+
+void EditWindow::OnKeyUp(SDL_Event *e)
+{
+	switch (e->key.keysym.sym)
+	{
+		case SDLK_LSHIFT:
+		case SDLK_RSHIFT:
+			m_shiftDown = false;
+			return;
 	}
 }
 
@@ -1412,4 +1431,19 @@ void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)
 
 		MakeActiveLineVisible();
 	}
+	UpdateContextualHelp();
 }
+
+void EditWindow::UpdateContextualHelp()
+{
+	if (m_activeSourceFileItem)
+	{
+		gApp->GetCompiler()->LogContextualHelp(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine);
+	}
+	else
+	{
+		gApp->GetLogWindow()->ClearLog(LogWindow::LF_InstructionHelp);
+	}
+
+}
+

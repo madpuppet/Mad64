@@ -51,6 +51,9 @@
     <ClCompile Include="source\sarWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\contextualHelp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -357,6 +360,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\sarWindow.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\emulator.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\contextualHelp.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

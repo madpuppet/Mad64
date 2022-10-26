@@ -17,7 +17,9 @@ public:
 		LF_MAX
 	};
 
-	void LogText(LogFilter filter, string text, int lineNmbr = -1);
+	void LogText(LogFilter filter, string text, int lineNmbr = -1, int col = 0);
+	void LogTextArray(LogFilter filter, const char **textArray);
+
 	void ClearLog(LogFilter filter);
 	void Update();
 	void Draw();
