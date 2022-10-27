@@ -106,9 +106,13 @@ bool SourceFile::Save()
         vector<string> loadedFiles = settings->loadedFilePaths;
         if (!SaveInternal())
             return false;
-        settings->Load();
-        settings->loadedFilePaths = loadedFiles;
-        gApp->ReloadFont();
+
+        if (!gApp->IsShuttingDown())
+        {
+            settings->Load();
+            settings->loadedFilePaths = loadedFiles;
+            gApp->ReloadFont();
+        }
         return true;
     }
     else

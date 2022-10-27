@@ -18,7 +18,7 @@ public:
 	};
 
 	void LogText(LogFilter filter, string text, int lineNmbr = -1, int col = 0);
-	void LogTextArray(LogFilter filter, const char **textArray);
+	void LogTextArray(LogFilter filter, const char **textArray, int col);
 
 	void ClearLog(LogFilter filter);
 	void Update();

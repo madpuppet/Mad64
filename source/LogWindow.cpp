@@ -252,14 +252,12 @@ void LogWindow::SnapScrollBarToMouseY(int y)
 	ClampTargetScroll();
 }
 
-void LogWindow::LogTextArray(LogFilter filter, const char** textArray)
+void LogWindow::LogTextArray(LogFilter filter, const char** textArray, int col)
 {
 	const char** t = textArray;
-	int colIdx = 0;
 	while (*t)
 	{
-		LogText(filter, string(*t), -1, colIdx);
-		colIdx = 1;
+		LogText(filter, string(*t), -1, col);
 		t++;
 	}
 }

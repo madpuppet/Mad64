@@ -31,9 +31,9 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("vic.sprite2X", 0xd004),  CompilerLabel("vic.sprite2Y", 0xd005),  CompilerLabel("vic.sprite3X", 0xd006),  CompilerLabel("vic.sprite3Y", 0xd007),
     CompilerLabel("vic.sprite4X", 0xd008),  CompilerLabel("vic.sprite4Y", 0xd009),  CompilerLabel("vic.sprite5X", 0xd00a),  CompilerLabel("vic.sprite5Y", 0xd00b),
     CompilerLabel("vic.sprite6X", 0xd00c),  CompilerLabel("vic.sprite6Y", 0xd00d),  CompilerLabel("vic.sprite7X", 0xd00e),  CompilerLabel("vic.sprite7Y", 0xd00f),
-    CompilerLabel("vic.spriteXMSB", 0xd010), CompilerLabel("vic.control1", 0xd011), CompilerLabel("vic.rasterCounter", 0xd012), CompilerLabel("vic.lightPenX", 0xd013),
-    CompilerLabel("vic.lightPenY", 0xd014), CompilerLabel("vic.spriteEnable", 0xd015), CompilerLabel("vic.control2", 0xd016), CompilerLabel("vic.spriteYSize", 0xd017),
-    CompilerLabel("vic.memoryPointer", 0xd018), CompilerLabel("vic.interruptRegister", 0xd019), CompilerLabel("vic.interruptEnable", 0xd01a), CompilerLabel("vic.spritePriority", 0xd01b),
+    CompilerLabel("vic.spriteXMSB", 0xd010), CompilerLabel("vic.control1", gHELP_VIC_CONTROL1, 0xd011), CompilerLabel("vic.rasterCounter", 0xd012), CompilerLabel("vic.lightPenX", 0xd013),
+    CompilerLabel("vic.lightPenY", 0xd014), CompilerLabel("vic.spriteEnable", 0xd015), CompilerLabel("vic.control2", gHELP_VIC_CONTROL2, 0xd016), CompilerLabel("vic.spriteYSize", 0xd017),
+    CompilerLabel("vic.memoryPointer", gHELP_VIC_SCRMEM, 0xd018), CompilerLabel("vic.intRegister", gHELP_VIC_IRQREQ, 0xd019), CompilerLabel("vic.intEnable", gHELP_VIC_INTENA, 0xd01a), CompilerLabel("vic.spritePriority", 0xd01b),
     CompilerLabel("vic.spriteMulticolor", 0xd01c), CompilerLabel("vic.spriteXSize", 0xd01d), CompilerLabel("vic.spriteToSpriteCollision", 0xd01e), CompilerLabel("vic.spriteToDataCollision", 0xd01f),
     CompilerLabel("vic.borderColor", 0xd020), CompilerLabel("vic.backgroundColor0", 0xd021), CompilerLabel("vic.backgroundColor1", 0xd022), CompilerLabel("vic.backgroundColor2", 0xd023),
     CompilerLabel("vic.backgroundColor3", 0xd024), CompilerLabel("vic.spriteMulticolor0", 0xd025), CompilerLabel("vic.spriteMulticolor1", 0xd026), CompilerLabel("vic.sprite0Color", 0xd027),
@@ -1555,6 +1555,19 @@ bool CompilerSourceInfo::DoesLabelExist(const char* label)
     return false;
 }
 
+int CompilerSourceInfo::FindLineByAddress(u32 address)
+{
+    for (auto l : m_lines)
+    {
+        if ((address >= l->memAddr) && (address < l->memAddr + l->data.size()))
+        {
+            return l->lineNmbr;
+        }
+    }
+    return -1;
+}
+
+
 void CompilerSourceInfo::ClearVisuals()
 {
     for (auto l : m_lines)
@@ -1851,6 +1864,68 @@ void Compiler::AddLabelsContaining(CompilerSourceInfo* si, vector<CompilerLabel*
     }
 }
 
+void Compiler::AddLabelsMatchingValue(CompilerSourceInfo* si, vector<CompilerLabel*>& labels, double value)
+{
+    for (int i = 0; i < sizeof(s_systemLabels) / sizeof(CompilerLabel); i++)
+    {
+        auto l = &s_systemLabels[i];
+        if (l->m_value == value)
+        {
+            if (std::find(labels.begin(), labels.end(), l) == labels.end())
+            {
+                labels.push_back(l);
+            }
+        }
+    }
+
+    if (si)
+    {
+        for (auto l : si->m_labels)
+        {
+            if (l->m_value == value)
+            {
+                if (std::find(labels.begin(), labels.end(), l) == labels.end())
+                {
+                    labels.push_back(l);
+                }
+            }
+        }
+    }
+}
+
+CompilerLabel* Compiler::FindMatchingLabel(CompilerSourceInfo *si, const string& token)
+{
+    for (int i = 0; i < sizeof(s_systemLabels) / sizeof(CompilerLabel); i++)
+    {
+        auto l = &s_systemLabels[i];
+        if (StrEqual(l->m_name, token))
+        {
+            return l;
+        }
+    }
+
+    for (auto l : si->m_labels)
+    {
+        if (StrEqual(l->m_name, token))
+        {
+            return l;
+        }
+    }
+    return nullptr;
+}
+
+CommandHelp* Compiler::FindMatchingCommand(const string& token)
+{
+    CommandHelp* cmd = gHELP_CMD;
+    while (cmd->name)
+    {
+        if (StrEqual(token, cmd->name))
+            return cmd;
+        cmd++;
+    }
+    return nullptr;
+}
+
 void Compiler::AddCommandsContaining(vector<CommandHelp*>& commands, const string& token)
 {
     CommandHelp* cmd = gHELP_CMD;
@@ -1872,60 +1947,148 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
 {
     auto lw = gApp->GetLogWindow();
     auto si = sf->GetLines()[line];
-    auto& tokens = si->GetTokens();
+    auto ci = sf->GetCompileInfo();
+    CompilerLineInfo* li = 0;
+    if (ci && ci->m_lines.size() > line)
+        li = ci->m_lines[line];
 
-    int tokenIdx = 0;
-    int colorToggle = 0;
-
-    vector<CompilerLabel*> labels;
-    vector<CommandHelp*> commands;
-
-    auto cs = sf->GetCompileInfo();
-    while (tokenIdx < tokens.size())
+    if (li && !li->error)
     {
-        auto& token = tokens[tokenIdx++];
-        if (token.empty() || token[0] == ' ' || token[0] == '\t')
-            continue;
-
-        if (token == "$" || token == "%")
+        lw->ClearLog(LogWindow::LF_InstructionHelp);
+        switch (li->type)
         {
-            tokenIdx++;
-            continue;
+            case LT_BasicStartup:
+            case LT_GenerateBytes:
+            case LT_GenerateWords:
+            case LT_DataBytes:
+            case LT_DataWords:
+            case LT_Include:
+                {
+                    auto cmd = FindMatchingCommand(si->GetTokens()[0]);
+                    if (cmd)
+                    {
+                        lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
+                        if (cmd->detail1)
+                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail1, -1, 1);
+                        if (cmd->detail2)
+                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail2, -1, 1);
+                    }
+                }
+                break;
+
+            case LT_Variable:
+            case LT_Label:
+                {
+                    auto l = FindMatchingLabel(ci, li->label);
+                    if (l)
+                    {
+                        if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
+                            lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1);
+                        else
+                            lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1);
+                        if (l->m_help)
+                            lw->LogTextArray(LogWindow::LF_InstructionHelp, l->m_help, 1);
+                    }
+                }
+                break;
+
+            case LT_Instruction:
+                {
+                    auto cmd = FindMatchingCommand(s_opcodes[li->opcode].name);
+                    if (cmd)
+                    {
+                        lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
+                        if (cmd->detail1)
+                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail1, -1, 1);
+                        if (cmd->detail2)
+                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail2, -1, 1);
+                    }
+
+                    // find possible labels
+                    if (gAddressingModeSize[s_opcodes[li->opcode].addressMode] > 1)
+                    {
+                        vector<CompilerLabel*> labels;
+                        double val = (double)li->operand;
+                        if (s_opcodes[li->opcode].addressMode == AM_Relative)
+                            val = (double)(li->memAddr + li->operand + 2);
+
+                        AddLabelsMatchingValue(ci, labels, val);
+                        int colorToggle = 0;
+                        for (auto l : labels)
+                        {
+                            if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
+                                lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1 + colorToggle);
+                            else
+                                lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1 + colorToggle);
+                            if (labels.size() == 1 && l->m_help)
+                                lw->LogTextArray(LogWindow::LF_InstructionHelp, l->m_help, 1 + colorToggle);
+
+                            colorToggle = 1 - colorToggle;
+                        }
+                    }
+                }
+                break;
+        }
+    }
+    else
+    {
+        auto& tokens = si->GetTokens();
+
+        int tokenIdx = 0;
+        int colorToggle = 0;
+
+        vector<CompilerLabel*> labels;
+        vector<CommandHelp*> commands;
+
+        auto cs = sf->GetCompileInfo();
+        while (tokenIdx < tokens.size())
+        {
+            auto& token = tokens[tokenIdx++];
+            if (token.empty() || token[0] == ' ' || token[0] == '\t')
+                continue;
+
+            if (token == "$" || token == "%")
+            {
+                tokenIdx++;
+                continue;
+            }
+
+            if (token[0] >= '0' && token[0] <= '9')
+                continue;
+
+            AddLabelsContaining(cs, labels, token);
+            AddCommandsContaining(commands, token);
         }
 
-        if (token[0] >= '0' && token[0] <= '9')
-            continue;
-
-        AddLabelsContaining(cs, labels, token);
-        AddCommandsContaining(commands, token);
-    }
-    
-    lw->ClearLog(LogWindow::LF_InstructionHelp);
-    if (!labels.empty())
-    {
-        lw->LogText(LogWindow::LF_InstructionHelp, "Suggested Labels:");
-        for (auto l : labels)
+        lw->ClearLog(LogWindow::LF_InstructionHelp);
+        if (!labels.empty())
         {
-            if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
-                lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1+ colorToggle);
-            else
-                lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1+ colorToggle);
+            lw->LogText(LogWindow::LF_InstructionHelp, "Suggested Labels:");
+            for (auto l : labels)
+            {
+                if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
+                    lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1 + colorToggle);
+                else
+                    lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1 + colorToggle);
+                if (labels.size() == 1 && l->m_help)
+                    lw->LogTextArray(LogWindow::LF_InstructionHelp, l->m_help, 1 + colorToggle);
 
-            colorToggle = 1 - colorToggle;
+                colorToggle = 1 - colorToggle;
+            }
         }
-    }
-    if (!commands.empty())
-    {
-        lw->LogText(LogWindow::LF_InstructionHelp, "Suggested Commands:");
-        colorToggle = 0;
-        for (auto c : commands)
+        if (!commands.empty())
         {
-            lw->LogText(LogWindow::LF_InstructionHelp, c->help, -1, 1 + colorToggle);
-            if (c->detail1)
-                lw->LogText(LogWindow::LF_InstructionHelp, c->detail1, -1, 1 + colorToggle);
-            if (c->detail2)
-                lw->LogText(LogWindow::LF_InstructionHelp, c->detail2, -1, 1 + colorToggle);
-            colorToggle = 1 - colorToggle;
+            lw->LogText(LogWindow::LF_InstructionHelp, "Suggested Commands:");
+            colorToggle = 0;
+            for (auto c : commands)
+            {
+                lw->LogText(LogWindow::LF_InstructionHelp, c->help, -1, 1 + colorToggle);
+                if (c->detail1)
+                    lw->LogText(LogWindow::LF_InstructionHelp, c->detail1, -1, 1 + colorToggle);
+                if (c->detail2)
+                    lw->LogText(LogWindow::LF_InstructionHelp, c->detail2, -1, 1 + colorToggle);
+                colorToggle = 1 - colorToggle;
+            }
         }
     }
 }

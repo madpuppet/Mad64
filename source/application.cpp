@@ -11,7 +11,7 @@ const int SCREEN_HEIGHT = 1080;
 Application *gApp;
 
 #define APP_TITLE "MAD64"
-#define VERSION "2022.04"
+#define VERSION "2022.05"
 
 Application::Application()
 {
@@ -57,19 +57,23 @@ Application::Application()
 
 void Application::ReloadFont()
 {
-    TTF_Font *newFont = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
-    if (newFont)
+    if (m_fontLoaded != m_settings->fontPath)
     {
-        TTF_CloseFont(m_font);
-        m_font = newFont;
-        TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
-    }
+        TTF_Font* newFont = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
+        if (newFont)
+        {
+            TTF_CloseFont(m_font);
+            m_font = newFont;
+            TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
+            m_fontLoaded = m_settings->fontPath;
+        }
 
-    for (auto f : m_sourceFiles)
-    {
-        f->Visualize();
-        if (f->GetCompileInfo())
-            f->GetCompileInfo()->ClearVisuals();
+        for (auto f : m_sourceFiles)
+        {
+            f->Visualize();
+            if (f->GetCompileInfo())
+                f->GetCompileInfo()->ClearVisuals();
+        }
     }
 }
 

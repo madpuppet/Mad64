@@ -6,8 +6,10 @@
 class CompilerLabel
 {
 public:
-    CompilerLabel(const string &name, double value, int lineNmbr = -1, bool isLocal=false) : m_name(name), m_value(value), m_lineNmbr(lineNmbr), m_isLocal(isLocal) {}
+    CompilerLabel(const string &name, double value, int lineNmbr = -1, bool isLocal=false) : m_name(name), m_help(0), m_value(value), m_lineNmbr(lineNmbr), m_isLocal(isLocal) {}
+    CompilerLabel(const string& name, const char *help[], double value) : m_name(name), m_help(help), m_value(value), m_lineNmbr(-1), m_isLocal(false) {}
     string m_name;
+    const char** m_help;
     double m_value;
     int m_lineNmbr;
     bool m_isLocal;
@@ -163,6 +165,9 @@ public:
 
     // this much match current source stamp or compile is invalid
     int m_sourceVersion;
+
+    // find line that matches an address
+    int FindLineByAddress(u32 memAddress);
 
     string m_workingDir;
     vector<CompilerLabel*> m_labels;
@@ -333,8 +338,10 @@ public:
     void CmdImport_Parse(TokenFifo& fifo, CompilerSourceInfo* si, CompilerLineInfo* li, u32& currentMemAddr);
 
     void AddLabelsContaining(CompilerSourceInfo* cs, vector<CompilerLabel*>& labels, const string& token);
+    void AddLabelsMatchingValue(CompilerSourceInfo* cs, vector<CompilerLabel*>& labels, double value);
     void AddCommandsContaining(vector<CommandHelp*>& commands, const string& token);
-
+    CommandHelp *FindMatchingCommand(const string& token);
+    CompilerLabel* FindMatchingLabel(CompilerSourceInfo* si, const string& token);
 
     struct ErrorItem
     {

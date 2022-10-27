@@ -197,6 +197,8 @@ void EditWindow::Draw()
 			}
 		}
 
+		int branchDepth = 0;
+
 		// draw text
 		SDL_RenderSetClipRect(r, &m_sourceEditRect);
 
@@ -264,6 +266,36 @@ void EditWindow::Draw()
 			// - text
 			if (line->GetGCText())
 				line->GetGCText()->DrawAt(settings->xPosText + settings->textXMargin, y + settings->textYMargin);
+
+			// draw branches
+			auto csi = m_activeSourceFileItem->file->GetCompileInfo();
+			if (csi && csi->m_lines.size() > i)
+			{
+				auto cli = csi->m_lines[i];
+				if (!cli->error && (cli->addressMode == AM_Relative))
+				{
+					int branchAddress = cli->memAddr + (int)cli->operand + 2;
+					int branchLine = csi->FindLineByAddress(branchAddress);
+					if (branchLine != -1)
+					{
+						int y1 = y + settings->lineHeight / 2;
+						int y2 = m_sourceEditRect.y + branchLine * settings->lineHeight - m_activeSourceFileItem->scroll + settings->lineHeight / 2;
+						int x1 = m_sourceEditRect.x - 2;
+						int x2 = x1 - branchDepth - 10;
+
+						SDL_RenderSetClipRect(r, nullptr);
+						SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
+						SDL_RenderDrawLine(r, x1, y1, x2, y1);
+						SDL_RenderDrawLine(r, x2, y1, x2, y2);
+						SDL_RenderDrawLine(r, x2, y2, x1, y2);
+						SDL_RenderDrawLine(r, x1, y2, x1 - 5, y2 - 5);
+						SDL_RenderDrawLine(r, x1, y2, x1 - 5, y2 + 5);
+						SDL_RenderSetClipRect(r, &m_sourceEditRect);
+
+						branchDepth += 4;
+					}
+				}
+			}
 
 			// draw cursor
 			if (i == m_activeSourceFileItem->activeLine && m_inputCapture == IC_None)

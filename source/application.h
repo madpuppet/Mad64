@@ -15,6 +15,7 @@ public:
     ~Application();
 
     int MainLoop();
+    bool IsShuttingDown() { return m_quit; }
 
     TTF_Font* GetFont() { return m_font; }
     SDL_Renderer* GetRenderer() { return m_renderer; }
@@ -72,6 +73,7 @@ protected:
     bool m_repaint;
     bool m_fullscreen;
     AppSettings* m_settings;
+    string m_fontLoaded;
 
     enum InputCapture
     {
