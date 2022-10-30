@@ -1,10 +1,11 @@
 #include "common.h"
 #include "application.h"
-
-#include <windows.h>
-#include <commdlg.h>
-
 #include "tinyfiledialogs.h"
+
+// todo - cross platform way to launch the emulator
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 1920;
@@ -355,6 +356,7 @@ void Application::OnKeyDown(SDL_Event* e)
                 size_t lastindex = file->GetPath().find_last_of(".");
                 string prgname = file->GetPath().substr(0, lastindex) + ".prg";
 
+#if defined(_WIN32)
                 STARTUPINFOA info = { sizeof(info) };
                 PROCESS_INFORMATION processInfo;
                 string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
@@ -364,6 +366,7 @@ void Application::OnKeyDown(SDL_Event* e)
                     CloseHandle(processInfo.hProcess);
                     CloseHandle(processInfo.hThread);
                 }
+#endif
             }
             return;
         }
