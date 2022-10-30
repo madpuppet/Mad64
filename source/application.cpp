@@ -98,20 +98,14 @@ Application::~Application()
 int Application::MainLoop()
 {
     SDL_Event e;
-    Log("%s(%d): ", __FILE__, __LINE__);
-
     while (!m_quit)
     {
-        Log("%s(%d): ", __FILE__, __LINE__);
         if (SDL_PollEvent(&e))
             HandleEvent(&e);
-        Log("%s(%d): ", __FILE__, __LINE__);
 
         Update();
         Draw();
-        Log("%s(%d): ", __FILE__, __LINE__);
     }
-    Log("%s(%d): QUITTING", __FILE__, __LINE__);
 
     for (auto file : m_sourceFiles)
         file->Save();
@@ -175,8 +169,8 @@ void Application::HandleEvent(SDL_Event *e)
 void Application::LoadFile()
 {
     const char* path = gApp->GetSettings()->activeFilePath.c_str();
-    const char* patterns[2] = { "*.asm", "*.bas" };
-    const char *file = tinyfd_openFileDialog("Load file", path, 2, patterns, nullptr, false);
+    const char* patterns[3] = { "*.asm", "*.bas", "*.txt" };
+    const char *file = tinyfd_openFileDialog("Load file", path, 3, patterns, nullptr, false);
     if (file)
     {
         Log("Load File: %s", file);
@@ -258,9 +252,11 @@ void Application::CloseFile()
 
 void Application::CreateNewFile()
 {
+    Log("Create File");
+
     const char* path = gApp->GetSettings()->activeFilePath.c_str();
-    const char* patterns[2] = { "*.asm", "*.bas" };
-    const char* file = tinyfd_saveFileDialog("Create new file", path, 2, patterns, "");
+    const char* patterns[3] = { "*.asm", "*.bas", "*.*"};
+    const char* file = tinyfd_saveFileDialog("Create new file", path, 3, patterns, "");
     if (file)
     {
         Log("New File: %s", file);

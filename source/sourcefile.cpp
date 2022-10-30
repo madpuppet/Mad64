@@ -40,6 +40,7 @@ const char* basename(const char* path)
 
 SourceFile::SourceFile(const char* path)
 {
+    m_compileInfo = 0;
     m_dirtyCount = 0;
     m_path = path;
     m_name = basename(path);
