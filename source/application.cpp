@@ -17,6 +17,9 @@ Application *gApp;
 
 Application::Application()
 {
+    m_quit = false;
+
+    LogStart();
     gApp = this;
     m_fullscreen = false;
 
@@ -24,7 +27,9 @@ Application::Application()
     m_window = SDL_CreateWindow(APP_TITLE " v" VERSION, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
     {
-        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        Log("Window could not be created! SDL_Error: %s\n", SDL_GetError());
+        m_quit = true;
+        exit(0);
     }
     else
     {
@@ -33,6 +38,7 @@ Application::Application()
             m_settings->Save();
 
         TTF_Init();
+        Log("Create Font: %s", m_settings->fontPath.c_str());
         m_font = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
@@ -91,14 +97,20 @@ Application::~Application()
 int Application::MainLoop()
 {
     SDL_Event e;
+    Log("%s(%d): ", __FILE__, __LINE__);
+
     while (!m_quit)
     {
+        Log("%s(%d): ", __FILE__, __LINE__);
         if (SDL_PollEvent(&e))
             HandleEvent(&e);
+        Log("%s(%d): ", __FILE__, __LINE__);
 
         Update();
         Draw();
+        Log("%s(%d): ", __FILE__, __LINE__);
     }
+    Log("%s(%d): QUITTING", __FILE__, __LINE__);
 
     for (auto file : m_sourceFiles)
         file->Save();
@@ -127,6 +139,7 @@ void Application::HandleEvent(SDL_Event *e)
     switch (e->type)
     {
     case SDL_QUIT:
+        Log("%s(%d): Got Quit Message!", __FILE__, __LINE__);
         m_quit = true;
         break;
     case SDL_MOUSEBUTTONDOWN:
@@ -165,6 +178,7 @@ void Application::LoadFile()
     const char *file = tinyfd_openFileDialog("Load file", path, 2, patterns, nullptr, false);
     if (file)
     {
+        Log("Load File: %s", file);
         LoadFile(file);
     }
 }
@@ -248,6 +262,8 @@ void Application::CreateNewFile()
     const char* file = tinyfd_saveFileDialog("Create new file", path, 2, patterns, "");
     if (file)
     {
+        Log("New File: %s", file);
+
         string name = file;
         auto source = new SourceFile(name.c_str());
         m_sourceFiles.push_back(source);
@@ -260,63 +276,6 @@ void Application::CreateNewFile()
         m_settings->loadedFilePaths.push_back(name);
         m_settings->Save();
     }
-
-
-#if 0
-    OPENFILENAMEA ofn;
-    char buffer[256];
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;
-    ofn.lpstrFile = buffer;
-    ofn.lpstrFile[0] = '\0';
-    ofn.nMaxFile = sizeof(buffer);
-    ofn.lpstrFilter = "All\0*.*\0Asm\0*.asm\0Basic\0*.bas";
-    ofn.nFilterIndex = 2;
-    ofn.lpstrFileTitle = NULL;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = NULL;
-    ofn.Flags = 0;
-    if (GetSaveFileNameA(&ofn))
-    {
-        string name = ofn.lpstrFile;
-        if (ofn.nFilterIndex == 2)
-        {
-            if (!HasExtension(name.c_str(), ".asm"))
-            {
-                size_t last = name.find_last_of('.');
-                if (last != string::npos)
-                {
-                    name = name.substr(0, last);
-                }
-                name += ".asm";
-            }
-        }
-        else if (ofn.nFilterIndex == 3)
-        {
-            if (!HasExtension(name.c_str(), ".bas"))
-            {
-                size_t last = name.find_last_of('.');
-                if (last != string::npos)
-                {
-                    name = name.substr(0, last);
-                }
-                name += ".bas";
-            }
-        }
-
-        auto source = new SourceFile(name.c_str());
-        m_sourceFiles.push_back(source);
-        auto newLine = new SourceLine();
-        newLine->Tokenize();
-        newLine->VisualizeText();
-        source->GetLines().push_back(newLine);
-        m_editWindow->OnFileLoaded(source);
-
-        m_settings->loadedFilePaths.push_back(name);
-        m_settings->Save();
-    }
-#endif
 }
 
 void Application::OnKeyDown(SDL_Event* e)

@@ -88,6 +88,9 @@ inline bool Contains(const SDL_Rect& rect, int x, int y)
 	return (x >= rect.x && x < (rect.x + rect.w) && y >= rect.y && y < (rect.y + rect.h));
 }
 
+extern void LogStart();
+extern void Log(const char* pFormat, ...);
+
 #include "graphicChunk.h"
 #include "sourceFile.h"
 #include "application.h"

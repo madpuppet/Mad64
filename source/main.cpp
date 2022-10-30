@@ -65,3 +65,28 @@ string FormatString(const char* pFormat, ...)
     return string(buffer, SDL_strlen(buffer));
 }
 
+void LogStart()
+{
+    FILE* fh = fopen("log.txt", "w");
+    if (fh)
+    {
+        fprintf(fh, "\n");
+        fclose(fh);
+    }
+}
+
+void Log(const char* pFormat, ...)
+{
+    va_list va;
+    va_start(va, pFormat);
+    char buffer[1024];
+    vsprintf(buffer, pFormat, va);
+
+    FILE *fh = fopen("log.txt", "a");
+    if (fh)
+    {
+        fprintf(fh, "%s\n", buffer);
+        fclose(fh);
+    }
+}
+

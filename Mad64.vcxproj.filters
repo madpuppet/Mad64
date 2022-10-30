@@ -44,9 +44,6 @@
     <ClCompile Include="source\LogWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\sarWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\contextualHelp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -356,9 +353,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\logWindow.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="source\sarWindow.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\emulator.h">

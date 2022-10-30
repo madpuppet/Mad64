@@ -116,7 +116,7 @@ void TextInput::OnKeyDown(SDL_Event* e)
 						break;
 					m_text += *ch;
 				}
-				m_cursorPos = m_text.size();
+				m_cursorPos = (int)m_text.size();
 				Visualize();
 				return;
 			}

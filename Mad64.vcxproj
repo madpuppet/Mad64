@@ -147,7 +147,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2.lib;Imm32.lib;version.lib;setupapi.lib; SDL2_ttf.lib;SDL2main.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2.lib;SDL2_ttf.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest />
   </ItemDefinitionGroup>
@@ -166,7 +166,6 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">common.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="source\appSettings.cpp" />
-    <ClCompile Include="source\sarWindow.cpp" />
     <ClCompile Include="source\sourcefile.cpp" />
     <ClCompile Include="source\textInput.cpp" />
     <ClCompile Include="source\thread.cpp" />
@@ -277,7 +276,6 @@
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\appSettings.h" />
     <ClInclude Include="source\logWindow.h" />
-    <ClInclude Include="source\sarWindow.h" />
     <ClInclude Include="source\sourceFile.h" />
     <ClInclude Include="source\textInput.h" />
     <ClInclude Include="source\thread.h" />

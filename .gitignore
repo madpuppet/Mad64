@@ -8,3 +8,7 @@ x64/
 releases/
 
 *.prg
+
+build/
+
+log.txt
