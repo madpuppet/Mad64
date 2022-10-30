@@ -1,5 +1,5 @@
 #include "common.h"
-#include "LogWindow.h"
+#include "logWindow.h"
 
 static const char* s_titles[] = { "Compiler", "Labels","Contextual Help",  "Memory"};
 

@@ -5,8 +5,8 @@
 #include "editWindow.h"
 #include "compiler.h"
 #include "cmdManager.h"
-#include "AppSettings.h"
-#include "LogWindow.h"
+#include "appSettings.h"
+#include "logWindow.h"
 
 class Application
 {
