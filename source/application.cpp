@@ -250,8 +250,8 @@ void Application::CloseFile()
     if (activeFile)
     {
         m_editWindow->OnFileClosed(activeFile);
-        m_sourceFiles.erase(remove(m_sourceFiles.begin(), m_sourceFiles.end(), activeFile));
-        m_settings->loadedFilePaths.erase(remove(m_settings->loadedFilePaths.begin(), m_settings->loadedFilePaths.end(), string(activeFile->GetPath())));
+        m_sourceFiles.erase(std::remove(m_sourceFiles.begin(), m_sourceFiles.end(), activeFile));
+        m_settings->loadedFilePaths.erase(std::remove(m_settings->loadedFilePaths.begin(), m_settings->loadedFilePaths.end(), string(activeFile->GetPath())));
         delete activeFile;
     }
 }
@@ -388,7 +388,7 @@ int Application::GetCurrentIndent(string& chars)
     {
         if (chars[i] == ' ')
             indent++;
-        else if (chars[i] == '/t')
+        else if (chars[i] == '\t')
             indent += (m_settings->tabWidth - (indent % m_settings->tabWidth));
         else
             break;
