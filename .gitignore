@@ -5,6 +5,6 @@ Mad64.vcxproj.user
 
 x64/
 
-builds/
+releases/
 
 *.prg

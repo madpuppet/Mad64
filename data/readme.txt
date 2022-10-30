@@ -74,6 +74,9 @@ deg(a)       - convert a from radians to degrees
 
 CONSTANTS
 
+Mad64 has all the vic, cia and sid registers pre-defined as labels.  use vic.xxx, cia1.xxx, cia2.xxx, vic.xxx
+It also has some rom function address and memory locations, though this is incomplete at this date.
+
 vic.background0,  vic.border       -  vic registers
 cia1.dataPortA, cia2.timerALow     -  cia 1 & 2 registers
 sid.v1_freqLow, sid_v2_freqHi      -  sid registers

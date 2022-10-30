@@ -4,6 +4,8 @@
 #include <windows.h>
 #include <commdlg.h>
 
+#include "tinyfiledialogs.h"
+
 //Screen dimension constants
 const int SCREEN_WIDTH = 1920;
 const int SCREEN_HEIGHT = 1080;
@@ -158,23 +160,12 @@ void Application::HandleEvent(SDL_Event *e)
 
 void Application::LoadFile()
 {
-    OPENFILENAMEA ofn;
-    char buffer[256];
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;
-    ofn.lpstrFile = buffer;
-    ofn.lpstrFile[0] = '\0';
-    ofn.nMaxFile = sizeof(buffer);
-    ofn.lpstrFilter = "All\0*.*\0Asm\0*.asm\0Basic\0*.bas";
-    ofn.nFilterIndex = 2;
-    ofn.lpstrFileTitle = NULL;
-    ofn.nMaxFileTitle = 0;
-    ofn.lpstrInitialDir = NULL;
-    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-    if (GetOpenFileNameA(&ofn))
+    const char* path = gApp->GetSettings()->activeFilePath.c_str();
+    const char* patterns[2] = { "*.asm", "*.bas" };
+    const char *file = tinyfd_openFileDialog("Load file", path, 2, patterns, nullptr, false);
+    if (file)
     {
-        LoadFile(ofn.lpstrFile);
+        LoadFile(file);
     }
 }
 
@@ -252,6 +243,26 @@ void Application::CloseFile()
 
 void Application::CreateNewFile()
 {
+    const char* path = gApp->GetSettings()->activeFilePath.c_str();
+    const char* patterns[2] = { "*.asm", "*.bas" };
+    const char* file = tinyfd_saveFileDialog("Create new file", path, 2, patterns, "");
+    if (file)
+    {
+        string name = file;
+        auto source = new SourceFile(name.c_str());
+        m_sourceFiles.push_back(source);
+        auto newLine = new SourceLine();
+        newLine->Tokenize();
+        newLine->VisualizeText();
+        source->GetLines().push_back(newLine);
+        m_editWindow->OnFileLoaded(source);
+
+        m_settings->loadedFilePaths.push_back(name);
+        m_settings->Save();
+    }
+
+
+#if 0
     OPENFILENAMEA ofn;
     char buffer[256];
     ZeroMemory(&ofn, sizeof(ofn));
@@ -305,6 +316,7 @@ void Application::CreateNewFile()
         m_settings->loadedFilePaths.push_back(name);
         m_settings->Save();
     }
+#endif
 }
 
 void Application::OnKeyDown(SDL_Event* e)

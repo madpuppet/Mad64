@@ -125,7 +125,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>Imm32.lib;version.lib;setupapi.lib; SDL2_ttf.lib;SDL2main.lib;SDL2.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -143,7 +143,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -170,6 +170,10 @@
     <ClCompile Include="source\sourcefile.cpp" />
     <ClCompile Include="source\textInput.cpp" />
     <ClCompile Include="source\thread.cpp" />
+    <ClCompile Include="source\tinyfiledialogs.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\begin_code.h" />
@@ -262,6 +266,7 @@
     <ClInclude Include="include\SDL_version.h" />
     <ClInclude Include="include\SDL_video.h" />
     <ClInclude Include="include\SDL_vulkan.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="source\application.h" />
     <ClInclude Include="source\cmdManager.h" />
     <ClInclude Include="source\common.h" />
@@ -276,11 +281,18 @@
     <ClInclude Include="source\sourceFile.h" />
     <ClInclude Include="source\textInput.h" />
     <ClInclude Include="source\thread.h" />
+    <ClInclude Include="source\tinyfiledialogs.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\SDL_config.h.cmake" />
     <None Include="include\SDL_config.h.in" />
     <None Include="include\SDL_config_macosx.h.orig" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Mad64.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="mad64.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
