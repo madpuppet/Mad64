@@ -1,6 +1,7 @@
 #include "common.h"
 #include "application.h"
 #include "tinyfiledialogs.h"
+#include <algorithm>
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
