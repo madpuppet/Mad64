@@ -230,6 +230,7 @@ bool AppSettings::Load()
     return false;
 }
 
+#if defined(_WIN32)
 #include <iostream>
 #include <windows.h>
 void CreateDir(const char* path)
@@ -238,6 +239,7 @@ void CreateDir(const char* path)
     attr = NULL;
     CreateDirectoryA(path, attr);
 }
+#endif
 
 string AppSettings::GetFilePath()
 {
@@ -250,6 +252,7 @@ bool AppSettings::Save()
 {
     char* pref = SDL_GetPrefPath("madpuppet", "mad64");
 
+#if defined(_WIN32)
     // create all paths
     char* base = pref;
     while (base = strchr(base, '\\'))
@@ -259,6 +262,7 @@ bool AppSettings::Save()
         base[0] = '\\';
         base++;
     }
+#endif
 
     string path = pref;
     path = path + "settings.ini";
