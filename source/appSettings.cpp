@@ -69,7 +69,7 @@ AppSettings::AppSettings()
     autoIndent = true;
     vicePath = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
     lineHeight = 24;
-    fontPath = "data/font.otf";
+    fontPath = "font.otf";
     fontSize = 16;
     tabWidth = 4;
     textXMargin = 8;

@@ -26,15 +26,15 @@ target_link_directories(Mad64 PUBLIC "lib")
 target_link_libraries(Mad64 SDL2 SDL2_ttf SDL2main)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-	make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
+	make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/samples)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/readme.txt $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
+	copy ${CMAKE_CURRENT_SOURCE_DIR}/readme.txt $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/font.otf $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
+	copy ${CMAKE_CURRENT_SOURCE_DIR}/font.otf $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/music.sid $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
+	copy ${CMAKE_CURRENT_SOURCE_DIR}/samples/music.sid $<TARGET_FILE_DIR:${PROJECT_NAME}>/samples)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/pscroller.asm $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
+	copy ${CMAKE_CURRENT_SOURCE_DIR}/samples/pscroller.asm $<TARGET_FILE_DIR:${PROJECT_NAME}>/samples)
 
 if (WIN32)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 

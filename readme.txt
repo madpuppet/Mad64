@@ -1,3 +1,9 @@
+MAD64 RELEASE 2022.05
+
+Mad64 is planned to be an all in one C64 development environment.
+It currently is an editor that assembles your code as you type. IN future it will be able to execute and emulate a c64 while you type.
+
+
 CTRL-L         Load a text file
 CTRL-S         Save current text file
 CTRL-Q         Quit current text file
