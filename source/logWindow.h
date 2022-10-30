@@ -11,8 +11,8 @@ public:
 	enum LogFilter
 	{
 		LF_CompilerWarning,
-		LF_LabelHelp,
 		LF_InstructionHelp,
+		LF_LabelHelp,
 		LF_Memory,
 		LF_MAX
 	};

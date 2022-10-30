@@ -1,7 +1,7 @@
 #include "common.h"
 #include "logWindow.h"
 
-static const char* s_titles[] = { "Compiler", "Labels","Contextual Help",  "Memory"};
+static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory"};
 
 LogWindow::LogWindow()
 {
@@ -17,6 +17,7 @@ LogWindow::LogWindow()
 	m_targetScroll = 0.0f;
 	m_highlightRow = -1;
 	m_autoScroll = 0;
+	m_groupOpen[2] = false;
 }
 
 LogWindow::~LogWindow()
