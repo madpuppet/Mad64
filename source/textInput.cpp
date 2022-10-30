@@ -3,6 +3,7 @@
 
 TextInput::TextInput(int x, int y, const char* title, DMFastDelegate::FastDelegate1<const string &> onEnter)
 {
+	m_isActive = false;
 	m_pos.x = x;
 	m_pos.y = y;
 
