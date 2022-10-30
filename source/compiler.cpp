@@ -1,7 +1,6 @@
 #include "common.h"
 #include "compiler.h"
 #include "graphicChunk.h"
-#include <algorithm>
 #include "contextualHelp.h"
 
 char s_asciiToScreenCode[] = {

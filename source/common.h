@@ -16,6 +16,8 @@ typedef long long           i64;
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include <cmath>
+#include <algorithm>
 #include <DMFastDelegate.h>
 using namespace std;
 
