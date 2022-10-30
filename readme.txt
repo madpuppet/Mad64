@@ -1,4 +1,4 @@
-MAD64 RELEASE 2022.05
+MAD64 RELEASE 2022.07
 
 Mad64 is planned to be an all in one C64 development environment.
 It currently is an editor that assembles your code as you type. IN future it will be able to execute and emulate a c64 while you type.

@@ -385,4 +385,9 @@
   <ItemGroup>
     <Image Include="mad64.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="readme.txt">
+      <Filter>Source Files</Filter>
+    </Text>
+  </ItemGroup>
 </Project>
