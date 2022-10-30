@@ -25,23 +25,18 @@ target_link_libraries(Mad64 ../lib/SDL2 ../lib/SDL2_ttf ../lib/SDL2main)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
-
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/readme.txt $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
-
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/font.otf $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
-
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/music.sid $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
-
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	copy ${CMAKE_CURRENT_SOURCE_DIR}/data/pscroller.asm $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
 
-if ($(CMAKE_HOST_SYSTEM_NAME) EQUAL "Windows")
+if (WIN32)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 		copy ${CMAKE_CURRENT_SOURCE_DIR}/sdl2.dll $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 		copy ${CMAKE_CURRENT_SOURCE_DIR}/sdl2_ttf.dll $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 endif()
