@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TextInput.h"
+#include "textInput.h"
 
 enum MarkingType
 {
