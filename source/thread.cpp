@@ -3,7 +3,9 @@
 
 // TODO:  switch to SDL threads
 
+#if defined(_WIN32)
 #include "windows.h"
+#endif
 
 void ThreadFunc(void *threadPtr)
 {
@@ -47,6 +49,7 @@ void Thread::Begin()
     // optional per-platform code to set thread name, and core
     // if not implemented, will just use default names/any core
 
+#if defined(_WIN32)
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
 #define MS_VC_EXCEPTION 0x406d1388
@@ -69,6 +72,7 @@ void Thread::Begin()
     __except (EXCEPTION_CONTINUE_EXECUTION)
     {
     }
+#endif
 
     Go();
 }
