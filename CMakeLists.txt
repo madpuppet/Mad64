@@ -21,7 +21,9 @@ add_executable(Mad64
 	source/tinyfiledialogs.c)
 	
 target_include_directories(Mad64 PUBLIC "include")
-target_link_libraries(Mad64 ../lib/SDL2 ../lib/SDL2_ttf ../lib/SDL2main)
+target_link_directories(Mad64 PUBLIC "lib")
+
+target_link_libraries(Mad64 SDL2 SDL2_ttf SDL2main)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/data)
