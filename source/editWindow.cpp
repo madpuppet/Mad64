@@ -395,7 +395,7 @@ void EditWindow::CalcRects()
 	m_sourceEditRect = { settings->xPosText, settings->lineHeight, settings->xPosContextHelp - settings->xPosText, editHeight };
 	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
 	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight);
-	m_replaceBox->SetPos(settings->xPosContextHelp + 200, settings->lineHeight);
+	m_replaceBox->SetPos(settings->xPosContextHelp + 250, settings->lineHeight);
 	m_contextHelpRect = { settings->xPosContextHelp, settings->lineHeight * 2, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
 
 	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
@@ -628,12 +628,42 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 					}
 					else
 					{
-						GotoLineCol(line, col, MARK_None, true);
-						m_marked = m_mouseMarking = true;
-						m_markStartColumn = col;
-						m_markEndColumn = col;
-						m_markStartLine = line;
-						m_markEndLine = line;
+						if (e->button.clicks == 2)
+						{
+							// mark current word
+							if (m_activeSourceFileItem)
+							{
+								GotoLineCol(line, col, MARK_None, true);
+								auto lines = m_activeSourceFileItem->file->GetLines();
+								auto sl = lines[line];
+								if (col < sl->GetChars().size())
+								{
+									int localCol = col;
+									int tok = 0;
+									while (localCol > (int)sl->GetTokens()[tok].size()-1)
+									{
+										localCol -= (int)sl->GetTokens()[tok].size();
+										tok++;
+									}
+									int startCol = col - localCol;
+									int endCol = startCol + (int)sl->GetTokens()[tok].size();
+									m_marked = m_mouseMarking = true;
+									m_markStartColumn = startCol;
+									m_markEndColumn = endCol;
+									m_markStartLine = line;
+									m_markEndLine = line;
+								}
+							}
+						}
+						else
+						{
+							GotoLineCol(line, col, MARK_None, true);
+							m_marked = m_mouseMarking = true;
+							m_markStartColumn = col;
+							m_markEndColumn = col;
+							m_markStartLine = line;
+							m_markEndLine = line;
+						}
 					}
 				}
 			}

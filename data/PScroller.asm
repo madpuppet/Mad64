@@ -860,7 +860,7 @@ sprites:
     *=$2200
 xwave:
     ; Make data for a sine wave
-    .generate.b 0,255,round(70 + 16*sin(rad(360*i/256)) + 16*sin(rad(360*i/128)))
+    .generate.b 0,255,round(120 + 50*sin(rad(360*i/256)) + 4*sin(rad(360*5*i/128)))
    
 	* = $3000  "Sprites"
 

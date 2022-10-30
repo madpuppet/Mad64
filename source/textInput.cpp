@@ -105,6 +105,22 @@ void TextInput::OnKeyDown(SDL_Event* e)
 			m_cursorAnim = 0;
 			m_onEnter(m_text);
 			return;
+		case SDLK_v:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				const char *text = SDL_GetClipboardText();
+				m_text = "";
+				for (const char* ch = text; *ch; ch++)
+				{
+					if (*ch == 0xd || *ch == 0xa)
+						break;
+					m_text += *ch;
+				}
+				m_cursorPos = m_text.size();
+				Visualize();
+				return;
+			}
+			break;
 	}
 
 	char ch = e->key.keysym.sym;
@@ -129,7 +145,7 @@ void TextInput::Visualize()
 	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + settings->lineHeight/4);
 	m_gc->Add(geTitle);
 
-	m_area = { m_pos.x + geTitle->GetRect().w + 16, m_pos.y+2, 150, settings->lineHeight-4 };
+	m_area = { m_pos.x + geTitle->GetRect().w + 16, m_pos.y+2, 200, settings->lineHeight-4 };
 	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_pos.y + settings->lineHeight / 4);
 	m_gc->Add(ge);
 }

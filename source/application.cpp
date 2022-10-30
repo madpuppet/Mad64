@@ -146,7 +146,12 @@ void Application::HandleEvent(SDL_Event *e)
         OnKeyUp(e);
         break;
     case SDL_WINDOWEVENT:
-        m_editWindow->OnResize();
+        switch (e->window.event)
+        {
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                m_editWindow->OnResize();
+                break;
+        }
         break;
     }
 }
