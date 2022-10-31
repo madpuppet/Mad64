@@ -2,30 +2,41 @@
 #include "logWindow.h"
 
 static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory"};
+static const char* s_short_titles[] = { "COMPILER", "HELP", "LABELS", "MEMORY" };
 
 LogWindow::LogWindow()
 {
 	auto settings = gApp->GetSettings();
 	for (int i = 0; i < LF_MAX; i++)
 	{
-		m_gc[i] = new GraphicChunk();
-		m_groupOpen[i] = true;
-		m_geTitle[i] = 0;
+		m_logGroups[i].m_groupOpen = true;
+		m_logGroups[i].m_geTitle = 0;
 	}
 	m_dragMode = DRAG_None;
 	m_scroll = 0;
 	m_targetScroll = 0.0f;
 	m_highlightRow = -1;
 	m_autoScroll = 0;
-	m_groupOpen[2] = false;
+	m_logGroups[2].m_groupOpen = false;
+
+	BuildIcons();
 }
 
 LogWindow::~LogWindow()
 {
-	for (int i = 0; i < LF_MAX; i++)
+}
+
+GraphicElement* LogWindow::GetGroupTitleGE(LogFilter group)
+{
+	auto& lg = m_logGroups[group];
+
+	if (!lg.m_geTitle)
 	{
-		delete m_gc[i];
+		auto settings = gApp->GetSettings();
+		SDL_Color col = settings->helpGroupColor;
+		lg.m_geTitle = GraphicElement::CreateFromText(gApp->GetFont(), s_titles[group], col, 0, 0);
 	}
+	return lg.m_geTitle;
 }
 
 void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
@@ -44,21 +55,55 @@ void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
 			color = settings->helpBodyColor2;
 			break;
 	}
-	m_gc[filter]->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), color, 0, 0));
-	m_gcLines[filter].push_back(lineNmbr);
+
+	auto logItem = new LogItem();
+	logItem->col = color;
+	logItem->text = text;
+	logItem->line = lineNmbr;
+	m_logGroups[filter].m_logLines.push_back(logItem);
 }
 
 void LogWindow::ClearLog(LogFilter filter)
 {
 	auto settings = gApp->GetSettings();
-	m_gc[filter]->Clear();
-	m_gcLines[filter].clear();
+	auto &lg = m_logGroups[filter];
 
-	if (m_geTitle[filter])
+	for (auto line : lg.m_logLines)
+		delete line;
+	lg.m_logLines.clear();
+	ClampTargetScroll();
+}
+
+void LogWindow::BuildIcons()
+{
+	auto settings = gApp->GetSettings();
+	auto r = gApp->GetRenderer();
+	SDL_Color col = { 255, 255, 255, 255 };
+	for (int i = 0; i < LF_MAX; i++)
 	{
-		delete m_geTitle[filter];
-		m_geTitle[filter] = 0;
+		auto& lg = m_logGroups[i];
+		lg.m_geIcon = GraphicElement::CreateFromText(gApp->GetFont(), s_short_titles[i], col, 0, 0);
 	}
+}
+
+void LogWindow::LayoutIcons()
+{
+	auto settings = gApp->GetSettings();
+	auto r = gApp->GetRenderer();
+	int iconX = m_titleArea.x + settings->textXMargin;
+	for (int i = 0; i < LF_MAX; i++)
+	{
+		auto& lg = m_logGroups[i];
+		lg.m_geIcon->SetPos(iconX, m_titleArea.y + settings->textYMargin);
+		iconX += settings->textXMargin*2 + lg.m_geIcon->GetRect().w;
+	}
+}
+
+GraphicElement *LogWindow::LogItem::GetGE()
+{
+	if (!ge)
+		ge = GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), col, 0, 0);
+	return ge;
 }
 
 void LogWindow::Update()
@@ -78,7 +123,7 @@ void LogWindow::DrawLine(int lineIdx, int y, bool highlight)
 
 	int brighten = highlight ? 16 : 0;
 	int col = 24 - ((lineIdx & 1) ? 4 : 0) + brighten;
-	SDL_Rect lineQuad = { m_area.x, y, m_area.w, settings->lineHeight };
+	SDL_Rect lineQuad = { m_logArea.x, y, m_logArea.w, settings->lineHeight };
 	SDL_SetRenderDrawColor(r, col, col, col, 255);
 	SDL_RenderFillRect(r, &lineQuad);
 }
@@ -88,59 +133,57 @@ void LogWindow::Draw()
 	auto settings = gApp->GetSettings();
 	auto r = gApp->GetRenderer();
 
-	SDL_RenderSetClipRect(r, &m_area);
-
-	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-	SDL_RenderFillRect(r, &m_area);
-
-	int y = m_area.y - m_scroll;
+	int y = m_logArea.y - m_scroll;
 	int lineIdx = 0;
 	int fileHeight = CalcLogHeight();
 	int startLine = max(0, m_scroll / settings->lineHeight);
-	int endLine = min((m_area.h + m_scroll) / settings->lineHeight + 1, fileHeight);
+	int endLine = min((m_logArea.h + m_scroll) / settings->lineHeight + 1, fileHeight);
+
+	// draw toggle buttons
+	SDL_RenderSetClipRect(r, &m_titleArea);
+	SDL_SetRenderDrawColor(r, 64, 32, 0, 255);
+	SDL_RenderFillRect(r, &m_titleArea);
+
 	for (int i = 0; i < LF_MAX; i++)
 	{
-		auto& gc = m_gc[i];
+		auto& lg = m_logGroups[i];
+
+		SDL_SetRenderDrawColor(r, 64, 32, 0, 255);
+		SDL_RenderFillRect(r, &lg.m_geIcon->GetRect());
+
+		if (lg.m_groupOpen)
+		{
+			SDL_SetTextureColorMod(lg.m_geIcon->GetTexture(), 255, 255, 0);
+		}
+		else
+		{
+			SDL_SetTextureColorMod(lg.m_geIcon->GetTexture(), 96, 96, 0);
+		}
+		lg.m_geIcon->Render(r);
+	}
+
+	SDL_RenderSetClipRect(r, &m_logArea);
+	for (int i = 0; i < LF_MAX; i++)
+	{
+		auto &lg = m_logGroups[i];
+		if (!lg.m_groupOpen)
+			continue;
+
+		int x = m_logArea.x + settings->textXMargin;
 		if (lineIdx >= startLine && lineIdx < endLine)
 		{
-			if (m_geTitle[i] == nullptr)
-			{
-				if (m_gcLines[i].empty())
-				{
-					SDL_Color col = settings->helpGroupColor;
-					col.r = col.r * 2 / 3;
-					col.g = col.g * 2 / 3;
-					col.b = col.b * 2 / 3;
-					m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s", m_groupOpen[i] ? '-' : '+', s_titles[i]).c_str(), col, 0, 0);
-				}
-				else
-				{
-					SDL_Color col = settings->helpGroupColor;
-					m_geTitle[i] = GraphicElement::CreateFromText(gApp->GetFont(), FormatString("%c %s (%d)", m_groupOpen[i] ? '-' : '+', s_titles[i], m_gcLines[i].size()).c_str(), col, 0, 0);
-				}
-			}
-
 			DrawLine(lineIdx, y, lineIdx == m_highlightRow);
-			auto ge = m_geTitle[i];
-			SDL_Rect quad = { ge->GetRect().x + m_area.x + settings->textXMargin, ge->GetRect().y + y + settings->textYMargin, ge->GetRect().w, ge->GetRect().h };
-			SDL_RenderCopy(gApp->GetRenderer(), ge->GetTexture(), NULL, &quad);
+			GetGroupTitleGE((LogFilter)i)->RenderAt(r, x, y + settings->textYMargin);
+			lineIdx++;
+			y += settings->lineHeight;
 		}
-		y += settings->lineHeight;
 
-		lineIdx++;
-
-		if (m_groupOpen[i])
+		for (auto line : lg.m_logLines)
 		{
-			for (int ii = 0; ii < gc->Size(); ii++)
-			{
-				if (lineIdx >= startLine && lineIdx < endLine)
-				{
-					DrawLine(lineIdx, y, lineIdx == m_highlightRow);
-					gc->DrawElemAt(ii, m_area.x + settings->textXMargin, y + settings->textYMargin);
-				}
-				y += settings->lineHeight;
-				lineIdx++;
-			}
+			DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+			line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
+			lineIdx++;
+			y += settings->lineHeight;
 		}
 	}
 
@@ -148,7 +191,7 @@ void LogWindow::Draw()
 	int barY1, barY2;
 	CalcScrollBar(barY1, barY2);
 
-	SDL_Rect BarBack = { m_area.x + m_area.w - settings->scrollBarWidth, m_area.y, settings->scrollBarWidth, m_area.h };
+	SDL_Rect BarBack = { m_logArea.x + m_logArea.w - settings->scrollBarWidth, m_logArea.y, settings->scrollBarWidth, m_logArea.h };
 	SDL_Rect Bar = { BarBack.x + 4, barY1, settings->scrollBarWidth - 4, barY2 - barY1 };
 	SDL_SetRenderDrawColor(r, 0, 0, 32, 255);
 	SDL_RenderFillRect(r, &BarBack);
@@ -167,12 +210,13 @@ void LogWindow::Draw()
 int LogWindow::CalcLogHeight()
 {
 	auto settings = gApp->GetSettings();
-	int y = m_area.y + settings->textYMargin;
+	int y = 0;
 	for (int i = 0; i < LF_MAX; i++)
 	{
-		if (m_gc[i]->Size() > 1)
+		auto& lg = m_logGroups[(LogFilter)i];
+		if (lg.m_groupOpen)
 		{
-			y += settings->lineHeight * m_gc[i]->Size() + settings->lineHeight;
+			y += settings->lineHeight * (int)lg.m_logLines.size() + settings->lineHeight;
 		}
 	}
 	return y;
@@ -186,11 +230,11 @@ bool LogWindow::CalcScrollBar(int& start, int& end)
 	int fileHeight = CalcLogHeight();
 
 	int viewStart = m_scroll;
-	int viewEnd = m_scroll + m_area.h;
+	int viewEnd = m_scroll + m_logArea.h;
 	float relStart = SDL_clamp((float)viewStart / (float)fileHeight, 0.0f, 1.0f);
 	float relEnd = SDL_clamp((float)viewEnd / (float)fileHeight, 0.0f, 1.0f);
-	start = (int)(m_area.y + relStart * m_area.h);
-	end = (int)(m_area.y + relEnd * m_area.h);
+	start = (int)(m_logArea.y + relStart * m_logArea.h);
+	end = (int)(m_logArea.y + relEnd * m_logArea.h);
 
 	return relStart > 0.0f || relEnd < 1.0f;
 }
@@ -201,22 +245,41 @@ bool LogWindow::FindLogLineAt(int y, int& line)
 	{
 		if (item != -1)
 		{
-			int line = m_gcLines[group][item];
+			int line = m_logGroups[group].m_logLines[item]->line;
 			return line != -1;
 		}
 	}
 	return false;
 }
 
+bool LogWindow::FindGroupItemAt(int x, int y, int& group)
+{
+	auto settings = gApp->GetSettings();
+	if (Contains(m_titleArea, x, y))
+	{
+		for (int i = 0; i < LF_MAX; i++)
+		{
+			if (Contains(m_logGroups[i].m_geIcon->GetRect(), x, y))
+			{
+				group = i;
+				return true;
+			}
+		}
+	}
+	group = -1;
+	return false;
+}
+
 bool LogWindow::FindLogItemAt(int y, int& group, int& item)
 {
 	auto settings = gApp->GetSettings();
-	int row = (y - m_area.y + m_scroll) / settings->lineHeight ;
+	int row = (y - m_logArea.y + m_scroll) / settings->lineHeight ;
 	for (int i = 0; i < LF_MAX && row >= 0; i++)
 	{
-		if (m_groupOpen[i])
+		auto& lg = m_logGroups[i];
+		if (lg.m_groupOpen)
 		{
-			if (row < m_gcLines[i].size()+1)
+			if (row < lg.m_logLines.size()+1)
 			{
 				group = i;
 				if (row == 0)
@@ -229,7 +292,7 @@ bool LogWindow::FindLogItemAt(int y, int& group, int& item)
 				}
 				return true;
 			}
-			row -= (int)m_gcLines[i].size() + 1;
+			row -= (int)lg.m_logLines.size() + 1;
 		}
 		else
 		{
@@ -247,9 +310,9 @@ bool LogWindow::FindLogItemAt(int y, int& group, int& item)
 
 void LogWindow::SnapScrollBarToMouseY(int y)
 {
-	float rel = (float)(y - m_area.y) / (float)m_area.h;
+	float rel = (float)(y - m_logArea.y) / (float)m_logArea.h;
 	int fileHeight = CalcLogHeight();
-	m_targetScroll = fileHeight * rel - m_area.h * 0.5f;
+	m_targetScroll = fileHeight * rel - m_logArea.h * 0.5f;
 	ClampTargetScroll();
 }
 
@@ -266,24 +329,37 @@ void LogWindow::LogTextArray(LogFilter filter, const char** textArray, int col)
 void LogWindow::OnMouseDown(SDL_Event* event)
 {
 	int group, item;
-	if (FindLogItemAt(event->button.y, group, item))
+	if (FindGroupItemAt(event->button.x, event->button.y, group))
 	{
-		if (item == -1)
+		if (event->button.button == 3)
 		{
-			m_groupOpen[group] = !m_groupOpen[group];
-			if (m_geTitle[group])
-			{
-				delete m_geTitle[group];
-				m_geTitle[group] = 0;
-			}
+			for (int i = 0; i < LF_MAX; i++)
+				m_logGroups[i].m_groupOpen = (group == i);
 		}
 		else
 		{
-			int jumpTo = m_gcLines[group][item];
+			m_logGroups[group].m_groupOpen = !m_logGroups[group].m_groupOpen;
+		}
+		ClampTargetScroll();
+	}
+	else if (FindLogItemAt(event->button.y, group, item))
+	{
+		if (item != -1)
+		{
+			int jumpTo = m_logGroups[group].m_logLines[item]->line;
 			if (jumpTo != -1)
 				gApp->GetEditWindow()->GotoLineCol(jumpTo, 0, MARK_None, true);
 		}
 	}
+}
+
+void LogWindow::SetRect(const SDL_Rect& area)
+{
+	auto settings = gApp->GetSettings();
+	m_area = area;
+	m_titleArea = { area.x, area.y, area.w, settings->lineHeight };
+	m_logArea = { area.x, area.y + settings->lineHeight, area.w, area.h - settings->lineHeight };
+	LayoutIcons();
 }
 
 void LogWindow::OnMouseMotion(SDL_Event* event)
@@ -292,10 +368,10 @@ void LogWindow::OnMouseMotion(SDL_Event* event)
 	int x = event->motion.x;
 	int y = event->motion.y;
 
-	if (x < m_area.x || y >= m_area.x + m_area.w)
+	if (x < m_logArea.x || y >= m_logArea.x + m_logArea.w)
 		m_highlightRow = -1;
 	else
-		m_highlightRow = (y - m_area.y + m_scroll) / settings->lineHeight;
+		m_highlightRow = (y - m_logArea.y + m_scroll) / settings->lineHeight;
 }
 
 
@@ -308,7 +384,7 @@ void LogWindow::OnMouseWheel(SDL_Event* e)
 void LogWindow::ClampTargetScroll()
 {
 	int fileHeight = CalcLogHeight();
-	int maxScroll = max(0, fileHeight - m_area.h);
+	int maxScroll = max(0, fileHeight - m_logArea.h);
 	m_targetScroll = SDL_clamp(m_targetScroll, 0.0f, (float)maxScroll);
 }
 

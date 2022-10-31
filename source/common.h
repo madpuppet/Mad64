@@ -81,6 +81,11 @@ public:
 		float ms = (float)((double)duration * 1000.0 / (double)SDL_GetPerformanceFrequency());
 		return FormatString("%s: %1.4fms", m_label.c_str(), ms);
 	}
+	double Time()
+	{
+		u64 duration = SDL_GetPerformanceCounter() - m_start;
+		return ((double)duration * 1000.0 / (double)SDL_GetPerformanceFrequency());
+	}
 	string m_label;
 	u64 m_start;
 };

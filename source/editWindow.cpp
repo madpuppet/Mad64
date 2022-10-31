@@ -539,7 +539,7 @@ void EditWindow::Update()
 void EditWindow::OnMouseDown(SDL_Event* e)
 {
 	auto settings = gApp->GetSettings();
-	if (e->button.button == 1)
+//	if (true)
 	{
 		if (m_inputCapture == IC_Search && !Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
 		{

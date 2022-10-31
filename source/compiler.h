@@ -172,6 +172,9 @@ public:
     string m_workingDir;
     vector<CompilerLabel*> m_labels;
     vector<CompilerLineInfo*> m_lines;
+
+    // track how long it took to compile
+    double m_compileTimeMS;
 };
 
 struct CompilerOpcode
@@ -256,7 +259,7 @@ struct TokenFifo
 #define ERR_NOLINE(...)  { string error = FormatString(__VA_ARGS__); Error(error, 0); return; }
 #define ERR_NORET(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; }
 
-#if 1
+#if 0
 class TokenisedLine
 {
 public:
@@ -276,16 +279,25 @@ public:
     TokenisedFile(SourceFile* sf);
     ~TokenisedFile();
 
+    SourceFile* m_sf;
+    int m_sourceVersion;
     TokenisedLine::Token* m_tokens;
-    TokenisedLine* m_lines;
 
+    TokenisedLine* m_lines;
     int m_lineCount;
+
     char* m_memory;
+    double m_compileTimeMS;
+
+    // where to find includes/imports
+    string m_workingDir;
 };
 #else
 class TokenisedLine
 {
 public:
+    vector<string>& GetTokens() { return m_tokens; }
+
     vector<string> m_tokens;
 };
 
@@ -295,7 +307,14 @@ public:
     TokenisedFile(SourceFile* sf);
     ~TokenisedFile();
 
+    SourceFile* m_sf;
+    int m_sourceVersion;
+
+    // copy of all the sourceFile data
     vector<TokenisedLine*> m_lines;
+
+    // where to find includes/imports
+    string m_workingDir;
 };
 #endif
 
@@ -303,27 +322,31 @@ class Compiler : public Thread
 {
 public:
 	Compiler();
+    ~Compiler();
+
+    // push new compile through when old one is finished
+    void Update();
 
 	// compile all lines
 	void Compile(class SourceFile* file);
 
+    // do compile of tokenised file copy - this is done on a thread
+    void DoCompile();
+
     // pass one builds up all the source code and labels,  but does not try to evaluate all expressions
-    void CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine, u32 &currentMemAddr);
+    void CompileLinePass1(CompilerLineInfo* li, TokenisedLine* tokenLine, u32& currentMemAddr);
 
     // pass two attempts to resolve all labels/expressions but may take multiple passes if there are deep dependancies
-    bool CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine);
+    bool CompileLinePass2(CompilerLineInfo* li, TokenisedLine* tokenLine);
 
 	// return opcode index or -1 if not an opcode
 	bool IsOpCode(const char* text);
 
     CompilerOpcode* FindOpcode(string &name, AddressingMode am);
-    CompilerLabel* FindLabel(CompilerSourceInfo* si, string& name, LabelResolve resolve, u32 resolveStartAddr);
+    CompilerLabel* FindLabel(CompilerSourceInfo* csi, string& name, LabelResolve resolve, u32 resolveStartAddr);
 
     GraphicChunk* GetMemAddrGC(class SourceFile* file, int line, int sourceVersion);
     GraphicChunk* GetDecodeGC(class SourceFile* file, int line, int sourceVersion);
-
-	// 64k of ram
-	u8 m_ram[65536];
 
     // expression opcodes that follow a value - ie.  a * b,  a + b
     CompilerExpressionOpcode *FindExprOpcode(string& token);
@@ -332,8 +355,8 @@ public:
     CompilerExpressionOpcode* FindPrefixExprOpcode(string& token);
 
     void PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, CompilerExpression* expr, int priority);
-    bool EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, double& value);
-    bool ResolveExpressionToken(CompilerSourceInfo* si, CompilerExpressionToken* token);
+    bool EvaluateExpression(CompilerLineInfo* line, CompilerExpression* expr, double& value);
+    bool ResolveExpressionToken(CompilerExpressionToken* token);
 
     void CmdImport_Parse(TokenFifo& fifo, CompilerSourceInfo* si, CompilerLineInfo* li, u32& currentMemAddr);
 
@@ -355,13 +378,29 @@ public:
     void LogContextualHelp(SourceFile* sf, int line);
 
 protected:
+    // start compiling m_nextFile now
+    void StartThreadedCompile();
+
+    // secure access to 'compilationActive' and 'm_nextFile'
+    Mutex m_compilationLock;
+
+    // true if compilation is current active and m_activeFile is being processed
+    bool m_compilationActive;
+
+    // main thread signals when we have a file ready to compile
     Semaphore m_compileRequested;
-    Semaphore m_compileCompleted;
+
+    // file queued for compile - if NULL, no file is queued
+    TokenisedFile* m_nextFile;
+
+    // this file is being compiled on thread
+    TokenisedFile* m_activeFile;
+
+    // this file being compiled - can be collected if compilation is not active
+    CompilerSourceInfo* m_compiledFile;
 
     // compiler loop
     virtual int Go();
-
-    TokenisedFile* m_fileCopy;
 };
 
 

@@ -537,9 +537,13 @@ bool BinaryToNumber(string& token, int& value)
     return true;
 }
 
-Compiler::Compiler() : m_compileRequested(1,1), m_compileCompleted(1,1), Thread("Compiler")
+Compiler::Compiler() : m_compileRequested(0,1), Thread("Compiler")
 {
-    memset(m_ram, 0, sizeof(m_ram));
+    m_compilationActive = false;
+    m_nextFile = 0;
+    m_activeFile = 0;
+    m_compiledFile = 0;
+
     memset(s_opcodes, 0, sizeof(s_opcodes));
 
     // copy opcode data to indexed table - we'll need this for fast emulation
@@ -551,6 +555,18 @@ Compiler::Compiler() : m_compileRequested(1,1), m_compileCompleted(1,1), Thread(
         if ((i == 0) || (s_opcodesRaw[i - 1].name != s_opcodesRaw[i].name))
             s_uniqueOpcodes.push_back(&s_opcodesRaw[i]);
     }
+
+    Start();
+}
+
+Compiler::~Compiler()
+{
+    m_terminate = true;
+    m_compileRequested.Signal();
+    WaitForThreadCompletion();
+
+    delete m_nextFile;
+    delete m_activeFile;
 }
 
 bool Compiler::IsOpCode(const char* text)
@@ -579,7 +595,7 @@ CompilerOpcode* Compiler::FindOpcode(string &name, AddressingMode am)
     return nullptr;;
 }
 
-CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelResolve resolve, u32 resolveStartAddr)
+CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* csi, string& name, LabelResolve resolve, u32 resolveStartAddr)
 {
     if (resolve == LabelResolve_Global)
     {
@@ -594,7 +610,7 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
 
     if (resolve == LabelResolve_Global)
     {
-        for (auto l : si->m_labels)
+        for (auto l : csi->m_labels)
         {
             if (StrEqual(l->m_name, name))
             {
@@ -607,7 +623,7 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
         CompilerLabel* best = nullptr;
 
         // find largest label that is smaller than the start addr
-        for (auto l : si->m_labels)
+        for (auto l : csi->m_labels)
         {
             if (StrEqual(l->m_name, name))
             {
@@ -627,7 +643,7 @@ CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* si, string& name, LabelRe
         CompilerLabel* best = nullptr;
 
         // find smallest label that is larger than the start addr
-        for (auto l : si->m_labels)
+        for (auto l : csi->m_labels)
         {
             if (StrEqual(l->m_name, name))
             {
@@ -686,7 +702,7 @@ void Compiler::CmdImport_Parse(TokenFifo &fifo, CompilerSourceInfo *si, Compiler
     }
 }
 
-void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine *sourceLine, u32& currentMemAddr)
+void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine, u32& currentMemAddr)
 {
     auto tokens = sourceLine->GetTokens();
     TokenFifo fifo(tokens);
@@ -702,7 +718,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         if (filename.empty())
             ERR("No filename specified");
 
-        string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
+        string path = m_activeFile->m_workingDir + filename.substr(1, filename.size() - 2);
         FILE* fh = fopen(path.c_str(), "rb");
         if (fh)
         {
@@ -773,7 +789,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             return;
 
         double startVal;
-        if (!EvaluateExpression(si, li, li->dataExpr[0], startVal))
+        if (!EvaluateExpression(li, li->dataExpr[0], startVal))
             ERR("Generate.b START param is not evaluable on first pass");
         li->cmdParams.push_back(startVal);
             
@@ -786,7 +802,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             return;
 
         double endVal;
-        if (!EvaluateExpression(si, li, li->dataExpr[1], endVal))
+        if (!EvaluateExpression(li, li->dataExpr[1], endVal))
             ERR("Generate.b END param is not be evaluable on first pass");
         li->cmdParams.push_back(endVal);
 
@@ -816,7 +832,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             return;
 
         double startVal;
-        if (!EvaluateExpression(si, li, li->dataExpr[0], startVal))
+        if (!EvaluateExpression(li, li->dataExpr[0], startVal))
             ERR("Generate.b START param is not evaluable on first pass");
         li->cmdParams.push_back(startVal);
 
@@ -829,7 +845,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             return;
 
         double endVal;
-        if (!EvaluateExpression(si, li, li->dataExpr[1], endVal))
+        if (!EvaluateExpression(li, li->dataExpr[1], endVal))
             ERR("Generate.b END param is not be evaluable on first pass");
         li->cmdParams.push_back(endVal);
 
@@ -860,7 +876,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             return;
 
         double addr;
-        if (!EvaluateExpression(si, li, li->dataExpr[0], addr))
+        if (!EvaluateExpression(li, li->dataExpr[0], addr))
             return;
 
         currentMemAddr = (int)addr;
@@ -940,7 +956,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             {
                 // if we can't evaluate it now, then we consider it absolute addressing
                 double value;
-                bool canEvaluate = EvaluateExpression(si, li, li->dataExpr[0], value);
+                bool canEvaluate = EvaluateExpression(li, li->dataExpr[0], value);
                 bool isZeroPage = (canEvaluate && value >= -128 && value <= 255);
 
                 if (fifo.Peek() == ",")
@@ -986,7 +1002,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         li->type = LT_Label;
         li->memAddr = currentMemAddr;
         li->operand = li->memAddr;
-        si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr, true));
+        m_compiledFile->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr, true));
     }
     else if (StrEqual(token, "dc.b") || StrEqual(token, ".byte") || StrEqual(token, "byte"))
     {
@@ -1059,7 +1075,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         // address label
         li->label = token;
 
-        if (si->DoesLabelExist(li->label.c_str()))
+        if (m_compiledFile->DoesLabelExist(li->label.c_str()))
             ERR("Duplicate variable declaration: %s", li->label.c_str());
 
         if (fifo.Peek() == "=")
@@ -1073,9 +1089,9 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             PopExpressionValue(fifo, li, li->dataExpr[0], 0);
 
             double value;
-            if (EvaluateExpression(si, li, li->dataExpr[0], value))
+            if (EvaluateExpression(li, li->dataExpr[0], value))
             {
-                si->m_labels.push_back(new CompilerLabel(li->label, value, li->lineNmbr));
+                m_compiledFile->m_labels.push_back(new CompilerLabel(li->label, value, li->lineNmbr));
                 li->dataEvaluated = true;
             }
         }
@@ -1088,7 +1104,7 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
             // address label
             li->type = LT_Label;
             li->memAddr = currentMemAddr;
-            si->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr));
+            m_compiledFile->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr));
         }
     }
 
@@ -1096,11 +1112,11 @@ void Compiler::CompileLinePass1(CompilerSourceInfo* si, CompilerLineInfo* li, So
         ERR("Extra text at end of line.");
 }
 
-bool Compiler::ResolveExpressionToken(CompilerSourceInfo *si, CompilerExpressionToken *token)
+bool Compiler::ResolveExpressionToken(CompilerExpressionToken *token)
 {
     if (token->resolve != LabelResolve_Done)
     {
-        auto label = FindLabel(si, token->label, token->resolve, (u32)token->value);
+        auto label = FindLabel(m_compiledFile, token->label, token->resolve, (u32)token->value);
         if (!label)
             return false;
 
@@ -1110,7 +1126,7 @@ bool Compiler::ResolveExpressionToken(CompilerSourceInfo *si, CompilerExpression
     return true;
 }
 
-bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line, CompilerExpression* expr, double &value)
+bool Compiler::EvaluateExpression(CompilerLineInfo* line, CompilerExpression* expr, double &value)
 {
     int tokenIdx = 0;
     int operatorIdx = 0;
@@ -1137,7 +1153,7 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
             if (op->params == 1)
             {
                 auto token = expr->m_tokens[tokenIdx];
-                if (!ResolveExpressionToken(si, token))
+                if (!ResolveExpressionToken(token))
                     return false;
 
                 double value = op->Evaluate(token->value, 0, 0);
@@ -1154,9 +1170,9 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
                 auto inTok1 = expr->m_tokens[tokenIdx];
                 auto inTok2 = expr->m_tokens[tokenIdx+1];
 
-                if (!ResolveExpressionToken(si, inTok1))
+                if (!ResolveExpressionToken(inTok1))
                     return false;
-                if (!ResolveExpressionToken(si, inTok2))
+                if (!ResolveExpressionToken(inTok2))
                     return false;
 
                 double value = op->Evaluate(inTok1->value, inTok2->value, 0);
@@ -1176,11 +1192,11 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
                 auto inTok2 = expr->m_tokens[tokenIdx + 1];
                 auto inTok3 = expr->m_tokens[tokenIdx + 2];
 
-                if (!ResolveExpressionToken(si, inTok1))
+                if (!ResolveExpressionToken(inTok1))
                     return false;
-                if (!ResolveExpressionToken(si, inTok2))
+                if (!ResolveExpressionToken(inTok2))
                     return false;
-                if (!ResolveExpressionToken(si, inTok3))
+                if (!ResolveExpressionToken(inTok3))
                     return false;
 
                 double value = op->Evaluate(inTok1->value, inTok2->value, inTok3->value);
@@ -1205,7 +1221,7 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
         return false;
 
     auto tok = expr->m_tokens.front();
-    if (!ResolveExpressionToken(si, tok))
+    if (!ResolveExpressionToken(tok))
         return false;
 
     value = tok->value;
@@ -1214,7 +1230,7 @@ bool Compiler::EvaluateExpression(CompilerSourceInfo* si, CompilerLineInfo* line
 
 
 
-bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, SourceLine* sourceLine)
+bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
 {
     if (li->error)
         return true;
@@ -1226,7 +1242,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             int instructionLength = gAddressingModeSize[li->addressMode];
             if (instructionLength > 1)
             {
-                if (!EvaluateExpression(si, li, li->dataExpr[0], li->operand))
+                if (!EvaluateExpression(li, li->dataExpr[0], li->operand))
                     return false;
             }
 
@@ -1256,10 +1272,10 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
     {
         if (!li->dataEvaluated)
         {
-            if (!EvaluateExpression(si, li, li->dataExpr[0], li->operand))
+            if (!EvaluateExpression(li, li->dataExpr[0], li->operand))
                 return false;
             li->dataEvaluated = true;
-            si->m_labels.push_back(new CompilerLabel(li->label, li->operand, li->lineNmbr));
+            m_compiledFile->m_labels.push_back(new CompilerLabel(li->label, li->operand, li->lineNmbr));
         }
     }
     else if (li->type == LT_DataBytes)
@@ -1270,7 +1286,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             for (int i = 0; i < li->dataExpr.size(); i++)
             {
                 double value;
-                if (!EvaluateExpression(si, li, li->dataExpr[i], value))
+                if (!EvaluateExpression(li, li->dataExpr[i], value))
                     return false;
 
                 li->data.push_back((u8)value & 0xff);
@@ -1286,7 +1302,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
             for (int i = 0; i < li->dataExpr.size(); i++)
             {
                 double value;
-                if (!EvaluateExpression(si, li, li->dataExpr[i], value))
+                if (!EvaluateExpression(li, li->dataExpr[i], value))
                     return false;
 
                 li->data.push_back((u8)value & 0xff);
@@ -1300,7 +1316,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         if (!li->dataEvaluated)
         {
             double value;
-            if (!EvaluateExpression(si, li, li->dataExpr[0], value))
+            if (!EvaluateExpression(li, li->dataExpr[0], value))
                 return false;
             li->dataEvaluated = true;
 
@@ -1328,7 +1344,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         if (!li->dataEvaluated)
         {
             string name = "I";
-            auto it = FindLabel(si, name, LabelResolve_Global, 0);
+            auto it = FindLabel(m_compiledFile, name, LabelResolve_Global, 0);
             li->data.clear();
 
             // copy the expression because we need to reset it after every evaluation
@@ -1337,7 +1353,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
                 it->m_value = (double)i;
                 double value;
                 auto expr = li->dataExpr[2]->Clone();
-                bool success = EvaluateExpression(si, li, expr, value);
+                bool success = EvaluateExpression(li, expr, value);
                 delete expr;
 
                 if (!success)
@@ -1353,7 +1369,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
         if (!li->dataEvaluated)
         {
             string name = "I";
-            auto it = FindLabel(si, name, LabelResolve_Global, 0);
+            auto it = FindLabel(m_compiledFile, name, LabelResolve_Global, 0);
             li->data.clear();
 
             // copy the expression because we need to reset it after every evaluation
@@ -1362,7 +1378,7 @@ bool Compiler::CompileLinePass2(CompilerSourceInfo* si, CompilerLineInfo* li, So
                 it->m_value = (double)i;
                 double value;
                 auto expr = li->dataExpr[2]->Clone();
-                bool success = EvaluateExpression(si, li, expr, value);
+                bool success = EvaluateExpression(li, expr, value);
                 delete expr;
 
                 if (!success)
@@ -1381,7 +1397,7 @@ GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourc
 {
     auto settings = gApp->GetSettings();
     auto ci = file->GetCompileInfo();
-    if (ci && ci->m_sourceVersion == file->GetSourceVersion())
+    if (ci && line < ci->m_lines.size())
     {
         auto sl = ci->m_lines[line];
         if (sl->type != LT_Unknown && sl->type != LT_Comment)
@@ -1414,7 +1430,7 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
 
     auto settings = gApp->GetSettings();
     auto ci = file->GetCompileInfo();
-    if (ci && ci->m_sourceVersion == file->GetSourceVersion())
+    if (ci && line < ci->m_lines.size())
     {
         auto sl = ci->m_lines[line];
         if (sl->gcDecode->IsEmpty())
@@ -1447,39 +1463,87 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
     return nullptr;
 }
 
-void Compiler::Compile(SourceFile* file)
+void Compiler::StartThreadedCompile()
 {
-    Profile PF("Compile Time");
-
+    // start recompile now
     auto lw = gApp->GetLogWindow();
     lw->ClearLog(LogWindow::LF_CompilerWarning);
+    Profile PF("Start Compile");
+    PF.Log();
+}
+
+void Compiler::Compile(SourceFile* file)
+{
+    Profile PF("Compile Prep");
+    if (m_nextFile)
+        delete m_nextFile;
+    m_nextFile = new TokenisedFile(file);
+    m_nextFile->m_sf = file;
+    Log(PF.Log().c_str());
+}
+
+void Compiler::Update()
+{
+    // TODO: handle aborted compilation - ie. if source file is destroyed while we compile
+
+    if (!m_compilationActive)
+    {
+        // collect any results from last compile
+        if (m_compiledFile)
+        {
+            // collect file
+            m_activeFile->m_sf->SetCompileInfo(m_compiledFile);
+            delete m_activeFile;
+
+            // compilation errors & compile time
+            auto lw = gApp->GetLogWindow();
+            lw->ClearLog(LogWindow::LF_LabelHelp);
+            for (auto l : m_compiledFile->m_labels)
+            {
+                if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
+                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr);
+                else
+                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
+            }
+
+            lw->ClearLog(LogWindow::LF_CompilerWarning);
+            lw->LogText(LogWindow::LF_CompilerWarning, FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS));
+            FlushErrors();
+
+            m_activeFile = 0;
+            m_compiledFile = 0;
+        }
+
+        // kick off next compile
+        if (m_nextFile)
+        {
+            m_activeFile = m_nextFile;
+            m_nextFile = 0;
+            m_compilationActive = true;
+            m_compileRequested.Signal();
+        }
+    }
+}
+
+void Compiler::DoCompile()
+{
+    Profile PF("Compile Time");
 
     u32 currentMemAddr = 0;
 
     m_errors.clear();
-
-    auto sourceInfo = new CompilerSourceInfo();
-    sourceInfo->m_sourceVersion = file->GetSourceVersion();
-    file->SetCompileInfo(sourceInfo);
-
-    string path = file->GetPath();
-    int pathEnd = (int)path.find_last_of('\\');
-    if (pathEnd == string::npos)
-    {
-        sourceInfo->m_workingDir = "";
-    }
-    else
-    {
-        sourceInfo->m_workingDir = path.substr(0, pathEnd + 1);
-    }
+    m_compiledFile = new CompilerSourceInfo();
+    m_compiledFile->m_sourceVersion = m_activeFile->m_sourceVersion;
 
     int lineNmbr = 0;
-    for (auto line : file->GetLines())
+    for (auto line : m_activeFile->m_lines)
     {
+        auto line = m_activeFile->m_lines[lineNmbr];
+
         auto lineInfo = new CompilerLineInfo();
         lineInfo->lineNmbr = lineNmbr;
-        CompileLinePass1(sourceInfo, lineInfo, line, currentMemAddr);
-        sourceInfo->m_lines.push_back(lineInfo);
+        CompileLinePass1(lineInfo, line, currentMemAddr);
+        m_compiledFile->m_lines.push_back(lineInfo);
         lineNmbr++;
     }
 
@@ -1489,9 +1553,9 @@ void Compiler::Compile(SourceFile* file)
     while (true)
     {
         thisCount = 0;
-        for (auto li : sourceInfo->m_lines)
+        for (auto li : m_compiledFile->m_lines)
         {
-            if (!CompileLinePass2(sourceInfo, li, file->GetLines()[li->lineNmbr]))
+            if (!CompileLinePass2(li, m_activeFile->m_lines[li->lineNmbr]))
                 thisCount++;
         }
         if (thisCount == 0 || thisCount == lastCount)
@@ -1501,25 +1565,14 @@ void Compiler::Compile(SourceFile* file)
 
     if (thisCount != 0)
     {
-        for (auto li : sourceInfo->m_lines)
+        for (auto li : m_compiledFile->m_lines)
         {
-            if (!CompileLinePass2(sourceInfo, li, file->GetLines()[li->lineNmbr]))
+            if (!CompileLinePass2(li, m_activeFile->m_lines[li->lineNmbr]))
                 ERR_NORET("Unable to resolve expression");
         }
     }
 
-    lw->ClearLog(LogWindow::LF_LabelHelp);
-    for (auto l : sourceInfo->m_labels)
-    {
-        if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0))<0.0000001 && abs(l->m_value) < 1000000000.0f)
-            lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr);
-        else
-            lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
-    }
-
-    FlushErrors();
-
-    lw->LogText(LogWindow::LF_CompilerWarning, PF.Log());
+    m_compiledFile->m_compileTimeMS = PF.Time();
 }
 
 void Compiler::Error(const string& text, int lineNmbr)
@@ -1622,24 +1675,42 @@ void CompilerSourceInfo::SavePrg(const char* path)
 
 int Compiler::Go()
 {
-    while (!m_terminate)
+    while (1)
     {
         m_compileRequested.Wait();
+        if (m_terminate)
+            break;
 
-        // .. do compile
+        DoCompile();
 
-        m_compileCompleted.Signal();
+        m_compilationActive = false;
     }
     return 0;
 }
 
-#if 1
+#if 0
 TokenisedFile::TokenisedFile(SourceFile* sf)
 {
     m_memory = (char*)malloc(64 * 1024 * 0124);
     m_lineCount = (int)sf->GetLines().size();
     m_lines = new TokenisedLine[m_lineCount];
     m_tokens = new TokenisedLine::Token[1024 * 1024];
+    m_sourceVersion = sf->GetSourceVersion();
+
+    // note - we can't access this inside the thread but we use it to know what source file compile is in process
+    m_sf = sf;
+
+    // setup working directory so we can do includes/imports later
+    string path = m_sf->GetPath();
+    int pathEnd = (int)path.find_last_of('\\');
+    if (pathEnd == string::npos)
+    {
+        m_workingDir = "";
+    }
+    else
+    {
+        m_workingDir = path.substr(0, pathEnd + 1);
+    }
 
     char* mptr = m_memory;
     int currentToken = 0;
@@ -1675,6 +1746,23 @@ TokenisedFile::~TokenisedFile()
 
 TokenisedFile::TokenisedFile(SourceFile* sf)
 {
+    m_sourceVersion = sf->GetSourceVersion();
+
+    // note - we can't access this inside the thread but we use it to know what source file compile is in process
+    m_sf = sf;
+
+    // setup working directory so we can do includes/imports later
+    string path = m_sf->GetPath();
+    int pathEnd = (int)path.find_last_of('\\');
+    if (pathEnd == string::npos)
+    {
+        m_workingDir = "";
+    }
+    else
+    {
+        m_workingDir = path.substr(0, pathEnd + 1);
+    }
+
     for (auto sl : sf->GetLines())
     {
         auto line = new TokenisedLine();

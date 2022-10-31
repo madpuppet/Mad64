@@ -112,6 +112,10 @@ int Application::MainLoop()
 
     m_settings->Save();
 
+    delete m_editWindow;
+    delete m_compiler;
+    delete m_logWindow;
+    delete m_settings;
     return 0;
 }
 
@@ -119,6 +123,7 @@ void Application::Update()
 {
     m_editWindow->Update();
     m_logWindow->Update();
+    m_compiler->Update();
 }
 
 void Application::Draw()

@@ -14,6 +14,17 @@ public:
     void SetText(TTF_Font* font, const char* text, const SDL_Color& col);
     void SetTexture(SDL_Texture *tex, bool ownTexture);
 
+    void Render(SDL_Renderer *r)
+    {
+        SDL_RenderCopy(r, m_tex, 0, &m_quad);
+    }
+
+    void RenderAt(SDL_Renderer* r, int x, int y)
+    {
+        SDL_Rect rect = { x, y, m_quad.w, m_quad.h };
+        SDL_RenderCopy(r, m_tex, 0, &rect);
+    }
+
     void SetEnabled(bool enabled) { m_enabled = enabled; }
     bool IsEnabled() { return m_enabled; }
     const SDL_Rect& GetRect() { return m_quad; }
