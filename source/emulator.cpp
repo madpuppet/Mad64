@@ -34,7 +34,7 @@ void Emulator::ConvertSnapshot()
 		fclose(fh);
 
 		// parse
-		FILE* fout = fopen("c64ram.cpp", "w");
+		FILE* fout = fopen("source/c64ram.cpp", "w");
 		if (fout)
 		{
 			u8* chunk = data + 58;

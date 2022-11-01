@@ -90,7 +90,6 @@ void CmdChangeLines::Do()
 				line->GetChars() = c->newLine;
 				m_file->GetLines().insert(m_file->GetLines().begin() + c->line, line);
 				line->Tokenize();
-				line->VisualizeText();
 			}
 			break;
 		case Change::CHANGE_Remove:
@@ -105,7 +104,6 @@ void CmdChangeLines::Do()
 				auto line = m_file->GetLines()[c->line];
 				line->GetChars() = c->newLine;
 				line->Tokenize();
-				line->VisualizeText();
 			}
 			break;
 		}
@@ -154,7 +152,6 @@ void CmdChangeLines::Undo()
 				line->GetChars() = c->oldLine;
 				m_file->GetLines().insert(m_file->GetLines().begin() + c->line, line);
 				line->Tokenize();
-				line->VisualizeText();
 			}
 			break;
 
@@ -163,7 +160,6 @@ void CmdChangeLines::Undo()
 				auto line = m_file->GetLines()[c->line];
 				line->GetChars() = c->oldLine;
 				line->Tokenize();
-				line->VisualizeText();
 			}
 			break;
 		}

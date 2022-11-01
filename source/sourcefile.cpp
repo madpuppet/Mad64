@@ -76,7 +76,6 @@ bool SourceFile::Load()
         for (auto line : m_lines)
         {
             line->Tokenize();
-            line->VisualizeText();
         }
 
         // compile & vizualize compiled elements
@@ -92,10 +91,10 @@ bool SourceFile::Load()
 
 void SourceFile::Visualize()
 {
-    for (auto line : m_lines)
-    {
-        line->VisualizeText();
-    }
+//    for (auto line : m_lines)
+//    {
+//        line->VisualizeIfNecessary();
+//    }
 }
 
 bool SourceFile::Save()
@@ -275,10 +274,15 @@ void SourceLine::Tokenize()
             m_tokens.push_back(token);
         }
     }
+    m_charXOffset.clear();
+    m_gcText->Clear();
+    m_charXOffset.clear();
+    m_charXOffset.push_back(0);
 }
 
 void SourceLine::GetCharX(int column, int& xStart, int& xEnd)
 {
+    VisualizeIfNecessary();
     if (column >= m_charXOffset.size()-1)
     {
         xStart = m_charXOffset.back();
@@ -293,6 +297,7 @@ void SourceLine::GetCharX(int column, int& xStart, int& xEnd)
 
 int SourceLine::GetColumnAtX(int x)
 {
+    VisualizeIfNecessary();
     for (int i = 0; i < m_charXOffset.size()-1; i++)
     {
         if (m_charXOffset[i+1] > x)
@@ -301,13 +306,13 @@ int SourceLine::GetColumnAtX(int x)
     return (int)m_chars.size();
 }
 
-void SourceLine::VisualizeText()
+void SourceLine::VisualizeIfNecessary()
 {
+    if (m_tokens.empty() || m_charXOffset.size() > 1)
+        return;
+
     auto settings = gApp->GetSettings();
     int whiteSpaceWidth = gApp->GetWhiteSpaceWidth();
-    m_gcText->Clear();
-    m_charXOffset.clear();
-    m_charXOffset.push_back(0);
     if (!m_tokens.empty())
     {
         int xLoc = 0;

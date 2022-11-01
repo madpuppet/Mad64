@@ -13,10 +13,14 @@ public:
     void GetCharX(int column, int& xStart, int& xEnd);
     int GetColumnAtX(int x);
 
-    GraphicChunk* GetGCText() { return m_gcText; }
+    GraphicChunk* GetGCText() { VisualizeIfNecessary();  return m_gcText; }
 
+    // scan the m_chars for tokens
+    // this clears any previous visualization
     void Tokenize();
-    void VisualizeText();
+
+    // convert the tokens to visual elements if it hasn't already
+    void VisualizeIfNecessary();
 
 protected:
     GraphicChunk* m_gcText;         // graphic chunk for text

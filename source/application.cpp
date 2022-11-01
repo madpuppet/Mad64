@@ -284,7 +284,6 @@ void Application::CreateNewFile()
         m_sourceFiles.push_back(source);
         auto newLine = new SourceLine();
         newLine->Tokenize();
-        newLine->VisualizeText();
         source->GetLines().push_back(newLine);
         m_editWindow->OnFileLoaded(source);
 
