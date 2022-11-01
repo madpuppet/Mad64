@@ -135,7 +135,7 @@ bool AppSettings::Load()
                 }
                 else if (SDL_strcasecmp(token, "tabWidth") == 0)
                 {
-                    tabWidth = val;
+                    tabWidth = SDL_clamp(val, 1, 32);
                 }
                 else if (SDL_strcasecmp(token, "textXMargin") == 0)
                 {

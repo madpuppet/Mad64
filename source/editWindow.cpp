@@ -26,12 +26,6 @@ EditWindow::EditWindow()
 	m_mouseMarking = false;
 	m_inputCapture = IC_None;
 
-	m_cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-	m_cursorIBeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-	m_cursorHoriz = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-	m_cursorVert = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-	m_cursorHand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-
 	m_searchBox = new TextInput(0,0,"S",DELEGATE(EditWindow::OnSearchEnter));
 	m_searchBox->SetOnChange(DELEGATE(EditWindow::OnSearchChange));
 	m_replaceBox = new TextInput(0, 0, "R", DELEGATE(EditWindow::OnReplaceEnter));
@@ -448,6 +442,15 @@ void EditWindow::SetActiveFile(SourceFile* file)
 		if (sfi->file == file)
 		{
 			m_activeSourceFileItem = sfi;
+			if (HasExtension(file->GetPath().c_str(), ".asm"))
+			{
+				gApp->GetCompiler()->Compile(file);
+				gApp->GetCompiler()->LogContextualHelp(file, sfi->activeLine);
+			}
+			else
+			{
+				gApp->GetLogWindow()->ClearAllLogs();
+			}
 			return;
 		}
 	}
@@ -774,56 +777,44 @@ void EditWindow::SelectCursor(int x, int y)
 		{
 			if (Contains(sfi->geText->GetRect(), x, y))
 			{
-				SDL_SetCursor(m_cursorHand);
+				gApp->SetCursor(Cursor_Hand);
 				return;
 			}
 		}
 	}
 	else if (abs(x - settings->xPosDecode) < 2)
 	{
-		SDL_SetCursor(m_cursorHoriz);
+		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
 	else if (abs(x - settings->xPosText) < 2)
 	{
-		SDL_SetCursor(m_cursorHoriz);
+		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
 	else if (abs(x - settings->xPosContextHelp) < 2)
 	{
-		SDL_SetCursor(m_cursorHoriz);
+		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
 	else if (Contains(m_sourceEditRect, x, y))
 	{
 		if (x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
 		{
-			SDL_SetCursor(m_cursorVert);
+			gApp->SetCursor(Cursor_Vert);
 		}
 		else
 		{
-			SDL_SetCursor(m_cursorIBeam);
+			gApp->SetCursor(Cursor_IBeam);
 		}
 		return;
 	}
 	else if (Contains(m_contextHelpRect, x, y))
 	{
-		if (x > m_contextHelpRect.x + m_contextHelpRect.w - settings->scrollBarWidth)
-		{
-			SDL_SetCursor(m_cursorVert);
-			return;
-		}
-		else
-		{
-			int line;
-			if (gApp->GetLogWindow()->FindLogLineAt(y, line))
-			{
-				SDL_SetCursor(m_cursorHand);
-				return;
-			}
-		}
+		gApp->GetLogWindow()->SelectCursor(x, y);
+		return;
 	}
-	SDL_SetCursor(m_cursorArrow);
+	gApp->SetCursor(Cursor_Arrow);
 }
 
 bool EditWindow::MouseToRowCol(int x, int y, int& row, int& col)
@@ -1498,7 +1489,7 @@ void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)
 
 void EditWindow::UpdateContextualHelp()
 {
-	if (m_activeSourceFileItem)
+	if (m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm"))
 	{
 		gApp->GetCompiler()->LogContextualHelp(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine);
 	}

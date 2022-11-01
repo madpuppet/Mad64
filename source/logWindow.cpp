@@ -11,6 +11,7 @@ LogWindow::LogWindow()
 	{
 		m_logGroups[i].m_groupOpen = true;
 		m_logGroups[i].m_geTitle = 0;
+		m_logGroups[i].m_geIcon = 0;
 	}
 	m_dragMode = DRAG_None;
 	m_scroll = 0;
@@ -35,6 +36,12 @@ GraphicElement* LogWindow::GetGroupTitleGE(LogFilter group)
 		auto settings = gApp->GetSettings();
 		SDL_Color col = settings->helpGroupColor;
 		lg.m_geTitle = GraphicElement::CreateFromText(gApp->GetFont(), s_titles[group], col, 0, 0);
+
+		if (lg.m_geTitle == 0)
+		{
+			Log("FAILED TO CREATE GRAPHIC ELEMENT");
+		}
+
 	}
 	return lg.m_geTitle;
 }
@@ -61,6 +68,12 @@ void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
 	logItem->text = text;
 	logItem->line = lineNmbr;
 	m_logGroups[filter].m_logLines.push_back(logItem);
+}
+
+void LogWindow::ClearAllLogs()
+{
+	for (int i = 0; i < LF_MAX; i++)
+		ClearLog((LogFilter)i);
 }
 
 void LogWindow::ClearLog(LogFilter filter)
@@ -294,16 +307,6 @@ bool LogWindow::FindLogItemAt(int y, int& group, int& item)
 			}
 			row -= (int)lg.m_logLines.size() + 1;
 		}
-		else
-		{
-			if (row == 0)
-			{
-				group = i;
-				item = -1;
-				return true;
-			}
-			row--;
-		}
 	}
 	return false;
 }
@@ -324,6 +327,31 @@ void LogWindow::LogTextArray(LogFilter filter, const char** textArray, int col)
 		LogText(filter, string(*t), -1, col);
 		t++;
 	}
+}
+
+void LogWindow::SelectCursor(int x, int y)
+{
+	if (Contains(m_titleArea, x, y))
+	{
+		for (auto &group : m_logGroups)
+		{
+			if (Contains(group.m_geIcon->GetRect(), x, y))
+			{
+				gApp->SetCursor(Cursor_Hand);
+				return;
+			}
+		}
+	}
+	else if (Contains(m_logArea, x, y))
+	{
+		int line;
+		if (gApp->GetLogWindow()->FindLogLineAt(y, line))
+		{
+			gApp->SetCursor(Cursor_Hand);
+			return;
+		}
+	}
+	gApp->SetCursor(Cursor_Arrow);
 }
 
 void LogWindow::OnMouseDown(SDL_Event* event)

@@ -38,6 +38,13 @@ Application::Application()
         if (!m_settings->Load())
             m_settings->Save();
 
+        // create cursors
+        m_cursors[Cursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+        m_cursors[Cursor_IBeam] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+        m_cursors[Cursor_Horiz] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+        m_cursors[Cursor_Vert] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+        m_cursors[Cursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+
         TTF_Init();
         Log("Create Font: %s", m_settings->fontPath.c_str());
         m_font = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
@@ -53,6 +60,9 @@ Application::Application()
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
+        m_emulator = new Emulator();
+
+        m_emulator->ConvertSnapshot();
 
         for (auto& p : m_settings->loadedFilePaths)
         {
@@ -114,6 +124,7 @@ int Application::MainLoop()
 
     delete m_editWindow;
     delete m_compiler;
+    delete m_emulator;
     delete m_logWindow;
     delete m_settings;
     return 0;
@@ -124,6 +135,8 @@ void Application::Update()
     m_editWindow->Update();
     m_logWindow->Update();
     m_compiler->Update();
+    m_emulator->Update();
+
 }
 
 void Application::Draw()
@@ -174,7 +187,7 @@ void Application::HandleEvent(SDL_Event *e)
 void Application::LoadFile()
 {
     const char* path = gApp->GetSettings()->activeFilePath.c_str();
-    const char* patterns[3] = { "*.asm", "*.bas", "*.txt" };
+    const char* patterns[3] = { "*.asm", "*.bas", "*.txt"};
     const char *file = tinyfd_openFileDialog("Load file", path, 3, patterns, nullptr, false);
     if (file)
     {
@@ -548,8 +561,26 @@ void Application::Cmd_InsertSpaces(int count)
         cmd->Do();
     }
 }
+
+bool StrIsAllSpace(const string &str)
+{
+    for (auto c : str)
+    {
+        if (c != ' ')
+            return false;
+    }
+    return true;
+}
+
+void Application::SetCursor( CursorType ct)
+{
+    SDL_SetCursor(m_cursors[ct]);
+}
+
 void Application::Cmd_BackspaceChar()
 {
+    auto settings = gApp->GetSettings();
+
     SourceFile* file = m_editWindow->GetActiveFile();
     if (file)
     {
@@ -566,13 +597,21 @@ void Application::Cmd_BackspaceChar()
             auto line = file->GetLines()[oldActiveLine];
             auto& chars = line->GetChars();
             auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
-
             auto copy = chars;
-            copy.erase(copy.begin() + (oldActiveCol - 1));
 
-            int newActiveLine = oldActiveLine;
-            int newActiveColumn = oldActiveCol - 1;
-            cmd->SetNewActiveLineCol(newActiveLine, newActiveColumn);
+            // if all previous characters are spaces,  and we are spaces AS tabs,  then remove spaces back to the last tab mark
+            if (settings->tabsToSpaces && StrIsAllSpace(copy))
+            {
+                int effSize = oldActiveCol - 1;
+                int prevTab = effSize - (effSize % settings->tabWidth);
+                copy.resize(prevTab);
+                cmd->SetNewActiveLineCol(oldActiveLine, prevTab);
+            }
+            else
+            {
+                copy.erase(copy.begin() + (oldActiveCol - 1));
+                cmd->SetNewActiveLineCol(oldActiveLine, oldActiveCol - 1);
+            }
 
             cmd->PushReplace(oldActiveLine, copy);
             file->GetCmdManager()->PushCmd(cmd);

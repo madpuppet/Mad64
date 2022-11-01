@@ -170,12 +170,6 @@ protected:
 	SDL_Rect m_statusRect;
 	void CalcRects();
 
-	SDL_Cursor* m_cursorArrow;
-	SDL_Cursor* m_cursorIBeam;
-	SDL_Cursor* m_cursorHoriz;
-	SDL_Cursor* m_cursorVert;
-	SDL_Cursor* m_cursorHand;
-
 	// common resources
 	SDL_Texture* m_tabActiveTex;
 	SDL_Texture* m_tabInactiveTex;

@@ -50,6 +50,9 @@
     <ClCompile Include="source\tinyfiledialogs.c">
       <Filter>3rd Party</Filter>
     </ClCompile>
+    <ClCompile Include="source\emulator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">

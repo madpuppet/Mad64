@@ -1,8 +1,6 @@
 #include "common.h"
 #include "thread.h"
 
-// TODO:  switch to SDL threads
-
 #if defined(_WIN32)
 #include "windows.h"
 #endif

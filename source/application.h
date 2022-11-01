@@ -7,6 +7,18 @@
 #include "cmdManager.h"
 #include "appSettings.h"
 #include "logWindow.h"
+#include "emulator.h"
+
+enum CursorType
+{
+    Cursor_Arrow,
+    Cursor_IBeam,
+    Cursor_Horiz,
+    Cursor_Vert,
+    Cursor_Hand,
+
+    Cursor_MAX
+};
 
 class Application
 {
@@ -26,6 +38,8 @@ public:
     LogWindow* GetLogWindow() { return m_logWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
 
+    void SetCursor(CursorType ct);
+
     // COMMANDS - undo'able
     void Cmd_InsertChar(char ch);
     void Cmd_BackspaceChar();
@@ -44,8 +58,12 @@ public:
     SourceFile* FindFile(const char* path);
     void ReloadFont();
 
+
 protected:
     vector<SourceFile*> m_sourceFiles;
+
+    // cursors
+    SDL_Cursor* m_cursors[Cursor_MAX];
 
     // GENERAL METHODS
     void Update();
@@ -69,6 +87,7 @@ protected:
     EditWindow* m_editWindow;
     LogWindow* m_logWindow;
     Compiler* m_compiler;
+    Emulator* m_emulator;
     bool m_quit;
     bool m_repaint;
     bool m_fullscreen;

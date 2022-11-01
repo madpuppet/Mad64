@@ -59,6 +59,7 @@ public:
 	void LogText(LogFilter filter, string text, int lineNmbr = -1, int col = 0);
 	void LogTextArray(LogFilter filter, const char **textArray, int col);
 
+	void ClearAllLogs();
 	void ClearLog(LogFilter filter);
 	void Update();
 	void Draw();
@@ -74,6 +75,7 @@ public:
 	bool FindLogLineAt(int y, int& line);
 	void ClampTargetScroll();
 	void OnMouseUp(SDL_Event* e);
+	void SelectCursor(int x, int y);
 
 protected:
 	SDL_Rect m_area;

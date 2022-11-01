@@ -125,7 +125,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>Imm32.lib;version.lib;setupapi.lib; SDL2_ttf.lib;SDL2main.lib;SDL2.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -143,7 +143,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -157,6 +157,7 @@
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\contextualHelp.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
+    <ClCompile Include="source\emulator.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
     <ClCompile Include="source\LogWindow.cpp" />
     <ClCompile Include="source\main.cpp">
