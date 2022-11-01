@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\application.cpp" />
+    <ClCompile Include="source\c64ram.cpp" />
     <ClCompile Include="source\cmdManager.cpp" />
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\contextualHelp.cpp" />

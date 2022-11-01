@@ -37,6 +37,8 @@ void Emulator::ConvertSnapshot()
 		FILE* fout = fopen("source/c64ram.cpp", "w");
 		if (fout)
 		{
+			fprintf(fout, "#include \"common.h\"\n#include \"emulator.h\"\n\n");
+
 			u8* chunk = data + 58;
 			while (chunk < data + size)
 			{
@@ -48,12 +50,12 @@ void Emulator::ConvertSnapshot()
 				{
 					fprintf(fout, "// MAINCPU\n");
 					fprintf(fout, "Cpu6502State gC64_cpuState = {\n");
+					fprintf(fout, "  %d,   // PC\n", *((u16*)(chunk + 0x1E)));
 					fprintf(fout, "  %d,   // A\n", chunk[0x1a]);
 					fprintf(fout, "  %d,   // X\n", chunk[0x1b]);
 					fprintf(fout, "  %d,   // Y\n", chunk[0x1c]);
-					fprintf(fout, "  %d,   // SP\n", chunk[0x1D]);
-					fprintf(fout, "  %d,   // PC\n", *((u16*)(chunk + 0x1E)));
-					fprintf(fout, "  %d    // SR\n", chunk[0x20]);
+					fprintf(fout, "  %d,   // SR\n", chunk[0x20]);
+					fprintf(fout, "  %d    // SP\n", chunk[0x1D]);
 					fprintf(fout, "};\n\n");
 				}
 				else if (SDL_strcmp(moduleName, "C64MEM") == 0)
@@ -97,7 +99,7 @@ void Emulator::ConvertSnapshot()
 					}
 					fprintf(fout, "};\n\n");
 					fprintf(fout, "u8 gC64_chargenRom[4096] = {\n");
-					for (int i = 0; i < 8192; i += 16)
+					for (int i = 0; i < 4096; i += 16)
 					{
 						fprintf(fout, "  ");
 						for (int ii = 0; ii < 16; ii++)

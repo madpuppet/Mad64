@@ -62,7 +62,7 @@ Application::Application()
         m_compiler = new Compiler();
         m_emulator = new Emulator();
 
-        m_emulator->ConvertSnapshot();
+//        m_emulator->ConvertSnapshot();
 
         for (auto& p : m_settings->loadedFilePaths)
         {

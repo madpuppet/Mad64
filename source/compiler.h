@@ -2,6 +2,16 @@
 #include "thread.h"
 #include "contextualHelp.h"
 
+struct Cpu6502State
+{
+    u16 regPC;
+    u8 regA;
+    u8 regX;
+    u8 regY;
+    u8 regSR;
+    u8 regSP;
+};
+
 // compiler label only get added to labels list once they are evaluated
 class CompilerLabel
 {
