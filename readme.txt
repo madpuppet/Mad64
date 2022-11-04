@@ -97,3 +97,20 @@ rom.SETNAM, rom.LOAD               -  basic rom function addresses
 
 
 
+
+RELEASE NOTES
+
+2022.7
+
+Many polishes to editor.
+Search & Replace working
+Got Linux version building via CMAKE and binary added to release.
+Compiler now works on a thread so can't slow down editting even on massive files.
+
+2022.5
+
+First public release
+Editor and compiler are functional.
+Search works
+Log window has contextual help.
+ 
