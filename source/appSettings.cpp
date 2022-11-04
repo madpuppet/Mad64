@@ -10,21 +10,38 @@ bool ReadLine(char * &src, char *end, char* token, char* value)
     int tlen = 0;
     int vlen = 0;
 
+    // skip white space
     while (src < end && (*src == 0xa || *src == 0xd || *src == ' ' || *src == '\t'))
         src++;
+
+    if (*src == ';')
+    {
+        // skip comment
+        while (src < end && *src != 0xa && *src != 0xd)
+            src++;
+        return (src != end);
+    }
+
+    // scan command token to the '=' sign
     while (src < end && *src != '=' && tlen < 255)
     {
         *token++ = *src++;
         tlen++;
     }
     src++;
-    while (src < end && *src != 0xa && *src != 0xd && vlen < 255)
+
+    // scan in the value token
+    while (src < end && *src != 0xa && *src != 0xd && *src != ';' && vlen < 255)
     {
         *value++ = *src++;
         vlen++;
     }
     while (src < end && (*src == 0xa || *src == 0xd || *src==' ' || *src == '\t'))
         src++;
+
+    // trim off white space
+    while (*(token - 1) == ' ' || *(token - 1) == '\t')
+        token--;
 
     *token++ = 0;
     *value++ = 0;
@@ -67,13 +84,15 @@ AppSettings::AppSettings()
     tabsToSpaces = true;
     overwriteMode = false;
     autoIndent = true;
+    renderLineBackgrounds = true;
     vicePath = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
     lineHeight = 24;
-    fontPath = "font.otf";
+    fontPath = "font.ttf";
     fontSize = 16;
     tabWidth = 4;
     textXMargin = 8;
     textYMargin = 4;
+    backColor = { 0, 0, 64, 255 };
     textColor = { 0, 255, 255, 255 };
     commentColor = { 0, 255, 64, 255 };
     numericColor = { 200, 255, 50, 255 };
@@ -121,6 +140,10 @@ bool AppSettings::Load()
                 {
                     autoIndent = val ? true : false;
                 }
+                else if (SDL_strcasecmp(token, "renderLineBackgrounds") == 0)
+                {
+                    renderLineBackgrounds = val ? true : false;
+                }
                 else if (SDL_strcasecmp(token, "FontSize") == 0)
                 {
                     fontSize = val;
@@ -160,6 +183,12 @@ bool AppSettings::Load()
                 else if (SDL_strcasecmp(token, "xPosContextHelp") == 0)
                 {
                     xPosContextHelp = val;
+                }
+                else if (SDL_strcasecmp(token, "backColor") == 0)
+                {
+                    u8 r, g, b;
+                    ReadColor(value, r, g, b);
+                    backColor = { r, g, b, 255 };
                 }
                 else if (SDL_strcasecmp(token, "textColor") == 0)
                 {
@@ -269,41 +298,72 @@ bool AppSettings::Save()
     FILE* fh = fopen(path.c_str(), "w");
     if (fh)
     {
-        fprintf(fh, "tabsToSpaces=%d\n", tabsToSpaces ? 1 : 0);
-        fprintf(fh, "overwriteMode=%d\n", overwriteMode ? 1 : 0);
-        fprintf(fh, "autoIndent=%d\n", autoIndent ? 1 : 0);
-        fprintf(fh, "fontPath=%s\n", fontPath.c_str());
-        fprintf(fh, "fontSize=%d\n", fontSize);
-        fprintf(fh, "lineHeight=%d\n", lineHeight);
-        fprintf(fh, "tabWidth=%d\n", tabWidth);
-        fprintf(fh, "textXMargin=%d\n", textXMargin);
-        fprintf(fh, "textYMargin=%d\n", textYMargin);
-        fprintf(fh, "scrollBarWidth=%d\n", scrollBarWidth);
-        fprintf(fh, "xPosDecode=%d\n", xPosDecode);
-        fprintf(fh, "xPosText=%d\n", xPosText);
-        fprintf(fh, "xPosContextHelp=%d\n", xPosContextHelp);
-        fprintf(fh, "textColor=%d,%d,%d\n", textColor.r, textColor.g, textColor.b);
-        fprintf(fh, "opCodeColor=%d,%d,%d\n", opCodeColor.r, opCodeColor.g, opCodeColor.b);
-        fprintf(fh, "commentColor=%d,%d,%d\n", commentColor.r, commentColor.g, commentColor.b);
-        fprintf(fh, "numericColor=%d,%d,%d\n", numericColor.r, numericColor.g, numericColor.b);
-        fprintf(fh, "helpGroupColor=%d,%d,%d\n", helpGroupColor.r, helpGroupColor.g, helpGroupColor.b);
-        fprintf(fh, "helpTitleColor=%d,%d,%d\n", helpTitleColor.r, helpTitleColor.g, helpTitleColor.b);
-        fprintf(fh, "helpBodyColor1=%d,%d,%d\n", helpBodyColor1.r, helpBodyColor1.g, helpBodyColor1.b);
-        fprintf(fh, "helpBodyColor2=%d,%d,%d\n", helpBodyColor2.r, helpBodyColor2.g, helpBodyColor2.b);
+        fprintf(fh, "; spaces will be inserted when you hit TAB\n");
+        fprintf(fh, "tabsToSpaces=%d\n\n", tabsToSpaces ? 1 : 0);
+        fprintf(fh, "; characters are overwritten instead of inserted\n");
+        fprintf(fh, "overwriteMode=%d\n\n", overwriteMode ? 1 : 0);
+        fprintf(fh, "; on new line indent to the same level as the previous line\n");
+        fprintf(fh, "autoIndent=%d\n\n", autoIndent ? 1 : 0);
+        fprintf(fh, "; render alternating coloured lines behind the text\n");
+        fprintf(fh, "renderLineBackgrounds=%d\n\n", renderLineBackgrounds ? 1 : 0);
+        fprintf(fh, "; path to font 'otf' or 'ttf' file \n");
+        fprintf(fh, "fontPath=%s\n\n", fontPath.c_str());
+        fprintf(fh, "; font point size to render with\n");
+        fprintf(fh, "fontSize=%d\n\n", fontSize);
+        fprintf(fh, "; nmbr of pixels each editor line should take\n");
+        fprintf(fh, "lineHeight=%d\n\n", lineHeight);
+        fprintf(fh, "; nmbr of whitespace characters between font columns\n");
+        fprintf(fh, "tabWidth=%d\n\n", tabWidth);
+        fprintf(fh, "; nmbr of pixels to leave blank from the left border\n");
+        fprintf(fh, "textXMargin=%d\n\n", textXMargin);
+        fprintf(fh, "; nmbr of pixels to leave blank at top of each line\n");
+        fprintf(fh, "textYMargin=%d\n\n", textYMargin);
+        fprintf(fh, "; width in pixels of vertical scroll bars\n");
+        fprintf(fh, "scrollBarWidth=%d\n\n", scrollBarWidth);
+        fprintf(fh, "; pixels from left border of decode split line\n");
+        fprintf(fh, "xPosDecode=%d\n\n", xPosDecode);
+        fprintf(fh, "; pixels from left border of text window split line\n");
+        fprintf(fh, "xPosText=%d\n\n", xPosText);
+        fprintf(fh, "; pixels from left border of the log window split line\n");
+        fprintf(fh, "xPosContextHelp=%d\n\n", xPosContextHelp);
+        fprintf(fh, "; rgb color for background\n");
+        fprintf(fh, "backColor=%d,%d,%d\n\n", backColor.r, backColor.g, backColor.b);
+        fprintf(fh, "; rgb color for general text \n");
+        fprintf(fh, "textColor=%d,%d,%d\n\n", textColor.r, textColor.g, textColor.b);
+        fprintf(fh, "; rgb color for assembly opcodes\n");
+        fprintf(fh, "opCodeColor=%d,%d,%d\n\n", opCodeColor.r, opCodeColor.g, opCodeColor.b);
+        fprintf(fh, "; rgb color for comments\n");
+        fprintf(fh, "commentColor=%d,%d,%d\n\n", commentColor.r, commentColor.g, commentColor.b);
+        fprintf(fh, "; rgb color for numbers (hex/dec/octal)\n");
+        fprintf(fh, "numericColor=%d,%d,%d\n\n", numericColor.r, numericColor.g, numericColor.b);
+        fprintf(fh, "; rgb color for help group title text in the log window\n");
+        fprintf(fh, "helpGroupColor=%d,%d,%d\n\n", helpGroupColor.r, helpGroupColor.g, helpGroupColor.b);
+        fprintf(fh, "; rgb color for help title icon text in the log window\n");
+        fprintf(fh, "helpTitleColor=%d,%d,%d\n\n", helpTitleColor.r, helpTitleColor.g, helpTitleColor.b);
+        fprintf(fh, "; rgb colors for alternating text lines in the log window\n");
+        fprintf(fh, "helpBodyColor1=%d,%d,%d\n\n", helpBodyColor1.r, helpBodyColor1.g, helpBodyColor1.b);
+        fprintf(fh, "; second alternating text line\n");
+        fprintf(fh, "helpBodyColor2=%d,%d,%d\n\n", helpBodyColor2.r, helpBodyColor2.g, helpBodyColor2.b);
         if (!vicePath.empty())
         {
-            fprintf(fh, "vicePath=%s\n", vicePath.c_str());
+            fprintf(fh, "; path to vice emulator for launching with f5  \n");
+            fprintf(fh, "vicePath=%s\n\n", vicePath.c_str());
         }
 
         if (!loadedFilePaths.empty())
         {
+            fprintf(fh, "; list of files to load on startup\n");
             fprintf(fh, "loadedFilePaths=%s", loadedFilePaths[0].c_str());
-            for (int i=1; i<loadedFilePaths.size(); i++)
+            for (int i = 1; i < loadedFilePaths.size(); i++)
                 fprintf(fh, ",%s", loadedFilePaths[i].c_str());
-            fprintf(fh, "\n");
+            fprintf(fh, "\n\n");
         }
+
         if (!activeFilePath.empty())
-            fprintf(fh, "activeFilePath=%s\n", activeFilePath.c_str());
+        {
+            fprintf(fh, "; where to look when opening a file requestor for new or existing files\n");
+            fprintf(fh, "activeFilePath=%s\n\n", activeFilePath.c_str());
+        }
 
         fclose(fh);
         return true;

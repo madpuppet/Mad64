@@ -8,6 +8,7 @@ public:
     bool tabsToSpaces;    // convert tabs to spaces
     bool overwriteMode;  // overwrite or insert
     bool autoIndent;     // on return, do we indent the next line
+    bool renderLineBackgrounds;   // turn this off for much faster rendering
 
     string vicePath;     // path to vice
     string fontPath;     // path to font
@@ -23,6 +24,7 @@ public:
     int xPosText;
     int xPosContextHelp;
 
+    SDL_Color backColor;
     SDL_Color textColor;
     SDL_Color opCodeColor;
     SDL_Color commentColor;

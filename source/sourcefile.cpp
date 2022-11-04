@@ -89,12 +89,12 @@ bool SourceFile::Load()
     }
 }
 
-void SourceFile::Visualize()
+void SourceFile::ClearAllVisuals()
 {
-//    for (auto line : m_lines)
-//    {
-//        line->VisualizeIfNecessary();
-//    }
+    for (auto line : m_lines)
+    {
+        line->ClearAllVisuals();
+    }
 }
 
 bool SourceFile::Save()
@@ -274,7 +274,6 @@ void SourceLine::Tokenize()
             m_tokens.push_back(token);
         }
     }
-    m_charXOffset.clear();
     m_gcText->Clear();
     m_charXOffset.clear();
     m_charXOffset.push_back(0);
@@ -304,6 +303,13 @@ int SourceLine::GetColumnAtX(int x)
             return i;
     }
     return (int)m_chars.size();
+}
+
+void SourceLine::ClearAllVisuals()
+{
+    m_charXOffset.clear();
+    m_charXOffset.push_back(0);
+    m_gcText->Clear();
 }
 
 void SourceLine::VisualizeIfNecessary()

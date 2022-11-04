@@ -51,6 +51,7 @@ public:
     void Cmd_PasteArea(SourceFile* file);
     void Cmd_UndentLines(int startLine, int endLine);
     void Cmd_IndentLines(int startLine, int endLine);
+    void Cmd_SearchAndReplace(const string& searchStr, const string& replaceStr, int startLine=-1, int startColumn=-1, int endLine=-1, int endColumn=-1);
 
     // helpers
     int GetCurrentIndent(string& chars);
@@ -92,7 +93,6 @@ protected:
     bool m_repaint;
     bool m_fullscreen;
     AppSettings* m_settings;
-    string m_fontLoaded;
 
     enum InputCapture
     {
@@ -103,5 +103,10 @@ protected:
     InputCapture m_mouseCapture;
     InputCapture m_keyCapture;
 
+    // double click
+    bool m_latchDoubleClick;
+    int m_clickX;
+    int m_clickY;
+    u64 m_clickTime;
 };
 extern Application *gApp;

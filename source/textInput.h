@@ -39,6 +39,7 @@ public:
 	void Visualize();
 	void Flash(FlashMode mode) { m_flashTime = 1.0f; m_flashMode = mode; }
 	string& GetText() { return m_text; }
+	void SetText(const string& text);
 
 protected:
 	string m_title;

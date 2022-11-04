@@ -136,6 +136,15 @@ void TextInput::OnKeyDown(SDL_Event* e)
 	}
 }
 
+void TextInput::SetText(const string& text)
+{
+	m_text = text;
+	m_cursorPos = text.size();
+	if (m_onChange)
+		m_onChange(m_text);
+	Visualize();
+}
+
 void TextInput::Visualize()
 {
 	auto settings = gApp->GetSettings();
@@ -143,11 +152,11 @@ void TextInput::Visualize()
 	m_gc->Clear();
 
 	SDL_Color col = { 255,255,255,255 };
-	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + settings->lineHeight/4);
+	auto geTitle = GraphicElement::CreateFromText(gApp->GetFont(), m_title.c_str(), col, m_pos.x + gApp->GetSettings()->textXMargin, m_pos.y + gApp->GetSettings()->textYMargin);
 	m_gc->Add(geTitle);
 
 	m_area = { m_pos.x + geTitle->GetRect().w + 16, m_pos.y+2, 200, settings->lineHeight-4 };
-	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_pos.y + settings->lineHeight / 4);
+	auto ge = GraphicElement::CreateFromText(gApp->GetFont(), m_text.c_str(), col, m_area.x + gApp->GetSettings()->textXMargin, m_pos.y + gApp->GetSettings()->textYMargin);
 	m_gc->Add(ge);
 }
 

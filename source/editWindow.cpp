@@ -33,6 +33,9 @@ EditWindow::EditWindow()
 	m_mouseX = 0;
 	m_mouseY = 0;
 
+	m_firstClickX = -1;
+	m_firstClickY = -1;
+
 	CalcRects();
 	InitStatus();
 }
@@ -90,7 +93,23 @@ void EditWindow::OnSearchEnter(const string& text)
 }
 void EditWindow::OnReplaceEnter(const string& text)
 {
-	// replace all
+	if (m_activeSourceFileItem)
+	{
+		string searchText = m_searchBox->GetText();
+		string replaceText = m_replaceBox->GetText();
+
+		if (m_marked)
+			gApp->Cmd_SearchAndReplace(searchText, replaceText, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn);
+		else
+			gApp->Cmd_SearchAndReplace(searchText, replaceText);
+
+		m_searchBox->Flash(TextInput::MODE_Activated);
+		m_replaceBox->Flash(TextInput::MODE_Activated);
+
+		m_searchBox->SetActive(false);
+		m_replaceBox->SetActive(false);
+		m_inputCapture = IC_None;
+	}
 }
 
 void DrawColouredLine(int x, int y1, int y2, bool highlighted)
@@ -111,10 +130,35 @@ void DrawColouredLine(int x, int y1, int y2, bool highlighted)
 	SDL_RenderDrawLine(r, x, y1, x, y2);
 }
 
+void EditWindow::ClearVisuals()
+{
+	delete m_status.m_geLine;
+	delete m_status.m_geColumn;
+	delete m_status.m_geModes;
+	delete m_status.m_geUndo;
+
+	m_status.m_geLine = nullptr;
+	m_status.m_geColumn = nullptr;
+	m_status.m_geModes = nullptr;
+	m_status.m_geUndo = nullptr;
+
+	for (auto sfi : m_fileTabs)
+	{
+		delete sfi->geText;
+		sfi->geText = GraphicElement::CreateFromText(gApp->GetFont(), sfi->file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
+	}
+	LayoutTabs();
+	CalcRects();
+	m_searchBox->Visualize();
+	m_replaceBox->Visualize();
+}
+
 void EditWindow::Draw()
 {
 	auto r = gApp->GetRenderer();
 	auto settings = gApp->GetSettings();
+	SourceFile* file = m_activeSourceFileItem ? m_activeSourceFileItem->file : nullptr;
+	CompilerSourceInfo* csi = file ? file->GetCompileInfo() : nullptr;
 
 	// draw file tabs
 	SDL_Color highlight = { 255, 255, 255, 255 };
@@ -154,7 +198,6 @@ void EditWindow::Draw()
 	// draw lines
 	if (m_activeSourceFileItem)
 	{
-		SourceFile* file = m_activeSourceFileItem->file;
 		int startLine = max(0, m_activeSourceFileItem->scroll / settings->lineHeight);
 		int endLine = min((m_sourceEditRect.h + m_activeSourceFileItem->scroll) / settings->lineHeight + 1, (int)file->GetLines().size());
 
@@ -165,14 +208,15 @@ void EditWindow::Draw()
 		{
 			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
 			int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
-			auto gc = gApp->GetCompiler()->GetMemAddrGC(file, i, sourceVersion);
-			if (gc)
+			auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
+			if (settings->renderLineBackgrounds || brighten)
 			{
 				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
 				SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 128 - ((i & 1) ? 16 : 0), 255);
 				SDL_RenderFillRect(r, &lineQuad);
-				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
+			if (gc)
+				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
 		}
 
 		// draw decode
@@ -180,15 +224,16 @@ void EditWindow::Draw()
 		for (int i = startLine; i < endLine; i++)
 		{
 			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
-			auto gc = gApp->GetCompiler()->GetDecodeGC(file, i, sourceVersion);
-			if (gc)
+			auto gc = csi ? csi->GetDecodeGC(i) : nullptr;
+			int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
+			SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
+			if (settings->renderLineBackgrounds || brighten)
 			{
-				int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
-				SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
 				SDL_SetRenderDrawColor(r, brighten, brighten + 32 - ((i & 1) ? 8 : 0), brighten, 255);
 				SDL_RenderFillRect(r, &lineQuad);
-				gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
+			if (gc)
+				gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
 		}
 
 		int branchDepth = 0;
@@ -203,22 +248,25 @@ void EditWindow::Draw()
 			int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			int lineWidth = line->GetLineWidth() + settings->textXMargin;
 
-			if (line->GetChars().empty())
+			if (settings->renderLineBackgrounds || brighten)
 			{
-				SDL_Rect lineQuad = { settings->xPosText, y, m_sourceEditRect.w, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
-				SDL_RenderFillRect(r, &lineQuad);
-			}
-			else
-			{
-				SDL_Rect lineQuad1 = { settings->xPosText, y, lineWidth, settings->lineHeight };
-				SDL_Rect lineQuad2 = { settings->xPosText + lineWidth, y, m_sourceEditRect.w - lineWidth, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, 0, brighten, 128 - ((i & 1) ? 16 : 0), 255);
-				SDL_RenderFillRect(r, &lineQuad1);
-				if (lineWidth < m_sourceEditRect.w)
+				if (line->GetChars().empty())
 				{
-					SDL_SetRenderDrawColor(r, 0, brighten, 80 - ((i & 1) ? 8 : 0), 255);
-					SDL_RenderFillRect(r, &lineQuad2);
+					SDL_Rect lineQuad = { activeXPosText, y, m_sourceEditRect.w, settings->lineHeight };
+					SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
+					SDL_RenderFillRect(r, &lineQuad);
+				}
+				else
+				{
+					SDL_Rect lineQuad1 = { activeXPosText, y, lineWidth, settings->lineHeight };
+					SDL_Rect lineQuad2 = { activeXPosText + lineWidth, y, m_sourceEditRect.w - lineWidth, settings->lineHeight };
+					SDL_SetRenderDrawColor(r, 0, brighten, 128 - ((i & 1) ? 16 : 0), 255);
+					SDL_RenderFillRect(r, &lineQuad1);
+					if (lineWidth < m_sourceEditRect.w)
+					{
+						SDL_SetRenderDrawColor(r, 0, brighten, 80 - ((i & 1) ? 8 : 0), 255);
+						SDL_RenderFillRect(r, &lineQuad2);
+					}
 				}
 			}
 
@@ -259,10 +307,9 @@ void EditWindow::Draw()
 
 			// - text
 			if (line->GetGCText())
-				line->GetGCText()->DrawAt(settings->xPosText + settings->textXMargin, y + settings->textYMargin);
+				line->GetGCText()->DrawAt(activeXPosText + settings->textXMargin, y + settings->textYMargin);
 
 			// draw branches
-			auto csi = m_activeSourceFileItem->file->GetCompileInfo();
 			if (csi && csi->m_lines.size() > i)
 			{
 				auto cli = csi->m_lines[i];
@@ -310,8 +357,8 @@ void EditWindow::Draw()
 		int barY1, barY2;
 		CalcScrollBar(barY1, barY2);
 
-		SDL_Rect BarBack = { settings->xPosContextHelp - settings->scrollBarWidth, m_sourceEditRect.y, settings->scrollBarWidth, m_sourceEditRect.h };
-		SDL_Rect Bar = { settings->xPosContextHelp - settings->scrollBarWidth + 4, barY1, settings->scrollBarWidth - 4, barY2-barY1 };
+		SDL_Rect BarBack = { activeXPosContextHelp - settings->scrollBarWidth, m_sourceEditRect.y, settings->scrollBarWidth, m_sourceEditRect.h };
+		SDL_Rect Bar = { activeXPosContextHelp - settings->scrollBarWidth + 4, barY1, settings->scrollBarWidth - 4, barY2-barY1 };
 		SDL_SetRenderDrawColor(r, 0, 0, 32, 255);
 		SDL_RenderFillRect(r, &BarBack);
 		if (m_dragMode == DRAG_EditVertScroll)
@@ -343,21 +390,21 @@ void EditWindow::Draw()
 	DrawStatus();
 
 	// draw search boxes
-	SDL_Rect sarRect = { settings->xPosContextHelp, settings->lineHeight, windowWidth - settings->xPosContextHelp, settings->lineHeight };
+	SDL_Rect sarRect = { activeXPosContextHelp, settings->lineHeight, windowWidth - activeXPosContextHelp, settings->lineHeight };
 	SDL_SetRenderDrawColor(r, 32, 64, 32, 255);
 	SDL_RenderFillRect(r, &sarRect);
 	m_searchBox->Draw();
 	m_replaceBox->Draw();
 
 	// draw context bar split
-	SDL_Rect divider = { settings->xPosContextHelp, settings->lineHeight * 2 - 1, windowWidth - settings->xPosContextHelp, 3 };
+	SDL_Rect divider = { activeXPosContextHelp, settings->lineHeight * 2 - 1, windowWidth - activeXPosContextHelp, 3 };
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &divider);
 
 	// draw separator bars
-	DrawColouredLine(settings->xPosDecode, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
-	DrawColouredLine(settings->xPosText, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
-	DrawColouredLine(settings->xPosContextHelp, m_sourceEditRect.y, m_sourceEditRect.y + m_sourceEditRect.h, false);
+	DrawColouredLine(activeXPosDecode, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
+	DrawColouredLine(activeXPosText, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
+	DrawColouredLine(activeXPosContextHelp, m_sourceEditRect.y, m_sourceEditRect.y + m_sourceEditRect.h, false);
 
 	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
 }
@@ -384,13 +431,27 @@ void EditWindow::CalcRects()
 	int editHeight = windowHeight - settings->lineHeight*2;
 
 	m_titleTabsRect = { 0, 0, windowWidth, settings->lineHeight };
-	m_memAddrRect = { 0, settings->lineHeight, settings->xPosDecode, editHeight };
-	m_decodeRect = { settings->xPosDecode, settings->lineHeight, settings->xPosText - settings->xPosDecode, editHeight };
-	m_sourceEditRect = { settings->xPosText, settings->lineHeight, settings->xPosContextHelp - settings->xPosText, editHeight };
+
+	if (IsActiveAsmFile())
+	{
+		activeXPosDecode = settings->xPosDecode;
+		activeXPosText = settings->xPosText;
+		activeXPosContextHelp = settings->xPosContextHelp;
+	}
+	else
+	{
+		activeXPosDecode = 0;
+		activeXPosText = 0;
+		activeXPosContextHelp = settings->xPosContextHelp;
+	}
+
+	m_memAddrRect = { 0, settings->lineHeight, activeXPosDecode, editHeight };
+	m_decodeRect = { activeXPosDecode, settings->lineHeight, activeXPosText - activeXPosDecode, editHeight };
+	m_sourceEditRect = { activeXPosText, settings->lineHeight, activeXPosContextHelp - activeXPosText, editHeight };
 	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
-	m_searchBox->SetPos(settings->xPosContextHelp, settings->lineHeight);
-	m_replaceBox->SetPos(settings->xPosContextHelp + 250, settings->lineHeight);
-	m_contextHelpRect = { settings->xPosContextHelp, settings->lineHeight * 2, windowWidth - settings->xPosContextHelp, editHeight - settings->lineHeight };
+	m_searchBox->SetPos(activeXPosContextHelp, settings->lineHeight);
+	m_replaceBox->SetPos(activeXPosContextHelp + 250, settings->lineHeight);
+	m_contextHelpRect = { activeXPosContextHelp, settings->lineHeight * 2, windowWidth - activeXPosContextHelp, editHeight - settings->lineHeight };
 
 	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
 }
@@ -451,6 +512,7 @@ void EditWindow::SetActiveFile(SourceFile* file)
 			{
 				gApp->GetLogWindow()->ClearAllLogs();
 			}
+			CalcRects();
 			return;
 		}
 	}
@@ -539,134 +601,168 @@ void EditWindow::Update()
 	m_replaceBox->Update();
 }
 
+extern bool CharInStr(char ch, const char* str);
+bool EditWindow::ScanTokenAt(int line, int col, int &startCol, int &endCol)
+{
+	if (!m_activeSourceFileItem)
+		return false;
+
+	auto file = m_activeSourceFileItem->file;
+	if (line >= file->GetLines().size())
+		return false;
+
+	auto sl = file->GetLines()[line];
+	if (col >= sl->GetChars().size())
+		return false;
+
+	const char *TOKEN_TERMINATORS = "[]()<>=$%*/#+@-~;:!, \t";
+
+	auto& chars = sl->GetChars();
+	if (CharInStr(chars[col], TOKEN_TERMINATORS))
+		return false;
+
+	startCol = col;
+	while (startCol > 0 && !CharInStr(chars[startCol-1], TOKEN_TERMINATORS))
+		startCol--;
+
+	endCol = col;
+	while (endCol < chars.size()-1 && !CharInStr(chars[endCol+1], TOKEN_TERMINATORS))
+		endCol++;
+
+	return true;
+}
+
 void EditWindow::OnMouseDown(SDL_Event* e)
 {
 	auto settings = gApp->GetSettings();
-//	if (true)
+	if (m_inputCapture == IC_Search && !Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
 	{
-		if (m_inputCapture == IC_Search && !Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
-		{
-			m_searchBox->SetActive(false);
-			m_inputCapture = IC_None;
-		}
-		else if (m_inputCapture == IC_Replace && !Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
-		{
-			m_replaceBox->SetActive(false);
-			m_inputCapture = IC_None;
-		}
+		m_searchBox->SetActive(false);
+		m_inputCapture = IC_None;
+	}
+	else if (m_inputCapture == IC_Replace && !Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
+	{
+		m_replaceBox->SetActive(false);
+		m_inputCapture = IC_None;
+	}
 
-		// LEFT button
-		if (Contains(m_titleTabsRect, e->button.x, e->button.y))
+	// LEFT button
+	if (Contains(m_titleTabsRect, e->button.x, e->button.y))
+	{
+		// title tabs...
+		for (auto sfi : m_fileTabs)
 		{
-			// title tabs...
-			for (auto sfi : m_fileTabs)
+			if (Contains(sfi->geText->GetRect(), e->button.x, e->button.y))
 			{
-				if (Contains(sfi->geText->GetRect(), e->button.x, e->button.y))
+				if (sfi != m_activeSourceFileItem)
 				{
-					if (sfi != m_activeSourceFileItem)
-					{
-						SetActiveFile(sfi->file);
-					}
+					SetActiveFile(sfi->file);
 				}
 			}
 		}
-		else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
+	}
+	else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
+	{
+		m_searchBox->SetActive(true);
+		m_replaceBox->SetActive(false);
+		m_inputCapture = IC_Search;
+		if (e->button.button == 3)
+			m_searchBox->SetText("");
+	}
+	else if (Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
+	{
+		m_searchBox->SetActive(false);
+		m_replaceBox->SetActive(true);
+		m_inputCapture = IC_Replace;
+		if (e->button.button == 3)
+			m_replaceBox->SetText("");
+	}
+	else if (abs(e->button.x - activeXPosDecode) < 2)
+	{
+		// drag first divide
+		m_dragMode = DRAG_DivideDecode;
+		m_dragOffset = e->button.x - activeXPosDecode;
+	}
+	else if (abs(e->button.x - activeXPosText) < 2)
+	{
+		// drag second divide
+		m_dragMode = DRAG_DivideText;
+		m_dragOffset = e->button.x - activeXPosText;
+	}
+	else if (abs(e->button.x - activeXPosContextHelp) < 2)
+	{
+		// drag third divide
+		m_dragMode = DRAG_DivideContext;
+		m_dragOffset = e->button.x - activeXPosContextHelp;
+	}
+	else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
+	{
+		if (e->button.x > m_contextHelpRect.x + m_contextHelpRect.w - settings->scrollBarWidth)
 		{
-			m_searchBox->SetActive(true);
-			m_replaceBox->SetActive(false);
-			m_inputCapture = IC_Search;
+			m_dragMode = DRAG_LogVertScroll;
+			gApp->GetLogWindow()->SnapScrollBarToMouseY(e->button.y);
 		}
-		else if (Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
+		else
 		{
-			m_searchBox->SetActive(false);
-			m_replaceBox->SetActive(true);
-			m_inputCapture = IC_Replace;
+			gApp->GetLogWindow()->OnMouseDown(e);
 		}
-		else if (abs(e->button.x - settings->xPosDecode) < 2)
+		return;
+	}
+	else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
+	{
+		if (e->button.x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
 		{
-			// drag first divide
-			m_dragMode = DRAG_DivideDecode;
-			m_dragOffset = e->button.x - settings->xPosDecode;
+			m_dragMode = DRAG_EditVertScroll;
+			SnapScrollBarToMouseY(e->button.y);
 		}
-		else if (abs(e->button.x - settings->xPosText) < 2)
+		else
 		{
-			// drag second divide
-			m_dragMode = DRAG_DivideText;
-			m_dragOffset = e->button.x - settings->xPosText;
-		}
-		else if (abs(e->button.x - settings->xPosContextHelp) < 2)
-		{
-			// drag third divide
-			m_dragMode = DRAG_DivideContext;
-			m_dragOffset = e->button.x - settings->xPosContextHelp;
-		}
-		else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
-		{
-			if (e->button.x > m_contextHelpRect.x + m_contextHelpRect.w - settings->scrollBarWidth)
+			int line, col;
+			if (MouseToRowCol(e->button.x, e->button.y, line, col))
 			{
-				m_dragMode = DRAG_LogVertScroll;
-				gApp->GetLogWindow()->SnapScrollBarToMouseY(e->button.y);
-			}
-			else
-			{
-				gApp->GetLogWindow()->OnMouseDown(e);
-			}
-			return;
-		}
-		else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
-		{
-			if (e->button.x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
-			{
-				m_dragMode = DRAG_EditVertScroll;
-				SnapScrollBarToMouseY(e->button.y);
-			}
-			else
-			{
-				int line, col;
-				if (MouseToRowCol(e->button.x, e->button.y, line, col))
+				if (m_shiftDown)
 				{
-					if (m_shiftDown)
+					GotoLineCol(line, col, MARK_Mouse, true);
+				}
+				else
+				{
+					if (e->button.clicks == 1)
 					{
-						GotoLineCol(line, col, MARK_Mouse, true);
+						m_firstClickX = e->button.x;
+						m_firstClickY = e->button.y;
 					}
-					else
+
+					if (e->button.clicks == 2 && IsNear(m_firstClickX, e->button.x, 1) && IsNear(m_firstClickY, e->button.y, 1))
 					{
-						if (e->button.clicks == 2)
+						// mark current word
+						if (m_activeSourceFileItem)
 						{
-							// mark current word
-							if (m_activeSourceFileItem)
+							GotoLineCol(line, col, MARK_None, true);
+							auto lines = m_activeSourceFileItem->file->GetLines();
+							auto sl = lines[line];
+							if (col < sl->GetChars().size())
 							{
-								GotoLineCol(line, col, MARK_None, true);
-								auto lines = m_activeSourceFileItem->file->GetLines();
-								auto sl = lines[line];
-								if (col < sl->GetChars().size())
+								int startCol, endCol;
+								if (ScanTokenAt(line, col, startCol, endCol))
 								{
-									int localCol = col;
-									int tok = 0;
-									while (localCol > (int)sl->GetTokens()[tok].size()-1)
-									{
-										localCol -= (int)sl->GetTokens()[tok].size();
-										tok++;
-									}
-									int startCol = col - localCol;
-									int endCol = startCol + (int)sl->GetTokens()[tok].size();
 									m_marked = m_mouseMarking = true;
 									m_markStartColumn = startCol;
-									m_markEndColumn = endCol;
+									m_markEndColumn = endCol+1;
 									m_markStartLine = line;
 									m_markEndLine = line;
+									m_activeSourceFileItem->activeColumn = endCol + 1;
 								}
 							}
 						}
-						else
-						{
-							GotoLineCol(line, col, MARK_None, true);
-							m_marked = m_mouseMarking = true;
-							m_markStartColumn = col;
-							m_markEndColumn = col;
-							m_markStartLine = line;
-							m_markEndLine = line;
-						}
+					}
+					else
+					{
+						GotoLineCol(line, col, MARK_None, true);
+						m_marked = m_mouseMarking = true;
+						m_markStartColumn = col;
+						m_markEndColumn = col;
+						m_markStartLine = line;
+						m_markEndLine = line;
 					}
 				}
 			}
@@ -737,19 +833,19 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 		{
 		case DRAG_DivideDecode:
 			{
-				settings->xPosDecode = SDL_clamp(e->motion.x + m_dragOffset, 16, settings->xPosText - 16);
+				settings->xPosDecode = SDL_clamp(e->motion.x + m_dragOffset, 16, activeXPosText - 16);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideText:
 			{
-				settings->xPosText = SDL_clamp(e->motion.x + m_dragOffset, settings->xPosDecode + 16, settings->xPosContextHelp - 32);
+				settings->xPosText = SDL_clamp(e->motion.x + m_dragOffset, activeXPosDecode + 16, activeXPosContextHelp - 32);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideContext:
 			{
-				settings->xPosContextHelp = SDL_clamp(e->motion.x + m_dragOffset, settings->xPosText + 32, windowWidth - 16);
+				settings->xPosContextHelp = SDL_clamp(e->motion.x + m_dragOffset, activeXPosText + 32, windowWidth - 16);
 				CalcRects();
 			}
 			return;
@@ -782,17 +878,17 @@ void EditWindow::SelectCursor(int x, int y)
 			}
 		}
 	}
-	else if (abs(x - settings->xPosDecode) < 2)
+	else if (abs(x - activeXPosDecode) < 2)
 	{
 		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
-	else if (abs(x - settings->xPosText) < 2)
+	else if (abs(x - activeXPosText) < 2)
 	{
 		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
-	else if (abs(x - settings->xPosContextHelp) < 2)
+	else if (abs(x - activeXPosContextHelp) < 2)
 	{
 		gApp->SetCursor(Cursor_Horiz);
 		return;
@@ -912,9 +1008,44 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		case SDLK_f:
 			if (e->key.keysym.mod & KMOD_CTRL)
 			{
+				// if a single token is marked, copy it over as the new search string
+				if (m_marked)
+				{
+					if (m_markStartLine == m_markEndLine)
+					{
+						auto &chars = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars();
+						string token = chars.substr(m_markStartColumn, m_markEndColumn - m_markStartColumn);
+						m_searchBox->SetText(token);
+						m_marked = false;
+					}
+				}
+
 				m_searchBox->SetActive(true);
 				m_replaceBox->SetActive(false);
 				m_inputCapture = IC_Search;
+				return;
+			}
+			break;
+
+		case SDLK_r:
+			if (e->key.keysym.mod & KMOD_CTRL)
+			{
+				// if a single token is marked, copy it over as the new search string
+				if (m_marked)
+				{
+					if (m_markStartLine == m_markEndLine)
+					{
+						auto& chars = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars();
+						string token = chars.substr(m_markStartColumn, m_markEndColumn - m_markStartColumn);
+						m_searchBox->SetText(token);
+						m_replaceBox->SetText("");
+						m_marked = false;
+
+						m_searchBox->SetActive(false);
+						m_replaceBox->SetActive(true);
+						m_inputCapture = IC_Replace;
+					}
+				}
 				return;
 			}
 			break;
@@ -1312,7 +1443,6 @@ struct StatusInfo
 	int column;
 	int totalLines;
 
-	GraphicElement* m_geInsertMode;
 	GraphicElement* m_geLine;
 	GraphicElement* m_geColumn;
 	GraphicElement* m_geTotalLines;
@@ -1489,7 +1619,7 @@ void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)
 
 void EditWindow::UpdateContextualHelp()
 {
-	if (m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm"))
+	if (IsActiveAsmFile())
 	{
 		gApp->GetCompiler()->LogContextualHelp(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine);
 	}

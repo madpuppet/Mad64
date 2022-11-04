@@ -83,6 +83,10 @@ public:
 
 	}
 
+	// clear any visuals since font or font size has changed
+	void ClearVisuals();
+	void CalcRects();
+
 protected:
 	void ClampTargetScroll();
 
@@ -168,7 +172,6 @@ protected:
 	SDL_Rect m_decodeRect;
 	SDL_Rect m_contextHelpRect;
 	SDL_Rect m_statusRect;
-	void CalcRects();
 
 	// common resources
 	SDL_Texture* m_tabActiveTex;
@@ -196,6 +199,20 @@ protected:
 	void InitStatus();
 	void UpdateStatus();
 	void DrawStatus();
+	bool ScanTokenAt(int line, int col, int &startCol, int &endCol);
+
+	bool IsActiveAsmFile()
+	{
+		return m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm");
+	}
+
+	int activeXPosDecode;
+	int activeXPosText;
+	int activeXPosContextHelp;
+
+	int m_firstClickX;
+	int m_firstClickY;
+	int m_firstClickTime;
 };
 
 

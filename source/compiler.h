@@ -173,6 +173,10 @@ public:
     // clear all visualizations
     void ClearVisuals();
 
+    // get visuals on demand
+    GraphicChunk* GetMemAddrGC(int line);
+    GraphicChunk* GetDecodeGC(int line);
+
     // this much match current source stamp or compile is invalid
     int m_sourceVersion;
 
@@ -185,6 +189,9 @@ public:
 
     // track how long it took to compile
     double m_compileTimeMS;
+
+    // memory display mode
+    bool m_displayLineNumbers;
 };
 
 struct CompilerOpcode
@@ -354,9 +361,6 @@ public:
 
     CompilerOpcode* FindOpcode(string &name, AddressingMode am);
     CompilerLabel* FindLabel(CompilerSourceInfo* csi, string& name, LabelResolve resolve, u32 resolveStartAddr);
-
-    GraphicChunk* GetMemAddrGC(class SourceFile* file, int line, int sourceVersion);
-    GraphicChunk* GetDecodeGC(class SourceFile* file, int line, int sourceVersion);
 
     // expression opcodes that follow a value - ie.  a * b,  a + b
     CompilerExpressionOpcode *FindExprOpcode(string& token);

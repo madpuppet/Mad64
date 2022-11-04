@@ -19,6 +19,8 @@ Application *gApp;
 Application::Application()
 {
     m_quit = false;
+    m_latchDoubleClick = 0;
+    m_clickTime = 0;
 
     LogStart();
     gApp = this;
@@ -61,7 +63,6 @@ Application::Application()
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
         m_emulator = new Emulator();
-
 //        m_emulator->ConvertSnapshot();
 
         for (auto& p : m_settings->loadedFilePaths)
@@ -76,24 +77,23 @@ Application::Application()
 
 void Application::ReloadFont()
 {
-    if (m_fontLoaded != m_settings->fontPath)
+    TTF_Font* newFont = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
+    if (newFont)
     {
-        TTF_Font* newFont = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
-        if (newFont)
-        {
-            TTF_CloseFont(m_font);
-            m_font = newFont;
-            TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
-            m_fontLoaded = m_settings->fontPath;
-        }
-
-        for (auto f : m_sourceFiles)
-        {
-            f->Visualize();
-            if (f->GetCompileInfo())
-                f->GetCompileInfo()->ClearVisuals();
-        }
+        TTF_CloseFont(m_font);
+        m_font = newFont;
+        TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
     }
+
+    m_editWindow->ClearVisuals();
+
+    for (auto f : m_sourceFiles)
+    {
+        f->ClearAllVisuals();
+        if (f->GetCompileInfo())
+            f->GetCompileInfo()->ClearVisuals();
+    }
+
 }
 
 Application::~Application()
@@ -141,7 +141,7 @@ void Application::Update()
 
 void Application::Draw()
 {
-    SDL_SetRenderDrawColor(m_renderer, 0, 0, 64, 255);
+    SDL_SetRenderDrawColor(m_renderer, m_settings->backColor.r, m_settings->backColor.g, m_settings->backColor.b, 255);
     SDL_RenderFillRect(m_renderer, NULL);
     m_editWindow->Draw();
     SDL_RenderPresent(m_renderer);
@@ -156,13 +156,36 @@ void Application::HandleEvent(SDL_Event *e)
         m_quit = true;
         break;
     case SDL_MOUSEBUTTONDOWN:
-        m_editWindow->OnMouseDown(e);
+        {
+            u64 time = SDL_GetTicks64();
+
+            // we got a double click, so ignore further clicks until a delay
+            if (m_latchDoubleClick && ((time - m_clickTime) < 400))
+                return;
+
+            if (!IsNear(e->button.x, m_clickX, 2) || !IsNear(e->button.y, m_clickY, 2) || ((time - m_clickTime) > 300))
+            {
+                m_clickX = e->button.x;
+                m_clickY = e->button.y;
+                m_clickTime = time;
+                e->button.clicks = 1;
+                m_latchDoubleClick = false;
+            }
+            else
+            {
+                e->button.clicks = 2;
+                m_latchDoubleClick = true;
+            }
+
+            m_editWindow->OnMouseDown(e);
+        }
         break;
     case SDL_MOUSEBUTTONUP:
         m_editWindow->OnMouseUp(e);
         break;
     case SDL_MOUSEMOTION:
-        m_editWindow->OnMouseMotion(e);
+        if (!m_latchDoubleClick)
+            m_editWindow->OnMouseMotion(e);
         break;
     case SDL_MOUSEWHEEL:
         m_editWindow->OnMouseWheel(e);
@@ -240,6 +263,17 @@ void Application::LoadFile(const char* path)
             m_settings->loadedFilePaths.push_back(string(path));
             m_settings->Save();
         }
+
+        if (HasExtension(path, ".asm"))
+        {
+            m_compiler->Compile(source);
+            m_compiler->LogContextualHelp(source, m_editWindow->GetActiveLine());
+        }
+        else
+        {
+            m_logWindow->ClearAllLogs();
+        }
+        m_editWindow->CalcRects();
     }
     else
     {
@@ -458,6 +492,70 @@ void Application::Cmd_IndentLines(int startLine, int endLine)
         cmd->Do();
     }
 }
+
+void Application::Cmd_SearchAndReplace(const string& searchStr, const string& replaceStr, int startLine, int startColumn, int endLine, int endColumn)
+{
+    SourceFile* file = m_editWindow->GetActiveFile();
+    if (file)
+    {
+        int oldActiveLine = m_editWindow->GetActiveLine();
+        int oldActiveCol = m_editWindow->GetActiveCol();
+        auto cmd = new CmdChangeLines(file, oldActiveLine, oldActiveCol);
+
+        int outLine = oldActiveLine;
+        int outCol = oldActiveCol;
+
+        if (startLine == -1) 
+        {
+            startLine = 0;
+            endLine = (int)file->GetLines().size()-1;
+            startColumn = 0;
+            endColumn = (int)file->GetLines().back()->GetChars().size();
+        }
+
+        for (int lnIdx = startLine; lnIdx <= endLine; lnIdx++)
+        {
+            auto sl = file->GetLines()[lnIdx];
+            auto& chars = sl->GetChars();
+
+            size_t firstChar = 0;
+            size_t lastChar = chars.size();
+
+            if (lnIdx == startLine)
+            {
+                firstChar = startColumn;
+            }
+            if (lnIdx == endLine)
+            {
+                lastChar = endColumn;
+            }
+
+            size_t foundIdx = chars.find(searchStr, firstChar);
+            if (foundIdx != string::npos)
+            {
+                string copy = chars;
+                size_t searchLoc = firstChar;
+                while (foundIdx != string::npos)
+                {
+                    copy.replace(foundIdx, searchStr.size(), replaceStr);
+                    searchLoc = foundIdx + replaceStr.size();
+                    foundIdx = copy.find(searchStr, searchLoc);
+
+                    if (lnIdx > outLine)
+                    {
+                        outLine = lnIdx;
+                        outCol = (int)searchLoc;
+                    }
+                }
+                cmd->PushReplace(lnIdx, copy);
+            }
+        }
+        cmd->SetNewActiveLineCol(outLine, outCol);
+        file->GetCmdManager()->PushCmd(cmd);
+        cmd->Do();
+    }
+}
+
 
 void Application::Cmd_UndentLines(int startLine, int endLine)
 {

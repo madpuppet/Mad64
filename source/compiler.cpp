@@ -1393,13 +1393,12 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
     return true;
 }
 
-GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourceVersion)
+GraphicChunk* CompilerSourceInfo::GetMemAddrGC(int line)
 {
     auto settings = gApp->GetSettings();
-    auto ci = file->GetCompileInfo();
-    if (ci && line < ci->m_lines.size())
+    if (line < m_lines.size())
     {
-        auto sl = ci->m_lines[line];
+        auto sl = m_lines[line];
         if (sl->type != LT_Unknown && sl->type != LT_Comment)
         {
             if (sl->gcMemAddr->IsEmpty())
@@ -1423,16 +1422,15 @@ GraphicChunk* Compiler::GetMemAddrGC(class SourceFile* file, int line, int sourc
     return nullptr;
 }
 
-GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int sourceVersion)
+GraphicChunk* CompilerSourceInfo::GetDecodeGC(int line)
 {
     SDL_Color dataCol = { 255, 64, 64, 255 };
     SDL_Color cycleCol = { 255, 255, 0, 255 };
 
     auto settings = gApp->GetSettings();
-    auto ci = file->GetCompileInfo();
-    if (ci && line < ci->m_lines.size())
+    if (line < m_lines.size())
     {
-        auto sl = ci->m_lines[line];
+        auto sl = m_lines[line];
         if (sl->gcDecode->IsEmpty())
         {
             if (sl->type == LT_Instruction)
@@ -1458,7 +1456,7 @@ GraphicChunk* Compiler::GetDecodeGC(class SourceFile* file, int line, int source
                 }
             }
         }
-        return sl->gcDecode;
+        return sl->gcDecode->IsEmpty() ? nullptr : sl->gcDecode;
     }
     return nullptr;
 }

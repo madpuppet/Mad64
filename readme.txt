@@ -23,9 +23,16 @@ CTRL-X         Cut selection to copy buffer
 CTRL-C         Copy selection to copy buffer
 CTRL-V         Paste from copy buffer
 
+CTRL-F         Find text.  If a word is selected, then that word is copied as the search string
+CTRL-R         Replace text.  If a word is selected, then that word is copied as the search string and the replace string is cleared
+
 F1             Open Settings File - saving settings file will auto-apply changed settings in most cases
+               Settings file on Windows is located  %appdata%\madpuppet\mad64\settings.ini
+               
 CTRL-F5        Compile and Load PRG file in Vice (use settings file to set up path to VICE)
 
+DOUBLE CLICK   on any word to select the entire word.  Useful to follow up with a CTRL-F or CTRL-R for search and replace
+RIGHT CLICK    on the search or replace box to clear and select the box
 
 6502 ASSEMBLY DIRECTIVES
 

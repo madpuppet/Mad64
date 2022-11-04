@@ -185,7 +185,8 @@ void LogWindow::Draw()
 		int x = m_logArea.x + settings->textXMargin;
 		if (lineIdx >= startLine && lineIdx < endLine)
 		{
-			DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+			if (settings->renderLineBackgrounds)
+				DrawLine(lineIdx, y, lineIdx == m_highlightRow);
 			GetGroupTitleGE((LogFilter)i)->RenderAt(r, x, y + settings->textYMargin);
 			lineIdx++;
 			y += settings->lineHeight;
@@ -193,7 +194,8 @@ void LogWindow::Draw()
 
 		for (auto line : lg.m_logLines)
 		{
-			DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+			if (settings->renderLineBackgrounds)
+				DrawLine(lineIdx, y, lineIdx == m_highlightRow);
 			line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
 			lineIdx++;
 			y += settings->lineHeight;

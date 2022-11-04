@@ -9,7 +9,7 @@ public:
 
     string &GetChars() { return m_chars; }
     vector<string>& GetTokens() { return m_tokens; }
-    int GetLineWidth() { return m_charXOffset.back(); }
+    int GetLineWidth() { VisualizeIfNecessary(); return m_charXOffset.back(); }
     void GetCharX(int column, int& xStart, int& xEnd);
     int GetColumnAtX(int x);
 
@@ -21,6 +21,7 @@ public:
 
     // convert the tokens to visual elements if it hasn't already
     void VisualizeIfNecessary();
+    void ClearAllVisuals();
 
 protected:
     GraphicChunk* m_gcText;         // graphic chunk for text
@@ -51,7 +52,7 @@ public:
     void SetCompileInfo(class CompilerSourceInfo* info);
     int GetSourceVersion() { return m_sourceVersion; };
 
-    void Visualize();
+    void ClearAllVisuals();
 
 protected:
     bool SaveInternal();
