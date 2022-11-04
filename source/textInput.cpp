@@ -139,7 +139,7 @@ void TextInput::OnKeyDown(SDL_Event* e)
 void TextInput::SetText(const string& text)
 {
 	m_text = text;
-	m_cursorPos = text.size();
+	m_cursorPos = (int)text.size();
 	if (m_onChange)
 		m_onChange(m_text);
 	Visualize();

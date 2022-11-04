@@ -18,6 +18,8 @@ add_executable(Mad64
 	source/sourcefile.cpp
 	source/textInput.cpp
 	source/thread.cpp
+	source/c64ram.cpp
+	source/emulator.cpp
 	source/tinyfiledialogs.c)
 	
 target_include_directories(Mad64 PUBLIC "include")
@@ -30,7 +32,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	copy ${CMAKE_CURRENT_SOURCE_DIR}/readme.txt $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
-	copy ${CMAKE_CURRENT_SOURCE_DIR}/font.otf $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+	copy ${CMAKE_CURRENT_SOURCE_DIR}/font.ttf $<TARGET_FILE_DIR:${PROJECT_NAME}>)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	copy ${CMAKE_CURRENT_SOURCE_DIR}/samples/music.sid $<TARGET_FILE_DIR:${PROJECT_NAME}>/samples)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
