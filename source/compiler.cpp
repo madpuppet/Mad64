@@ -1536,8 +1536,6 @@ void Compiler::DoCompile()
     int lineNmbr = 0;
     for (auto line : m_activeFile->m_lines)
     {
-        auto line = m_activeFile->m_lines[lineNmbr];
-
         auto lineInfo = new CompilerLineInfo();
         lineInfo->lineNmbr = lineNmbr;
         CompileLinePass1(lineInfo, line, currentMemAddr);
