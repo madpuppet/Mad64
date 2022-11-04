@@ -90,7 +90,6 @@ protected:
     Compiler* m_compiler;
     Emulator* m_emulator;
     bool m_quit;
-    bool m_repaint;
     bool m_fullscreen;
     AppSettings* m_settings;
 

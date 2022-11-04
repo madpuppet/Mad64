@@ -18,6 +18,7 @@ EditWindow::EditWindow()
 	m_activeSourceFileItem = nullptr;
 	m_cursorAnimTime = 0.0f;
 	m_dragMode = DRAG_None;
+	m_dragOffset = 0;
 	m_autoScroll = 0;
 	m_autoScroll_mouseX = 0;
 	m_autoScroll_mouseY = 0;
@@ -25,6 +26,11 @@ EditWindow::EditWindow()
 	m_keyMarking = false;
 	m_mouseMarking = false;
 	m_inputCapture = IC_None;
+	m_shiftDown = false;
+	m_markStartLine = 0;
+	m_markStartColumn = 0;
+	m_markEndLine = 0;
+	m_markEndColumn = 0;
 
 	m_searchBox = new TextInput(0,0,"S",DELEGATE(EditWindow::OnSearchEnter));
 	m_searchBox->SetOnChange(DELEGATE(EditWindow::OnSearchChange));
@@ -32,9 +38,6 @@ EditWindow::EditWindow()
 
 	m_mouseX = 0;
 	m_mouseY = 0;
-
-	m_firstClickX = -1;
-	m_firstClickY = -1;
 
 	CalcRects();
 	InitStatus();
@@ -726,13 +729,7 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 				}
 				else
 				{
-					if (e->button.clicks == 1)
-					{
-						m_firstClickX = e->button.x;
-						m_firstClickY = e->button.y;
-					}
-
-					if (e->button.clicks == 2 && IsNear(m_firstClickX, e->button.x, 1) && IsNear(m_firstClickY, e->button.y, 1))
+					if (e->button.clicks == 2)
 					{
 						// mark current word
 						if (m_activeSourceFileItem)
@@ -1456,12 +1453,15 @@ void EditWindow::InitStatus()
 	m_status.overwriteMode = settings->overwriteMode;
 	m_status.autoIndent = settings->autoIndent;
 	m_status.tabsToSpaces = settings->tabsToSpaces;
+	m_status.undo = 0;
+	m_status.totalUndo = 0;
 
 	if (m_activeSourceFileItem)
 	{
 		m_status.line = m_activeSourceFileItem->activeLine;
 		m_status.column = m_activeSourceFileItem->activeColumn;
 		m_status.totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
+		m_status.totalColumns = (int)m_activeSourceFileItem->file->GetLines()[m_status.line]->GetChars().size();
 	}
 	else
 	{

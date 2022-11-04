@@ -209,10 +209,6 @@ protected:
 	int activeXPosDecode;
 	int activeXPosText;
 	int activeXPosContextHelp;
-
-	int m_firstClickX;
-	int m_firstClickY;
-	int m_firstClickTime;
 };
 
 

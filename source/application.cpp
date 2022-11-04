@@ -20,6 +20,8 @@ Application::Application()
 {
     m_quit = false;
     m_latchDoubleClick = 0;
+    m_clickX = 0;
+    m_clickY = 0;
     m_clickTime = 0;
 
     LogStart();
