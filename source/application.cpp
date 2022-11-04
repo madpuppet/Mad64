@@ -50,6 +50,12 @@ Application::Application()
         TTF_Init();
         Log("Create Font: %s", m_settings->fontPath.c_str());
         m_font = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
+        if (m_font == nullptr)
+        {
+            m_font = TTF_OpenFont("font.ttf", 16);
+            m_settings->fontSize = 16;
+        }
+
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
         SDL_RenderSetVSync(m_renderer, 1);

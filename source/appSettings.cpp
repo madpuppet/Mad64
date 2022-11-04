@@ -115,6 +115,7 @@ bool AppSettings::Load()
     string path = pref;
     path = path + "settings.ini";
 
+    Log("Load Settings file: %s", path.c_str());
     void *data = SDL_LoadFile(path.c_str(), &size);
     if (data)
     {
