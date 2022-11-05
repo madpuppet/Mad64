@@ -23,16 +23,28 @@ public:
 	Emulator();
 	~Emulator();
 
-	void BuildRam(CompilerSourceInfo *src);
 	void ConvertSnapshot();
 	void Update();
 	void Draw();
+
+	void Reset(u8 *ram, u8 *ramMask);
 	void Step();
 
 protected:
+	// current ram state
 	u8 m_ram[65536];
 
-	Cpu6502State m_cpuState;
+	// current cpu state
+	struct CPUState
+	{
+		u16 regPC;
+		u8 regA;
+		u8 regX;
+		u8 regY;
+		u8 regSR;
+		u8 regSP;
+		u8 cycle;
+	} m_cpuState;
 }
 
 

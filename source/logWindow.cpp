@@ -239,7 +239,7 @@ void LogWindow::Draw()
 							int s = 4;
 							int x = destRect.x + (cli->memAddr & 255)*2;
 							int y = destRect.y + (cli->memAddr >> 8)*2;
-							int brightness = (int)(sinf(m_markerAnim * 3.1452 * 4) * 120) + 128;
+							int brightness = (int)(sinf(m_markerAnim * 3.1452f * 4) * 120) + 128;
 							SDL_SetRenderDrawColor(r, brightness, brightness, brightness, brightness);
 							SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 							SDL_RenderDrawLine(r, x - s, y - s, x + s, y - s);

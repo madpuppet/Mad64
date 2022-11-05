@@ -9,15 +9,23 @@ Emulator::~Emulator()
 {
 }
 
-void Emulator::BuildRam(CompilerSourceInfo* csi)
+void Emulator::Reset(u8* ram, u8* ramMask)
 {
-	for (auto line : csi->m_lines)
+	// reset ram to base memory + code memory using mask to tell what code memory is used
+	u64* out = (u64*)m_ram;
+	u64* in = (u64*)ram;
+	u64* in_base = (u64*)gC64_ramState;
+	u64* in_mask = (u64*)ramMask;
+	u64* out_end = (u64*)(m_ram + 65536);
+	while (out < out_end)
 	{
-		if (line->data.size())
-		{
-			memcpy(m_ram + line->memAddr, line->data.data(), line->data.size());
-		}
+		u64 mask = *in_mask++;
+		u64 base = *in_base++;
+		u64 codeMem = *in++;
+		*out++ = (base & ~mask) | (codeMem & mask);
 	}
+
+	
 }
 
 void Emulator::Step()

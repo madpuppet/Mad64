@@ -499,6 +499,15 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 	m_activeSourceFileItem = sfi;
 }
 
+void EditWindow::ClampActiveLine()
+{
+	if (m_activeSourceFileItem)
+	{
+		m_activeSourceFileItem->activeLine = min(m_activeSourceFileItem->activeLine, (int)m_activeSourceFileItem->file->GetLines().size() - 1);
+		m_activeSourceFileItem->activeColumn = min(m_activeSourceFileItem->activeColumn, (int)m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars().size());
+	}
+}
+
 void EditWindow::SetActiveFile(SourceFile* file)
 {
 	for (auto sfi : m_fileTabs)
@@ -506,6 +515,8 @@ void EditWindow::SetActiveFile(SourceFile* file)
 		if (sfi->file == file)
 		{
 			m_activeSourceFileItem = sfi;
+			ClampActiveLine();
+
 			if (HasExtension(file->GetPath().c_str(), ".asm"))
 			{
 				gApp->GetCompiler()->Compile(file);

@@ -209,6 +209,8 @@ protected:
 	int activeXPosDecode;
 	int activeXPosText;
 	int activeXPosContextHelp;
+
+	void ClampActiveLine();
 };
 
 

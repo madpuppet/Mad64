@@ -1340,9 +1340,6 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
             li->dataEvaluated = true;
 
             int addr = (int)value;
-            if (addr < 0x801 + 13 || addr > 65535)
-                ERR_RF("BAD Basic startup address. should be 081e to ffff");
-
             li->data.push_back(0x0b);
             li->data.push_back(0x08);
             li->data.push_back(0x0A);
