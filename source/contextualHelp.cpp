@@ -105,6 +105,43 @@ const char* gHELP_VIC_INTENA[] =
     "BIT 3       MLPI      Set to allow light pen interrupts",0
 };
 
-
-
+const char* gHELP_ROM_ACPTR[] = { "Input byte from serial port",0 };
+const char* gHELP_ROM_CHKIN[] = { "Open channel for input", 0 };
+const char* gHELP_ROM_CHKOUT[] = { "Open a channel for output", 0 };
+const char* gHELP_ROM_CHRIN[] = { "Get a character from the input channel",0 };
+const char* gHELP_ROM_CHROUT[] = { "Output a character",0 };
+const char* gHELP_ROM_CIOUT[] = { "Transmit a byte over the serial bus",0 };
+const char* gHELP_ROM_CINT[] = { "Initialize the screen editor and VIC - II Chip",0 };
+const char* gHELP_ROM_CLALL[] = { "Close all open files",0 };
+const char* gHELP_ROM_CLOSE[] = { "Close a logical file",0 };
+const char* gHELP_ROM_CLRCHN[] = { "Clear all I / O channels",0 };
+const char* gHELP_ROM_GETIN[] = { "Get a character",0 };
+const char* gHELP_ROM_IOBASE[] = { "Define I / O memory page",0 };
+const char* gHELP_ROM_IOINIT[] = { "Initialize I / O devices",0 };
+const char* gHELP_ROM_LISTEN[] = { "Command a device on the serial bus to listen",0 };
+const char* gHELP_ROM_LOAD[] = { "Load RAM from device",0 };
+const char* gHELP_ROM_MEMBOT[] = { "Set bottom of memory",0 };
+const char* gHELP_ROM_MEMTOP[] = { "Set the top of RAM",0 };
+const char* gHELP_ROM_OPEN[] = { "Open a logical file",0 };
+const char* gHELP_ROM_PLOT[] = { "Set or retrieve cursor location",0 };
+const char* gHELP_ROM_RAMTAS[] = { "Perform RAM test",0 };
+const char* gHELP_ROM_RDTIM[] = { "Read system clock",0 };
+const char* gHELP_ROM_READST[] = { "Read status word",0 };
+const char* gHELP_ROM_RESTOR[] = { "Set the top of RAM",0 };
+const char* gHELP_ROM_SAVE[] = { "Save memory to a device",0 };
+const char* gHELP_ROM_SCNKEY[] = { "Scan the keyboard",0 };
+const char* gHELP_ROM_SCREEN[] = { "Return screen format",0 };
+const char* gHELP_ROM_SECOND[] = { "Send secondary address for LISTEN",0 };
+const char* gHELP_ROM_SETLFS[] = { "Set up a logical file",0 };
+const char* gHELP_ROM_SETMSG[] = { "Set system message output",0 };
+const char* gHELP_ROM_SETNAM[] = { "Set up file name",0 };
+const char* gHELP_ROM_SETTIM[] = { "Set the system clock",0 };
+const char* gHELP_ROM_SETTMO[] = { "Set IEEE bus card timeout flag",0 };
+const char* gHELP_ROM_STOP[] = { "Check if STOP key is pressed",0 };
+const char* gHELP_ROM_TALK[] = { "Command a device on the serial bus to talk",0 };
+const char* gHELP_ROM_TKSA[] = { "Send a secondary address to a device commanded to talk",0 };
+const char* gHELP_ROM_UDTIM[] = { "Update the system clock",0 };
+const char* gHELP_ROM_UNLSN[] = { "Send an UNLISTEN command",0 };
+const char* gHELP_ROM_UNTLK[] = { "Send an UNTALK command",0 };
+const char* gHELP_ROM_VECTOR[] = { "Manage RAM vectors",0 };
 

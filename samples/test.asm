@@ -1,15 +1,25 @@
-    .basicStartup($c000)
-
-*=$c000    
+.basicStartup
+    
     ldx #$ff
-outer_lp:
-    ldy #$80
-inner_lp:
-    sty vic.backgroundColor0
+outerloop:
+    ldy #textEnd-text
+textloop:    
+    lda text,y
+    sta $0400+40*0,y
+    sta $0400+40*1,y
+    sta $0400+40*2,y
+    sta $0400+40*3,y
+    sta $0400+40*4,y
+    sta $0400+40*5,y
+    sta $0400+40*6,y
+    sta $0400+40*7,y
+    stx vic.backgroundColor0
     dey
-    bne inner_lp
+    bpl textloop
     dex
-    bne outer_lp
+    bne outerloop
     rts
-    
-    
+
+text:
+    dc.t "hello world"
+textEnd:        

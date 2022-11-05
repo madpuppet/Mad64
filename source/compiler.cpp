@@ -49,7 +49,26 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("cia2.clockTenths", 0xdd08), CompilerLabel("cia2.clockSeconds", 0xdd09), CompilerLabel("cia2.clockMinutes", 0xdd0a), CompilerLabel("cia2.clockHours", 0xdd0b),
     CompilerLabel("cia2.serialShift", 0xdd0c), CompilerLabel("cia2.interruptControl", 0xdd0d), CompilerLabel("cia2.controlTimerA", 0xdd0e), CompilerLabel("cia2.controlTimerB", 0xdd0f),
 
-    CompilerLabel("rom.SETLFS", 0xffba), CompilerLabel("rom.SETNAM", 0xffbd), CompilerLabel("rom.LOAD", 0xffd5),
+    CompilerLabel("rom.ACPTR", gHELP_ROM_ACPTR, 0xFFA5),    CompilerLabel("rom.CHKIN", gHELP_ROM_CHKIN, 0xFFC6),
+    CompilerLabel("rom.CHKOUT", gHELP_ROM_CHKOUT, 0xFFC9),    CompilerLabel("rom.CHRIN", gHELP_ROM_CHRIN, 0xFFCF),
+    CompilerLabel("rom.CHROUT", gHELP_ROM_CHROUT, 0xFFD2),    CompilerLabel("rom.CIOUT", gHELP_ROM_CIOUT, 0xFFA8),
+    CompilerLabel("rom.CINT", gHELP_ROM_CINT, 0xFF81),    CompilerLabel("rom.CLALL", gHELP_ROM_CLALL, 0xFFE7),
+    CompilerLabel("rom.CLOSE", gHELP_ROM_CLOSE, 0xFFC3),    CompilerLabel("rom.CLRCHN", gHELP_ROM_CLRCHN, 0xFFCC),
+    CompilerLabel("rom.GETIN", gHELP_ROM_GETIN, 0xFFE4),    CompilerLabel("rom.IOBASE", gHELP_ROM_IOBASE, 0xFFF3),
+    CompilerLabel("rom.IOINIT", gHELP_ROM_IOINIT, 0xFF84),    CompilerLabel("rom.LISTEN", gHELP_ROM_LISTEN, 0xFFB1),
+    CompilerLabel("rom.LOAD", gHELP_ROM_LOAD, 0xFFD5),    CompilerLabel("rom.MEMBOT", gHELP_ROM_MEMBOT, 0xFF9C),
+    CompilerLabel("rom.MEMTOP", gHELP_ROM_MEMTOP, 0xFF99),    CompilerLabel("rom.OPEN", gHELP_ROM_OPEN, 0xFFC0),
+    CompilerLabel("rom.PLOT", gHELP_ROM_PLOT, 0xFFF0),    CompilerLabel("rom.RAMTAS", gHELP_ROM_RAMTAS, 0xFF87),
+    CompilerLabel("rom.RDTIM", gHELP_ROM_RDTIM, 0xFFDE),    CompilerLabel("rom.READST", gHELP_ROM_READST, 0xFFB7),
+    CompilerLabel("rom.RESTOR", gHELP_ROM_RESTOR, 0xFF8A),    CompilerLabel("rom.SAVE", gHELP_ROM_SAVE, 0xFFD8),
+    CompilerLabel("rom.SCNKEY", gHELP_ROM_SCNKEY, 0xFF9F),    CompilerLabel("rom.SCREEN", gHELP_ROM_SCREEN, 0xFFED),
+    CompilerLabel("rom.SECOND", gHELP_ROM_SECOND, 0xFF93),    CompilerLabel("rom.SETLFS", gHELP_ROM_SETLFS, 0xFFBA),
+    CompilerLabel("rom.SETMSG", gHELP_ROM_SETMSG, 0xFF90),    CompilerLabel("rom.SETNAM", gHELP_ROM_SETNAM, 0xFFBD),
+    CompilerLabel("rom.SETTIM", gHELP_ROM_SETTIM, 0xFFDB),    CompilerLabel("rom.SETTMO", gHELP_ROM_SETTMO, 0xFFA2),
+    CompilerLabel("rom.STOP", gHELP_ROM_STOP, 0xFFE1),    CompilerLabel("rom.TALK", gHELP_ROM_TALK, 0xFFB4),
+    CompilerLabel("rom.TKSA", gHELP_ROM_TKSA, 0xFF96),    CompilerLabel("rom.UDTIM", gHELP_ROM_UDTIM, 0xFFEA),
+    CompilerLabel("rom.UNLSN", gHELP_ROM_UNLSN, 0xFFAE),    CompilerLabel("rom.UNTLK", gHELP_ROM_UNTLK, 0xFFAB),
+    CompilerLabel("rom.VECTOR", gHELP_ROM_VECTOR, 0xFF8D),
 
     CompilerLabel("sid.v1_freqLow", 0xd400), CompilerLabel("sid.v1_freqHi", 0xd401), CompilerLabel("sid.v1_pulseWaveformWidthLo", 0xd402), CompilerLabel("sid.v1_pulseWaveformWidthHi", 0xd403),
     CompilerLabel("sid.b1_Control", 0xd404), CompilerLabel("sid.v1_envelope_ad", 0xd405), CompilerLabel("sid.v1_envelope_sr", 0xd406), CompilerLabel("sid.v2_freqLow", 0xd407),
@@ -1054,7 +1073,7 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
         }
         currentMemAddr += (int)li->dataExpr.size() * 2;
     }
-    else if (StrEqual(token, ".text"))
+    else if (StrEqual(token, ".text") || StrEqual(token, "dc.t"))
     {
         li->type = LT_DataText;
         li->memAddr = currentMemAddr;
@@ -1503,6 +1522,7 @@ void Compiler::Update()
                 else
                     lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
             }
+            lw->SetMemMap(m_compiledFile->m_ramColorMap);
 
             lw->ClearLog(LogWindow::LF_CompilerWarning);
             lw->LogText(LogWindow::LF_CompilerWarning, FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS));
@@ -1567,6 +1587,7 @@ void Compiler::DoCompile()
                 ERR_NORET("Unable to resolve expression");
         }
     }
+    m_compiledFile->BuildMemoryMap();
 
     m_compiledFile->m_compileTimeMS = PF.Time();
 }
@@ -1636,7 +1657,7 @@ void CompilerSourceInfo::SavePrg(const char* path)
         if (l->data.size() > 0 && !l->error)
         {
             startAddr = min(l->memAddr, startAddr);
-            endAddr = max(l->memAddr, endAddr);
+            endAddr = max(l->memAddr+(int)l->data.size()-1, endAddr);
         }
     }
 
@@ -1682,6 +1703,33 @@ int Compiler::Go()
         m_compilationActive = false;
     }
     return 0;
+}
+
+void CompilerSourceInfo::BuildMemoryMap()
+{
+    memset(m_ramColorMap, 0, 65536);
+    memset(m_ramDataMap, 0, 65536);
+    memset(m_ramMask, 0, 65536);
+    for (auto cli : m_lines)
+    {
+        if (cli->data.size() > 0)
+        {
+            memcpy(m_ramDataMap + cli->memAddr, cli->data.data(), cli->data.size());
+            memset(m_ramMask + cli->memAddr, 255, cli->data.size());
+            switch (cli->type)
+            {
+                case LT_Instruction:
+                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (7 << 2) + 0, cli->data.size());
+                    break;
+                case LT_Include:
+                    memset(m_ramColorMap + cli->memAddr, (7 << 5) + (0 << 2) + 0, cli->data.size());
+                    break;
+                default:
+                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (0 << 2) + 3, cli->data.size());
+                    break;
+            }
+        }
+    }
 }
 
 #if 0
@@ -2047,14 +2095,17 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
             case LT_DataWords:
             case LT_Include:
                 {
-                    auto cmd = FindMatchingCommand(si->GetTokens()[0]);
-                    if (cmd)
+                    if (!si->GetTokens().empty())
                     {
-                        lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
-                        if (cmd->detail1)
-                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail1, -1, 1);
-                        if (cmd->detail2)
-                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail2, -1, 1);
+                        auto cmd = FindMatchingCommand(si->GetTokens()[0]);
+                        if (cmd)
+                        {
+                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
+                            if (cmd->detail1)
+                                lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail1, -1, 1);
+                            if (cmd->detail2)
+                                lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail2, -1, 1);
+                        }
                     }
                 }
                 break;

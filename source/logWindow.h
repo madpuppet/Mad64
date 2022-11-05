@@ -61,6 +61,7 @@ public:
 
 	void ClearAllLogs();
 	void ClearLog(LogFilter filter);
+	void SetMemMap(u8* colorMap) { memcpy(m_memMap, colorMap, 65536); m_memMapDirty = true; }
 	void Update();
 	void Draw();
 	bool CalcScrollBar(int& start, int& end);
@@ -76,6 +77,7 @@ public:
 	void ClampTargetScroll();
 	void OnMouseUp(SDL_Event* e);
 	void SelectCursor(int x, int y);
+	void UpdateMemoryMap();
 
 protected:
 	SDL_Rect m_area;
@@ -99,5 +101,9 @@ protected:
 
 	GraphicElement* GetGroupIconGE(LogFilter group);
 	GraphicElement* GetGroupTitleGE(LogFilter group);
+
+	u8* m_memMap;
+	SDL_Texture* m_memMapTexture;
+	bool m_memMapDirty;
 };
 

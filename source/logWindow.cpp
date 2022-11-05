@@ -21,6 +21,13 @@ LogWindow::LogWindow()
 	m_logGroups[2].m_groupOpen = false;
 
 	BuildIcons();
+
+	m_memMapTexture = SDL_CreateTexture(gApp->GetRenderer(), SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+	m_memMap = (u8*)malloc(65536);
+	memset(m_memMap, 0, 65536);
+	SDL_Rect memMapRect = { 0, 0, 256, 256 };
+	SDL_UpdateTexture(m_memMapTexture, &memMapRect, m_memMap, 256);
+	m_memMapDirty = false;
 }
 
 LogWindow::~LogWindow()
@@ -85,6 +92,8 @@ void LogWindow::ClearLog(LogFilter filter)
 		delete line;
 	lg.m_logLines.clear();
 	ClampTargetScroll();
+	if (filter == LF_Memory)
+		m_memMapDirty = true;
 }
 
 void LogWindow::BuildIcons()
@@ -192,13 +201,28 @@ void LogWindow::Draw()
 			y += settings->lineHeight;
 		}
 
-		for (auto line : lg.m_logLines)
+		if (i == LF_Memory)
 		{
-			if (settings->renderLineBackgrounds)
-				DrawLine(lineIdx, y, lineIdx == m_highlightRow);
-			line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
-			lineIdx++;
-			y += settings->lineHeight;
+			if (m_memMapDirty)
+			{
+				SDL_Rect rect = { 0, 0, 256, 256 };
+				SDL_UpdateTexture(m_memMapTexture, &rect, m_memMap, 256);
+				m_memMapDirty = false;
+			}
+
+			SDL_Rect destRect = { m_logArea.x + settings->textXMargin, y, 256, 256 };
+			SDL_RenderCopy(r, m_memMapTexture, nullptr, &destRect);
+		}
+		else
+		{
+			for (auto line : lg.m_logLines)
+			{
+				if (settings->renderLineBackgrounds)
+					DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+				line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
+				lineIdx++;
+				y += settings->lineHeight;
+			}
 		}
 	}
 
@@ -234,6 +258,10 @@ int LogWindow::CalcLogHeight()
 			y += settings->lineHeight * (int)lg.m_logLines.size() + settings->lineHeight;
 		}
 	}
+
+	if (m_logGroups[LF_Memory].m_groupOpen)
+		y += 256;
+
 	return y;
 }
 

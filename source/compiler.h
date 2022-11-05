@@ -2,16 +2,6 @@
 #include "thread.h"
 #include "contextualHelp.h"
 
-struct Cpu6502State
-{
-    u16 regPC;
-    u8 regA;
-    u8 regX;
-    u8 regY;
-    u8 regSR;
-    u8 regSP;
-};
-
 // compiler label only get added to labels list once they are evaluated
 class CompilerLabel
 {
@@ -177,6 +167,9 @@ public:
     GraphicChunk* GetMemAddrGC(int line);
     GraphicChunk* GetDecodeGC(int line);
 
+    // update the memory maps - done on thread at end of compile
+    void BuildMemoryMap();
+
     // this much match current source stamp or compile is invalid
     int m_sourceVersion;
 
@@ -192,6 +185,13 @@ public:
 
     // memory display mode
     bool m_displayLineNumbers;
+
+    // 332 color for logging
+    u8 m_ramColorMap[65536];
+    // actual data flattened from data lines
+    u8 m_ramDataMap[65536];
+    // mask of which bytes are modified (0 or 255)
+    u8 m_ramMask[65536];
 };
 
 struct CompilerOpcode

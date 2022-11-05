@@ -20,6 +20,12 @@ void Emulator::BuildRam(CompilerSourceInfo* csi)
 	}
 }
 
+void Emulator::Step()
+{
+
+
+}
+
 void Emulator::ConvertSnapshot()
 {
 	FILE* fh = fopen("c64.vsf","rb");
