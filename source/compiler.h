@@ -26,6 +26,7 @@ enum CompilerLineType
     LT_DataBytes,
     LT_DataWords,
     LT_DataText,
+    LT_ImportedData,
     LT_GenerateBytes,
     LT_GenerateWords,
     LT_Instruction,

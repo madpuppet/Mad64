@@ -53,6 +53,13 @@ public:
 		vector<LogItem*> m_logLines;
 	};
 
+	struct MappedLogItem
+	{
+		SDL_Rect area;
+		int group;
+		int item;
+	};
+
 	void BuildIcons();
 	void LayoutIcons();
 
@@ -71,9 +78,17 @@ public:
 	void OnMouseDown(SDL_Event* event);
 	void OnMouseMotion(SDL_Event* event);
 	void OnMouseWheel(SDL_Event* event);
+
+	// find which filter group toggle button is at x,y
 	bool FindGroupItemAt(int x, int y, int& group);
-	bool FindLogItemAt(int y, int& group, int& item);
-	bool FindLogLineAt(int y, int& line);
+
+	// find which log item is at an x,y location
+	// for Memory, the item == memory address (0000..ffff)
+	bool FindLogItemAt(int x, int y, int& group, int& item);
+
+	// find the code line represented by log data at x,y
+	bool FindLogLineAt(int x, int y, int& line);
+
 	void ClampTargetScroll();
 	void OnMouseUp(SDL_Event* e);
 	void SelectCursor(int x, int y);
@@ -105,5 +120,8 @@ protected:
 	u8* m_memMap;
 	SDL_Texture* m_memMapTexture;
 	bool m_memMapDirty;
+	float m_markerAnim;
+
+	vector<MappedLogItem> m_items;
 };
 

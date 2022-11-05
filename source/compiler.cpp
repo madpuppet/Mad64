@@ -760,7 +760,7 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
             for (int i = 0; i < size; i++)
                 li->data.push_back(data[i]);
 
-            li->type = LT_DataBytes;
+            li->type = LT_ImportedData;
             li->dataEvaluated = true;
             li->memAddr = currentMemAddr;
             currentMemAddr += size;
@@ -1719,13 +1719,21 @@ void CompilerSourceInfo::BuildMemoryMap()
             switch (cli->type)
             {
                 case LT_Instruction:
-                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (7 << 2) + 0, cli->data.size());
+                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (5 << 2) + 0, cli->data.size());
                     break;
                 case LT_Include:
-                    memset(m_ramColorMap + cli->memAddr, (7 << 5) + (0 << 2) + 0, cli->data.size());
+                case LT_ImportedData:
+                    memset(m_ramColorMap + cli->memAddr, (5 << 5) + (0 << 2) + 0, cli->data.size());
+                    break;
+                case LT_DataText:
+                    memset(m_ramColorMap + cli->memAddr, (1 << 5) + (2 << 2) + 2, cli->data.size());
+                    break;
+                case LT_GenerateBytes:
+                case LT_GenerateWords:
+                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (1 << 2) + 2, cli->data.size());
                     break;
                 default:
-                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (0 << 2) + 3, cli->data.size());
+                    memset(m_ramColorMap + cli->memAddr, (0 << 5) + (0 << 2) + 2, cli->data.size());
                     break;
             }
         }
@@ -2091,6 +2099,7 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
             case LT_BasicStartup:
             case LT_GenerateBytes:
             case LT_GenerateWords:
+            case LT_ImportedData:
             case LT_DataBytes:
             case LT_DataWords:
             case LT_Include:
