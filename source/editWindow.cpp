@@ -496,7 +496,7 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 	LayoutTabs();
 
 	// make new file the active file
-	m_activeSourceFileItem = sfi;
+	SetActiveFile(file);
 }
 
 void EditWindow::ClampActiveLine()

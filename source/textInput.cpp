@@ -6,6 +6,8 @@ TextInput::TextInput(int x, int y, const char* title, DMFastDelegate::FastDelega
 	m_isActive = false;
 	m_pos.x = x;
 	m_pos.y = y;
+	m_flashMode = MODE_Found;
+	m_flashTime = 0.0f;
 
 	m_title = title;
 	m_onEnter = onEnter;
