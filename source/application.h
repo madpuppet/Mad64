@@ -37,6 +37,7 @@ public:
     EditWindow* GetEditWindow() { return m_editWindow; }
     LogWindow* GetLogWindow() { return m_logWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
+    float GetTimeDelta() { return m_timeDelta; }
 
     void SetCursor(CursorType ct);
 
@@ -107,5 +108,7 @@ protected:
     int m_clickX;
     int m_clickY;
     u64 m_clickTime;
+    u64 m_frameTick;
+    float m_timeDelta;
 };
 extern Application *gApp;

@@ -109,5 +109,5 @@ extern void Log(const char* pFormat, ...);
 
 extern class Application* gApp;		// manages general application highlevel control
 
-#define TIMEDELTA (1.0f/60.0f)
+#define TIMEDELTA gApp->GetTimeDelta()
 

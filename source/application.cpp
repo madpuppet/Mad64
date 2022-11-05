@@ -60,7 +60,6 @@ Application::Application()
 
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
-        SDL_RenderSetVSync(m_renderer, 1);
 
         //Get window surface
         SDL_Surface *screenSurface = SDL_GetWindowSurface(m_window);
@@ -115,14 +114,27 @@ Application::~Application()
 
 int Application::MainLoop()
 {
+    m_frameTick = 0;
+
     SDL_Event e;
     while (!m_quit)
     {
-        if (SDL_PollEvent(&e))
+        if (SDL_WaitEventTimeout(&e,10))
             HandleEvent(&e);
 
         Update();
         Draw();
+
+        u64 now = SDL_GetPerformanceCounter();
+        if (m_frameTick == 0)
+        {
+            m_timeDelta = 1 / 60.0f;
+        }
+        else
+        {
+            m_timeDelta = (float)(now - m_frameTick) / (float)SDL_GetPerformanceFrequency();
+        }
+        m_frameTick = now;
     }
 
     for (auto file : m_sourceFiles)
@@ -165,7 +177,7 @@ void Application::HandleEvent(SDL_Event *e)
         break;
     case SDL_MOUSEBUTTONDOWN:
         {
-            u64 time = SDL_GetTicks64();
+            u64 time = SDL_GetTicks();
 
             // we got a double click, so ignore further clicks until a delay
             if (m_latchDoubleClick && ((time - m_clickTime) < 400))
