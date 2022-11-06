@@ -2,9 +2,6 @@
 #include "emulator.h"
 #include "compiler.h"
 
-void (*DecodeFunc)(Emulator* emulator);
-
-
 Emulator::Emulator()
 {
 }
@@ -32,16 +29,16 @@ void Emulator::Reset(u8* ram, u8* ramMask, u16 cpuStart)
 	memset(&m_regs, 0, sizeof(m_regs));
 	m_regs.PC = cpuStart;
 	m_regs.SP = 0xff;
-	m_branchDelayCycle = false;
+	m_delayCycle = false;
 }
 
 void Emulator::Step()
 {
 	m_regs.frameCycle++;
 
-	if (m_branchDelayCycle)
+	if (m_delayCycle)
 	{
-		m_branchDelayCycle = false;
+		m_delayCycle = false;
 	}
 	else
 	{
@@ -61,21 +58,14 @@ void Emulator::Step()
 		else if (m_decodeCycle == 2 && m_co->addressMode >= AM_Absolute)
 		{
 			m_regs.operand = m_regs.operand | ((u16)GetByte(m_regs.PC++) << 8);
-			if (((m_regs.operand & 0xff) == 0xff) && m_co->extraCycleOnPageBoundary)
-			{
-				m_opcodeCycleCount++;
-			}
 		}
 
 		if (++m_decodeCycle == m_opcodeCycleCount)
 		{
 			if (m_co->m_decode)
 			{
-				// execute the instruction,  add a cycle if we took a branch
-				if (m_co->m_decode(this))
-				{
-					m_branchDelayCycle = true;
-				}
+				// execute the instruction,  some instructions can generate and extra delay cycle
+				m_delayCycle = m_co->m_decode(this);
 			}
 			m_decodeCycle = 0;
 		}

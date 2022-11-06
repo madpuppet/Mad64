@@ -2,19 +2,64 @@
 
 namespace CPU6502
 {
+    bool Decode_SEC(Emulator* e)
+    {
+        e->m_regs.SR |= SR_Carry;
+        return false;
+    }
+
+    bool Decode_CLC(Emulator* e)
+    {
+        e->m_regs.SR &= ~SR_Carry;
+        return false;
+    }
+
+    bool Decode_ADC_Imm(Emulator* e)
+    {
+        u16 M = e->m_regs.operand + (e->m_regs.SR & 1);
+        u16 result = (u16)e->m_regs.A + M;
+        u8 N = result & SR_Negative;
+        u8 Z = (result & 0xff) ? 0 : SR_Zero;
+        u8 V = ((e->m_regs.A ^ result) & (e->m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
+        u8 C = result & 0x100 ? 1 : 0;
+        e->m_regs.A = (u8)result;
+        e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+        return false;
+    }
+
+    bool Decode_ADC_Zero(Emulator* e)
+    {
+        u16 M = e->GetByte(e->m_regs.operand) + (e->m_regs.SR & 1);
+        u16 result = (u16)e->m_regs.A + M;
+        u8 N = result & SR_Negative;
+        u8 Z = (result & 0xff) ? 0 : SR_Zero;
+        u8 V = ((e->m_regs.A ^ result) & (e->m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
+        u8 C = result & 0x100 ? 1 : 0;
+        e->m_regs.A = (u8)result;
+        e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+        return false;
+    }
+
     bool Decode_LDA_Imm(Emulator* e)
     {
         e->m_regs.A = (u8)e->m_regs.operand;
         u8 N = (e->m_regs.operand & SR_Negative);
-        u8 Z = (e->m_regs.operand ? SR_Zero : 0);
+        u8 Z = (e->m_regs.operand ? 0 : SR_Zero);
         e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero|SR_Negative)) | N | Z;
         return false;
     }
+
+    bool Decode_STA_Zero(Emulator* e)
+    {
+        e->SetByte(e->m_regs.operand, e->m_regs.A);
+        return false;
+    }
+
     bool Decode_LDX_Imm(Emulator* e)
     {
         e->m_regs.X = (u8)e->m_regs.operand;
         u8 N = (e->m_regs.operand & SR_Negative);
-        u8 Z = (e->m_regs.operand ? SR_Zero : 0);
+        u8 Z = (e->m_regs.operand ? 0 : SR_Zero);
         e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
         return false;
     }
@@ -27,7 +72,7 @@ namespace CPU6502
     {
         e->m_regs.Y = (u8)e->m_regs.operand;
         u8 N = (e->m_regs.operand & SR_Negative);
-        u8 Z = (e->m_regs.operand ? SR_Zero : 0);
+        u8 Z = (e->m_regs.operand ? 0 : SR_Zero);
         e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
         return false;
     }
@@ -35,7 +80,7 @@ namespace CPU6502
     {
         e->m_regs.X = e->m_regs.X - 1;
         u8 N = (e->m_regs.X & SR_Negative);
-        u8 Z = (e->m_regs.X ? SR_Zero : 0);
+        u8 Z = (e->m_regs.X ? 0 : SR_Zero);
         e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
         return false;
     }
@@ -43,7 +88,7 @@ namespace CPU6502
     {
         e->m_regs.Y = e->m_regs.Y - 1;
         u8 N = (e->m_regs.Y & SR_Negative);
-        u8 Z = (e->m_regs.Y ? SR_Zero : 0);
+        u8 Z = (e->m_regs.Y ? 0 : SR_Zero);
         e->m_regs.SR = (e->m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
         return false;
     }
@@ -68,8 +113,8 @@ namespace CPU6502
 
     Opcode gOpcodesRaw[] =
     {
-        {"ADC", AM_Immediate, 0x69, 2},
-        {"ADC", AM_ZeroPage,  0x65, 3},
+        {"ADC", AM_Immediate, 0x69, 2, false, false, &Decode_ADC_Imm},
+        {"ADC", AM_ZeroPage,  0x65, 3, false, false, &Decode_ADC_Zero},
         {"ADC", AM_ZeroPageX, 0x75, 4},
         {"ADC", AM_Absolute,  0x6D, 4},
         {"ADC", AM_AbsoluteX, 0x7D, 4, true},
@@ -108,7 +153,7 @@ namespace CPU6502
         {"BVC", AM_Relative,  0x50, 2, false, true},
         {"BVS", AM_Relative,  0x70, 2, false, true},
 
-        {"CLC", AM_Implied,   0x18, 2},
+        {"CLC", AM_Implied,   0x18, 2, false, false, &Decode_SEC},
         {"CLD", AM_Implied,   0xD8, 2},
         {"CLI", AM_Implied,   0x58, 2},
         {"CLV", AM_Implied,   0xB8, 2},
@@ -221,11 +266,11 @@ namespace CPU6502
         { "SBC", AM_IndirectX, 0xE1, 6},
         { "SBC", AM_IndirectY, 0xF1, 5, true},
 
-        { "SEC", AM_Implied,   0x38, 2},
+        { "SEC", AM_Implied,   0x38, 2, false, false, &Decode_SEC},
         { "SED", AM_Implied,   0xF8, 2 },
         { "SEI", AM_Implied,   0x78, 2 },
 
-        { "STA", AM_ZeroPage,  0x85, 3 },
+        { "STA", AM_ZeroPage,  0x85, 3, false, false, &Decode_STA_Zero},
         { "STA", AM_ZeroPageX, 0x95, 4 },
         { "STA", AM_Absolute,  0x8D, 4 },
         { "STA", AM_AbsoluteX, 0x9D, 5 },

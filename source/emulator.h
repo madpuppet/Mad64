@@ -33,7 +33,7 @@ public:
 	// current cpu state
 	CpuRegs m_regs;
 
-	bool m_branchDelayCycle;		// branch delay active
+	bool m_delayCycle;				// instruction generated extra delay cycle
 	int m_decodeCycle;				// current decode cycle
 	int m_opcodeCycleCount;			// how many cycles in the current opcode execution
 	Opcode* m_co;					// currently decoded opcode (valid after the first cycle)

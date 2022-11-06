@@ -412,7 +412,7 @@ void Application::OnKeyDown(SDL_Event* e)
         do
         {
             m_emulator->Step();
-        } while (m_emulator->m_decodeCycle != 0 || m_emulator->m_branchDelayCycle);
+        } while (m_emulator->m_decodeCycle != 0 || m_emulator->m_delayCycle);
         return;
 
     case SDLK_F11:

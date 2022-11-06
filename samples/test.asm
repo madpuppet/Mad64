@@ -1,9 +1,13 @@
 .basicStartup
 
+temp = $50
+
 start:
-    ldx #$4
-loop:
-    stx $d020
-    dex
-    bne loop
+    lda #$60
+    sta temp
+    lda #$20
+    adc temp
+    sta $d020
     rts
+    
+    

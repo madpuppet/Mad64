@@ -156,6 +156,19 @@ void EditWindow::ClearVisuals()
 	m_replaceBox->Visualize();
 }
 
+bool IsEmulationAtLine(CompilerSourceInfo *csi, int line)
+{
+	if (csi && csi->m_lines.size() > line)
+	{
+		int emulatorAddr = gApp->GetEmulator()->m_regs.PC;
+		auto cli = csi->m_lines[line];
+		u16 memStart = cli->memAddr;
+		u16 memEnd = memStart + (u16)cli->data.size();
+		return (emulatorAddr >= memStart && emulatorAddr < memEnd&& cli->data.size() > 0);
+	}
+	return false;
+}
+
 void EditWindow::Draw()
 {
 	auto r = gApp->GetRenderer();
@@ -213,23 +226,16 @@ void EditWindow::Draw()
 			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
 			int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
-			bool emulating = false;
-			if (csi && csi->m_lines.size() > i)
-			{
-				auto cli = csi->m_lines[i];
-				u16 memStart = cli->memAddr;
-				u16 memEnd = memStart + cli->data.size();
-				emulating = (emulatorAddr >= memStart && emulatorAddr < memEnd&& cli->data.size() > 0);
-			}
+			bool emulating = IsEmulationAtLine(csi, i);
 			if (settings->renderLineBackgrounds || brighten || emulating)
 			{
 				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
 				int red, green, blue;
 				if (emulating)
 				{
-					red = 96;
-					green = 32;
-					blue = 96;
+					red = 96 + brighten;
+					green = 32 + brighten;
+					blue = 96 + brighten;
 				}
 				else
 				{
@@ -252,9 +258,23 @@ void EditWindow::Draw()
 			auto gc = csi ? csi->GetDecodeGC(i) : nullptr;
 			int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
-			if (settings->renderLineBackgrounds || brighten)
+			bool emulating = IsEmulationAtLine(csi, i);
+			if (settings->renderLineBackgrounds || brighten || emulating)
 			{
-				SDL_SetRenderDrawColor(r, brighten, brighten + 32 - ((i & 1) ? 8 : 0), brighten, 255);
+				int red, green, blue;
+				if (emulating)
+				{
+					red = 96 + brighten;
+					green = 32 + brighten;
+					blue = 96 + brighten;
+				}
+				else
+				{
+					red = brighten;
+					green = brighten;
+					blue = brighten + 128 - ((i & 1) ? 16 : 0);
+				}
+				SDL_SetRenderDrawColor(r, red, green, blue, 255);
 				SDL_RenderFillRect(r, &lineQuad);
 			}
 			if (gc)
@@ -272,7 +292,6 @@ void EditWindow::Draw()
 			auto line = file->GetLines()[i];
 			int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			int lineWidth = line->GetLineWidth() + settings->textXMargin;
-
 			if (settings->renderLineBackgrounds || brighten)
 			{
 				if (line->GetChars().empty())
@@ -283,13 +302,17 @@ void EditWindow::Draw()
 				}
 				else
 				{
+					int red, green, blue;
+					red = brighten;
+					green = brighten;
+					blue = brighten + 128 - ((i & 1) ? 16 : 0);
 					SDL_Rect lineQuad1 = { activeXPosText, y, lineWidth, settings->lineHeight };
 					SDL_Rect lineQuad2 = { activeXPosText + lineWidth, y, m_sourceEditRect.w - lineWidth, settings->lineHeight };
-					SDL_SetRenderDrawColor(r, 0, brighten, 128 - ((i & 1) ? 16 : 0), 255);
+					SDL_SetRenderDrawColor(r, red, green, blue, 255);
 					SDL_RenderFillRect(r, &lineQuad1);
 					if (lineWidth < m_sourceEditRect.w)
 					{
-						SDL_SetRenderDrawColor(r, 0, brighten, 80 - ((i & 1) ? 8 : 0), 255);
+						SDL_SetRenderDrawColor(r, red, green, blue, 255);
 						SDL_RenderFillRect(r, &lineQuad2);
 					}
 				}

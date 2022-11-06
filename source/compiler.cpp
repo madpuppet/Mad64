@@ -1285,7 +1285,7 @@ void Compiler::Update()
             auto startLabel = gApp->GetCompiler()->FindMatchingLabel(m_compiledFile, "start");
             if (startLabel)
             {
-                gApp->GetEmulator()->Reset(m_compiledFile->m_ramDataMap, m_compiledFile->m_ramMask, startLabel->m_value);
+                gApp->GetEmulator()->Reset(m_compiledFile->m_ramDataMap, m_compiledFile->m_ramMask, (u16)startLabel->m_value);
             }
 
             m_activeFile = 0;
