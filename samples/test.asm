@@ -1,7 +1,7 @@
 .basicStartup
 
 start:
-    ldx #$ff
+    ldx #$4
 loop:
     stx $d020
     dex

@@ -47,8 +47,9 @@ void Emulator::Step()
 	{
 		if (m_decodeCycle == 0)
 		{
-			m_co = &gOpcodes[GetByte(m_regs.PC++)];
-			if (m_co)
+			u8 op = GetByte(m_regs.PC++);
+			m_co = &gOpcodes[op];
+			if (m_co && m_co->cycles > 0)
 			{
 				m_opcodeCycleCount = m_co->cycles;
 			}
