@@ -14,6 +14,7 @@ public:
 		LF_InstructionHelp,
 		LF_LabelHelp,
 		LF_Memory,
+		LF_Registers,
 		LF_MAX
 	};
 
@@ -117,10 +118,15 @@ protected:
 	GraphicElement* GetGroupIconGE(LogFilter group);
 	GraphicElement* GetGroupTitleGE(LogFilter group);
 
+	// *** MEMORY SECTION ***
 	u8* m_memMap;
 	SDL_Texture* m_memMapTexture;
 	bool m_memMapDirty;
 	float m_markerAnim;
+
+	// *** REGISTERS SECTION ***
+	CpuRegs m_regs;
+	void RebuildRegisters();
 
 	vector<MappedLogItem> m_items;
 };

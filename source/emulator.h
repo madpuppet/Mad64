@@ -1,15 +1,6 @@
 #pragma once
 
-struct Cpu6502State
-{
-	u16 regPC;
-	u8 regA;
-	u8 regX;
-	u8 regY;
-	u8 regSR;
-	u8 regSP;
-};
-extern Cpu6502State gC64_cpuState;
+extern CpuRegs gC64_cpuState;
 extern u8 gC64_ramState[65536];
 extern u8 gC64_kernalRom[8192];
 extern u8 gC64_basicRom[8192];
@@ -27,24 +18,29 @@ public:
 	void Update();
 	void Draw();
 
-	void Reset(u8 *ram, u8 *ramMask);
+	// reset memory and PC pointer
+	void Reset(u8 *ram, u8 *ramMask, u16 cpuStart);
+
+	// step one cycle
 	void Step();
+
+	u8 GetByte(u16 addr);
+	void SetByte(u16 addr, u8 val);
+
+	// copy regs in a thread safe way
+	void CopyRegs(CpuRegs& regs) { regs = m_regs; }
+
+	// current cpu state
+	CpuRegs m_regs;
+
+	bool m_branchDelayCycle;		// branch delay active
+	int m_decodeCycle;				// current decode cycle
+	int m_opcodeCycleCount;			// how many cycles in the current opcode execution
+	Opcode* m_co;					// currently decoded opcode (valid after the first cycle)
 
 protected:
 	// current ram state
 	u8 m_ram[65536];
-
-	// current cpu state
-	struct CPUState
-	{
-		u16 regPC;
-		u8 regA;
-		u8 regX;
-		u8 regY;
-		u8 regSR;
-		u8 regSP;
-		u8 cycle;
-	} m_cpuState;
 }
 
 

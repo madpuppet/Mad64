@@ -365,7 +365,7 @@ void SourceLine::VisualizeIfNecessary()
                 SDL_Color col = settings->textColor;
                 if (token[0] == ';')
                     col = settings->commentColor;
-                else if (gApp->GetCompiler()->IsOpCode(token.c_str()))
+                else if (IsOpcode(token.c_str()))
                     col = settings->opCodeColor;
                 else if (token[0] == '$' || (token[0] >= '0' && token[0] <= '9'))
                     col = settings->numericColor;

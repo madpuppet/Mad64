@@ -2,7 +2,7 @@
 #include "emulator.h"
 
 // MAINCPU
-Cpu6502State gC64_cpuState = {
+CpuRegs gC64_cpuState = {
   0,   // PC
   0,   // A
   0,   // X

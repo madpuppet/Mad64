@@ -56,6 +56,9 @@
     <ClCompile Include="source\c64ram.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\cpu6502.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -372,6 +375,9 @@
     </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>3rd Party</Filter>
+    </ClInclude>
+    <ClInclude Include="source\cpu6502.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

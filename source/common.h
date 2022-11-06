@@ -104,6 +104,9 @@ extern u32string UTF8toUNICODE(string text);
 extern void LogStart();
 extern void Log(const char* pFormat, ...);
 
+#include "cpu6502.h"
+using namespace CPU6502;
+
 #include "graphicChunk.h"
 #include "sourceFile.h"
 #include "application.h"

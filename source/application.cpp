@@ -66,6 +66,8 @@ Application::Application()
         SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x60));
         SDL_UpdateWindowSurface(m_window);
 
+        InitArrays();
+
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
@@ -158,7 +160,6 @@ void Application::Update()
     m_logWindow->Update();
     m_compiler->Update();
     m_emulator->Update();
-
 }
 
 void Application::Draw()
@@ -405,6 +406,15 @@ void Application::OnKeyDown(SDL_Event* e)
             return;
         }
         break;
+
+    case SDLK_F10:
+        // single step
+        do
+        {
+            m_emulator->Step();
+        } while (m_emulator->m_decodeCycle != 0 && !m_emulator->m_branchDelayCycle);
+        return;
+
     case SDLK_F11:
         m_fullscreen = !m_fullscreen;
         if (m_fullscreen)

@@ -160,6 +160,7 @@
     <ClCompile Include="source\cmdManager.cpp" />
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\contextualHelp.cpp" />
+    <ClCompile Include="source\cpu6502.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\emulator.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
@@ -276,6 +277,7 @@
     <ClInclude Include="source\common.h" />
     <ClInclude Include="source\compiler.h" />
     <ClInclude Include="source\contextualHelp.h" />
+    <ClInclude Include="source\cpu6502.h" />
     <ClInclude Include="source\editWindow.h" />
     <ClInclude Include="source\emulator.h" />
     <ClInclude Include="source\graphicChunk.h" />

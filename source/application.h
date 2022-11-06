@@ -34,6 +34,7 @@ public:
     SDL_Window* GetWindow() { return m_window; }
     AppSettings* GetSettings() { return m_settings; }
     Compiler* GetCompiler() { return m_compiler; }
+    Emulator* GetEmulator() { return m_emulator; }
     EditWindow* GetEditWindow() { return m_editWindow; }
     LogWindow* GetLogWindow() { return m_logWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }

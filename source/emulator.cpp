@@ -1,5 +1,9 @@
 #include "common.h"
 #include "emulator.h"
+#include "compiler.h"
+
+void (*DecodeFunc)(Emulator* emulator);
+
 
 Emulator::Emulator()
 {
@@ -9,7 +13,7 @@ Emulator::~Emulator()
 {
 }
 
-void Emulator::Reset(u8* ram, u8* ramMask)
+void Emulator::Reset(u8* ram, u8* ramMask, u16 cpuStart)
 {
 	// reset ram to base memory + code memory using mask to tell what code memory is used
 	u64* out = (u64*)m_ram;
@@ -25,13 +29,70 @@ void Emulator::Reset(u8* ram, u8* ramMask)
 		*out++ = (base & ~mask) | (codeMem & mask);
 	}
 
-	
+	memset(&m_regs, 0, sizeof(m_regs));
+	m_regs.PC = cpuStart;
+	m_regs.SP = 0xff;
+	m_branchDelayCycle = false;
 }
 
 void Emulator::Step()
 {
+	m_regs.frameCycle++;
 
+	if (m_branchDelayCycle)
+	{
+		m_branchDelayCycle = false;
+	}
+	else
+	{
+		if (m_decodeCycle == 0)
+		{
+			m_co = &gOpcodes[GetByte(m_regs.PC++)];
+			if (m_co)
+			{
+				m_opcodeCycleCount = m_co->cycles;
+			}
+		}
+		else if (m_decodeCycle == 1 && m_co->addressMode >= AM_Immediate)
+		{
+			m_regs.operand = GetByte(m_regs.PC++);
+		}
+		else if (m_decodeCycle == 2 && m_co->addressMode >= AM_Absolute)
+		{
+			m_regs.operand = m_regs.operand | ((u16)GetByte(m_regs.PC++) << 8);
+			if (((m_regs.operand & 0xff) == 0xff) && m_co->extraCycleOnPageBoundary)
+			{
+				m_opcodeCycleCount++;
+			}
+		}
 
+		if (++m_decodeCycle == m_opcodeCycleCount)
+		{
+			if (m_co->m_decode)
+			{
+				// execute the instruction,  add a cycle if we took a branch
+				if (m_co->m_decode(this))
+				{
+					m_branchDelayCycle = true;
+				}
+			}
+			m_decodeCycle = 0;
+		}
+	}
+}
+
+u8 Emulator::GetByte(u16 addr)
+{
+	// todo: check banking options
+
+	return m_ram[addr];
+}
+
+void Emulator::SetByte(u16 addr, u8 val)
+{
+	// todo: check banking options - send to vic chip, etc
+
+	m_ram[addr] = val;
 }
 
 void Emulator::ConvertSnapshot()

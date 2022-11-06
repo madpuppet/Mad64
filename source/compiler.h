@@ -1,6 +1,7 @@
 #pragma once
 #include "thread.h"
 #include "contextualHelp.h"
+#include "DMFastDelegate.h"
 
 // compiler label only get added to labels list once they are evaluated
 class CompilerLabel
@@ -32,24 +33,6 @@ enum CompilerLineType
     LT_Instruction,
     LT_BasicStartup
 };
-
-// OPERANDS
-enum AddressingMode
-{
-    AM_Implied,              // operand
-    AM_Immediate,            // operand #value
-    AM_ZeroPage,             // operand value
-    AM_ZeroPageX,            // operand value,x
-    AM_ZeroPageY,            // operand value,y
-    AM_Absolute,             // operand value
-    AM_AbsoluteX,            // operand value,x
-    AM_AbsoluteY,            // operand value,y
-    AM_Indirect,             // operand (value)
-    AM_IndirectX,            // operand (value, x)
-    AM_IndirectY,            // operand (value), y
-    AM_Relative              // operand value
-};
-extern int gAddressingModeSize[];
 
 enum LabelResolve
 {
@@ -193,17 +176,6 @@ public:
     u8 m_ramDataMap[65536];
     // mask of which bytes are modified (0 or 255)
     u8 m_ramMask[65536];
-};
-
-struct CompilerOpcode
-{
-    const char* name;
-    AddressingMode addressMode;
-    u8 opc;
-    u8 cycles;
-
-    bool extraCycleOnPageBoundary;
-    bool extraCycleOnBranch;
 };
 
 struct TokenFifo
@@ -357,10 +329,7 @@ public:
     // pass two attempts to resolve all labels/expressions but may take multiple passes if there are deep dependancies
     bool CompileLinePass2(CompilerLineInfo* li, TokenisedLine* tokenLine);
 
-	// return opcode index or -1 if not an opcode
-	bool IsOpCode(const char* text);
-
-    CompilerOpcode* FindOpcode(string &name, AddressingMode am);
+    // find a label defined in this compiled source
     CompilerLabel* FindLabel(CompilerSourceInfo* csi, string& name, LabelResolve resolve, u32 resolveStartAddr);
 
     // expression opcodes that follow a value - ie.  a * b,  a + b

@@ -1,8 +1,8 @@
 #include "common.h"
 #include "logWindow.h"
 
-static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory"};
-static const char* s_short_titles[] = { "COMPILER", "HELP", "LABELS", "MEMORY" };
+static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory", "Registers"};
+static const char* s_short_titles[] = { "CMP", "HLP", "LAB", "MEM", "REG" };
 
 LogWindow::LogWindow()
 {
@@ -139,6 +139,18 @@ void LogWindow::Update()
 	m_scroll += (int)((m_targetScroll - (float)m_scroll) * 0.25f);
 
 	m_markerAnim = fmodf(m_markerAnim + 1/60.0f, 1.0f);
+
+	if (m_logGroups[LF_Registers].m_groupOpen)
+	{
+		// update registers
+		gApp->GetEmulator()->CopyRegs(m_regs);
+		ClearLog(LF_Registers);
+		LogText(LF_Registers, "CYCLE       PC   SR SP  A  X  Y   N V - B D I Z C");
+		LogText(LF_Registers, FormatString("%08x    %04x %02x %02x  %02x %02x %02x  %d %d   %d %d %d %d %d",
+			m_regs.frameCycle, m_regs.PC, m_regs.SR, m_regs.SP, m_regs.A, m_regs.X, m_regs.Y,
+			(m_regs.SR & SR_Negative) ? 1 : 0, (m_regs.SR & SR_Overflow) ? 1 : 0, (m_regs.SR & SR_Break) ? 1 : 0, (m_regs.SR & SR_Decimal) ? 1 : 0,
+			(m_regs.SR & SR_Interrupt) ? 1 : 0, (m_regs.SR & SR_Zero) ? 1 : 0, (m_regs.SR & SR_Carry) ? 1 : 0));
+	}
 }
 
 void LogWindow::DrawLine(int lineIdx, int y, bool highlight)
@@ -251,6 +263,7 @@ void LogWindow::Draw()
 					}
 				}
 			}
+			y += 512;
 		}
 		else
 		{

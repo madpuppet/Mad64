@@ -207,15 +207,37 @@ void EditWindow::Draw()
 		// draw addresses
 		SDL_RenderSetClipRect(r, &m_memAddrRect);
 		int sourceVersion = file->GetSourceVersion();
+		u16 emulatorAddr = gApp->GetEmulator()->m_regs.PC;
 		for (int i = startLine; i < endLine; i++)
 		{
 			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
 			int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
-			if (settings->renderLineBackgrounds || brighten)
+			bool emulating = false;
+			if (csi && csi->m_lines.size() > i)
+			{
+				auto cli = csi->m_lines[i];
+				u16 memStart = cli->memAddr;
+				u16 memEnd = memStart + cli->data.size();
+				emulating = (emulatorAddr >= memStart && emulatorAddr < memEnd&& cli->data.size() > 0);
+			}
+			if (settings->renderLineBackgrounds || brighten || emulating)
 			{
 				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 128 - ((i & 1) ? 16 : 0), 255);
+				int red, green, blue;
+				if (emulating)
+				{
+					red = 96;
+					green = 32;
+					blue = 96;
+				}
+				else
+				{
+					red = brighten;
+					green = brighten;
+					blue = brighten + 128 - ((i & 1) ? 16 : 0);
+				}
+				SDL_SetRenderDrawColor(r, red, green, blue, 255);
 				SDL_RenderFillRect(r, &lineQuad);
 			}
 			if (gc)
@@ -556,9 +578,9 @@ void EditWindow::OnFileClosed(SourceFile* file)
 			delete sfi->geText;
 			m_fileTabs.erase(it);
 			if (m_fileTabs.empty())
-				m_activeSourceFileItem = nullptr;
+				SetActiveFile(nullptr);
 			else
-				m_activeSourceFileItem = m_fileTabs.back();
+				SetActiveFile(m_fileTabs.back()->file);
 			LayoutTabs();
 			return;
 		}
