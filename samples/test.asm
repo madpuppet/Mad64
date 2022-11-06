@@ -22,4 +22,4 @@ textloop:
 
 text:
     dc.t "hello world"
-textEnd:        
+textEnd:

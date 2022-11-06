@@ -125,16 +125,21 @@ void TextInput::OnKeyDown(SDL_Event* e)
 			}
 			break;
 	}
+}
 
-	char ch = e->key.keysym.sym;
-	if (ch >= SDLK_SPACE && ch <= SDLK_z)
+void TextInput::OnTextInput(SDL_Event* e)
+{
+	u32string unicode_text = UTF8toUNICODE(string(e->text.text));
+	for (auto ch : unicode_text)
 	{
-		ch = KeySymToAscii(e->key.keysym);
-		m_text.insert(m_cursorPos++, 1, ch);
-		m_cursorAnim = 0;
-		if (m_onChange)
-			m_onChange(m_text);
-		Visualize();
+		if (ch <= 255)
+		{
+			m_text.insert(m_cursorPos++, 1, (u8)ch);
+			m_cursorAnim = 0;
+			if (m_onChange)
+				m_onChange(m_text);
+			Visualize();
+		}
 	}
 }
 

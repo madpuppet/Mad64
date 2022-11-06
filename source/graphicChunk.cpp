@@ -35,11 +35,18 @@ GraphicElement* GraphicElement::CreateFromTexture(SDL_Texture* tex, i32 x, i32 y
     return new GraphicElement(tex, x, y, ownTexture);
 }
 
+static vector<u16> convert_unicode;
 GraphicElement* GraphicElement::CreateFromText(TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
 {
     SDL_Color backCol = { 0, 0, 0, 0 };
 
-    SDL_Surface* surface = TTF_RenderText_Blended(font, text, col);
+    size_t len = SDL_strlen(text) + 1;
+    convert_unicode.resize(len);
+    for (size_t i = 0; i < len; i++)
+    {
+        convert_unicode[i] = (u16)((u8)text[i]);
+    }
+    SDL_Surface* surface = TTF_RenderUNICODE_Blended(font, convert_unicode.data(), col);
     SDL_Texture* tex = SDL_CreateTextureFromSurface(gApp->GetRenderer(), surface);
     SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
     SDL_FreeSurface(surface);

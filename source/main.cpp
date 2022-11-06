@@ -90,3 +90,15 @@ void Log(const char* pFormat, ...)
     }
 }
 
+#include <codecvt> // for std::codecvt_utf8
+#include <locale>  // for std::wstring_convert
+static std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv_utf8_utf32;
+u32string UTF8toUNICODE(string text)
+{
+    return conv_utf8_utf32.from_bytes(text);
+}
+
+
+
+
+

@@ -35,6 +35,7 @@ public:
 	void SetActive(bool active) { m_isActive = active; m_cursorAnim = 0; if (active) Flash(MODE_Activated); }
 	void Update();
 	void Draw();
+	void OnTextInput(SDL_Event* e);
 	void OnKeyDown(SDL_Event* e);
 	void Visualize();
 	void Flash(FlashMode mode) { m_flashTime = 1.0f; m_flashMode = mode; }

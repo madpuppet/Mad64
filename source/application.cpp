@@ -54,7 +54,7 @@ Application::Application()
         m_font = TTF_OpenFont(m_settings->fontPath.c_str(), m_settings->fontSize);
         if (m_font == nullptr)
         {
-            m_font = TTF_OpenFont("font.ttf", 16);
+            m_font = TTF_OpenFont("font.otf", 16);
             m_settings->fontSize = 16;
         }
 
@@ -80,6 +80,8 @@ Application::Application()
         m_mouseCapture = Capture_None;
         m_keyCapture = Capture_None;
     }
+
+    SDL_StartTextInput();
 }
 
 void Application::ReloadFont()
@@ -209,6 +211,9 @@ void Application::HandleEvent(SDL_Event *e)
         break;
     case SDL_MOUSEWHEEL:
         m_editWindow->OnMouseWheel(e);
+        break;
+    case SDL_TEXTINPUT:
+        m_editWindow->OnTextInput(e);
         break;
     case SDL_KEYDOWN:
         OnKeyDown(e);

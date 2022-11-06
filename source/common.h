@@ -100,6 +100,7 @@ inline bool IsNear(int a, int b, int range)
 	return (abs(a - b) <= range);
 }
 
+extern u32string UTF8toUNICODE(string text);
 extern void LogStart();
 extern void Log(const char* pFormat, ...);
 

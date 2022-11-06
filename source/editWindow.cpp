@@ -940,17 +940,32 @@ bool EditWindow::MouseToRowCol(int x, int y, int& row, int& col)
 	return false;
 }
 
-char s_shifted[128] =
+void EditWindow::OnTextInput(SDL_Event* e)
 {
-	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//00
-	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//10
-	32,  46, 46, 46, 46, 46, 46, 34, 46, 46, 46, 46,  60,  95,  62, 63,		//20
-	41,  33, 64, 35, 36, 37, 94, 38, 42, 40, 46, 58,  46,  43,  46, 46,		//30
-	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,  46,  46,  46, 46,		//40
-	46,  46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 123, 124, 125, 46, 46,		//50
-	126, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75,  76,  77,  78, 79,		//60
-	80,  81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 46,  46,  46,  46, 46 		//70
-};
+	if (m_inputCapture == IC_Search)
+	{
+		m_searchBox->OnTextInput(e);
+		return;
+	}
+	else if (m_inputCapture == IC_Replace)
+	{
+		m_replaceBox->OnTextInput(e);
+		return;
+	}
+
+	u32string unicode_text = UTF8toUNICODE(string(e->text.text));
+	for (auto ch : unicode_text)
+	{
+		if (ch <= 255)
+		{
+			if (m_marked)
+			{
+				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
+			}
+			gApp->Cmd_InsertChar((char)ch);
+		}
+	}
+}
 
 void EditWindow::OnKeyDown(SDL_Event* e)
 {
@@ -1011,6 +1026,27 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 	if (m_activeSourceFileItem)
 	{
 		MarkingType markingType = e->key.keysym.mod & KMOD_SHIFT ? MARK_Key : MARK_None;
+
+		// convert keypad back to normal
+		if ((e->key.keysym.mod & KMOD_NUM) == 0)
+		{
+			switch (e->key.keysym.sym)
+			{
+				case SDLK_KP_0: e->key.keysym.sym = SDLK_INSERT; break;
+				case SDLK_KP_1: e->key.keysym.sym = SDLK_END; break;
+				case SDLK_KP_2: e->key.keysym.sym = SDLK_DOWN; break;
+				case SDLK_KP_3: e->key.keysym.sym = SDLK_PAGEDOWN; break;
+				case SDLK_KP_4: e->key.keysym.sym = SDLK_LEFT; break;
+				case SDLK_KP_6: e->key.keysym.sym = SDLK_RIGHT; break;
+				case SDLK_KP_7: e->key.keysym.sym = SDLK_HOME; break;
+				case SDLK_KP_8: e->key.keysym.sym = SDLK_UP; break;
+				case SDLK_KP_9: e->key.keysym.sym = SDLK_PAGEUP; break;
+				case SDLK_KP_PERIOD: e->key.keysym.sym = SDLK_DELETE; break;
+				case SDLK_KP_ENTER: e->key.keysym.sym = SDLK_RETURN; break;
+				default: break;
+			}
+		}
+
 		switch (e->key.keysym.sym)
 		{
 		case SDLK_f:
@@ -1210,17 +1246,6 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			gApp->Cmd_InsertNewLine();
 			return;
 		}
-
-		char ch = e->key.keysym.sym;
-		if (ch >= SDLK_SPACE && ch <= SDLK_z)
-		{
-			ch = KeySymToAscii(e->key.keysym);
-			if (m_marked)
-			{
-				gApp->Cmd_DeleteArea(m_activeSourceFileItem->file, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn, false);
-			}
-			gApp->Cmd_InsertChar(ch);
-		}
 	}
 }
 
@@ -1234,18 +1259,6 @@ void EditWindow::OnKeyUp(SDL_Event *e)
 			return;
 	}
 }
-
-char KeySymToAscii(const SDL_Keysym& sym)
-{
-	char ch = sym.sym;
-	if (ch >= SDLK_SPACE && ch <= SDLK_z)
-	{
-		if (sym.mod & KMOD_SHIFT)
-			ch = s_shifted[ch];
-	}
-	return ch;
-}
-
 
 void EditWindow::MakeActiveLineVisible()
 {
