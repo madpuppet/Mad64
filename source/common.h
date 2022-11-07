@@ -104,11 +104,9 @@ extern u32string UTF8toUNICODE(string text);
 extern void LogStart();
 extern void Log(const char* pFormat, ...);
 
-#include "cpu6502.h"
-using namespace CPU6502;
+typedef DMFastDelegate::FastDelegate1<u16, u8> ReadByteHook;
+typedef DMFastDelegate::FastDelegate2<u16, u8> WriteByteHook;
 
-#include "graphicChunk.h"
-#include "sourceFile.h"
 #include "application.h"
 
 extern class Application* gApp;		// manages general application highlevel control

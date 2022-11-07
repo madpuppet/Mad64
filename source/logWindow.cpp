@@ -148,8 +148,8 @@ void LogWindow::Update()
 		LogText(LF_Registers, "CYCLE       PC   SR SP  A  X  Y   N V - B D I Z C");
 		LogText(LF_Registers, FormatString("%08x    %04x %02x %02x  %02x %02x %02x  %d %d   %d %d %d %d %d",
 			m_regs.frameCycle, m_regs.PC, m_regs.SR, m_regs.SP, m_regs.A, m_regs.X, m_regs.Y,
-			(m_regs.SR & SR_Negative) ? 1 : 0, (m_regs.SR & SR_Overflow) ? 1 : 0, (m_regs.SR & SR_Break) ? 1 : 0, (m_regs.SR & SR_Decimal) ? 1 : 0,
-			(m_regs.SR & SR_Interrupt) ? 1 : 0, (m_regs.SR & SR_Zero) ? 1 : 0, (m_regs.SR & SR_Carry) ? 1 : 0));
+			(m_regs.SR & Cpu6502::SR_Negative) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Overflow) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Break) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Decimal) ? 1 : 0,
+			(m_regs.SR & Cpu6502::SR_Interrupt) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Zero) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Carry) ? 1 : 0));
 	}
 }
 

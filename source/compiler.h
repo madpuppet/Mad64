@@ -2,6 +2,7 @@
 #include "thread.h"
 #include "contextualHelp.h"
 #include "DMFastDelegate.h"
+#include "chips/cpu6502.h"
 
 // compiler label only get added to labels list once they are evaluated
 class CompilerLabel
@@ -119,7 +120,7 @@ public:
     u32 memAddr;
     int opcode;
 
-    AddressingMode addressMode;
+    Cpu6502::AddressingMode addressMode;
     int operandValue;
 
     double operand;

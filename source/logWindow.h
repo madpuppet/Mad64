@@ -125,7 +125,7 @@ protected:
 	float m_markerAnim;
 
 	// *** REGISTERS SECTION ***
-	CpuRegs m_regs;
+	Cpu6502::Registers m_regs;
 	void RebuildRegisters();
 
 	vector<MappedLogItem> m_items;

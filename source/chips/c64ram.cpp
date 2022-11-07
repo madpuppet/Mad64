@@ -1,15 +1,5 @@
 #include "common.h"
-#include "emulator.h"
-
-// MAINCPU
-CpuRegs gC64_cpuState = {
-  0,   // PC
-  0,   // A
-  0,   // X
-  0,   // Y
-  10,   // SR
-  0    // SP
-};
+#include "c64ram.h"
 
 // C64MEM
 u8 gC64_ramState[65536] = {

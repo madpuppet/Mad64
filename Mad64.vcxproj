@@ -78,12 +78,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>include;$(IncludePath)</IncludePath>
+    <IncludePath>include;source;$(IncludePath)</IncludePath>
     <LibraryPath>lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>include;$(IncludePath)</IncludePath>
+    <IncludePath>include;source;$(IncludePath)</IncludePath>
     <LibraryPath>lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -153,16 +153,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\application.cpp" />
-    <ClCompile Include="source\c64ram.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="source\chips\c64ram.cpp" />
+    <ClCompile Include="source\chips\cia1.cpp" />
+    <ClCompile Include="source\chips\cia2.cpp" />
+    <ClCompile Include="source\chips\cpu6502.cpp" />
+    <ClCompile Include="source\chips\memc64.cpp" />
+    <ClCompile Include="source\chips\sid.cpp" />
+    <ClCompile Include="source\chips\vic.cpp" />
     <ClCompile Include="source\cmdManager.cpp" />
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\contextualHelp.cpp" />
-    <ClCompile Include="source\cpu6502.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
-    <ClCompile Include="source\emulator.cpp" />
+    <ClCompile Include="source\emulatorc64.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
     <ClCompile Include="source\LogWindow.cpp" />
     <ClCompile Include="source\main.cpp">
@@ -273,13 +275,19 @@
     <ClInclude Include="include\SDL_vulkan.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="source\application.h" />
+    <ClInclude Include="source\chips\c64ram.h" />
+    <ClInclude Include="source\chips\cia1.h" />
+    <ClInclude Include="source\chips\cia2.h" />
+    <ClInclude Include="source\chips\cpu6502.h" />
+    <ClInclude Include="source\chips\memc64.h" />
+    <ClInclude Include="source\chips\sid.h" />
+    <ClInclude Include="source\chips\vic.h" />
     <ClInclude Include="source\cmdManager.h" />
     <ClInclude Include="source\common.h" />
     <ClInclude Include="source\compiler.h" />
     <ClInclude Include="source\contextualHelp.h" />
-    <ClInclude Include="source\cpu6502.h" />
     <ClInclude Include="source\editWindow.h" />
-    <ClInclude Include="source\emulator.h" />
+    <ClInclude Include="source\emulatorc64.h" />
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\appSettings.h" />
     <ClInclude Include="source\logWindow.h" />

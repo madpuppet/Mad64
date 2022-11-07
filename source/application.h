@@ -7,7 +7,7 @@
 #include "cmdManager.h"
 #include "appSettings.h"
 #include "logWindow.h"
-#include "emulator.h"
+#include "emulatorc64.h"
 
 enum CursorType
 {
@@ -34,7 +34,7 @@ public:
     SDL_Window* GetWindow() { return m_window; }
     AppSettings* GetSettings() { return m_settings; }
     Compiler* GetCompiler() { return m_compiler; }
-    Emulator* GetEmulator() { return m_emulator; }
+    EmulatorC64* GetEmulator() { return m_emulator; }
     EditWindow* GetEditWindow() { return m_editWindow; }
     LogWindow* GetLogWindow() { return m_logWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
@@ -90,7 +90,7 @@ protected:
     EditWindow* m_editWindow;
     LogWindow* m_logWindow;
     Compiler* m_compiler;
-    Emulator* m_emulator;
+    EmulatorC64* m_emulator;
     bool m_quit;
     bool m_fullscreen;
     AppSettings* m_settings;

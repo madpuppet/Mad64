@@ -1,92 +1,54 @@
 #include "common.h"
-#include "emulator.h"
+#include "emulatorc64.h"
 #include "compiler.h"
 
-Emulator::Emulator()
+EmulatorC64::EmulatorC64()
+{
+	m_cia1 = new Cia1();
+	m_cia2 = new Cia2();
+	m_mem = new MemC64();
+	m_cpu = new Cpu6502();
+	m_vic = new Vic();
+}
+
+EmulatorC64::~EmulatorC64()
 {
 }
 
-Emulator::~Emulator()
+void EmulatorC64::Reset(u8* ram, u8* ramMask, u16 cpuStart)
 {
+	m_mem->Reset(ram, ramMask);
+	m_cpu->Reset(cpuStart);
+	m_cia1->Reset();
+	m_cia2->Reset();
+	m_vic->Reset();
+	m_sid->Reset();
 }
 
-void Emulator::Reset(u8* ram, u8* ramMask, u16 cpuStart)
+bool EmulatorC64::Step()
 {
-	// reset ram to base memory + code memory using mask to tell what code memory is used
-	u64* out = (u64*)m_ram;
-	u64* in = (u64*)ram;
-	u64* in_base = (u64*)gC64_ramState;
-	u64* in_mask = (u64*)ramMask;
-	u64* out_end = (u64*)(m_ram + 65536);
-	while (out < out_end)
-	{
-		u64 mask = *in_mask++;
-		u64 base = *in_base++;
-		u64 codeMem = *in++;
-		*out++ = (base & ~mask) | (codeMem & mask);
-	}
-
-	memset(&m_regs, 0, sizeof(m_regs));
-	m_regs.PC = cpuStart;
-	m_regs.SP = 0xff;
-	m_delayCycle = false;
+	m_vic->Step();
+	m_sid->Step();
+	m_cia1->Step();
+	m_cia2->Step();
+	return m_cpu->Step();
 }
 
-void Emulator::Step()
-{
-	m_regs.frameCycle++;
-
-	if (m_delayCycle)
-	{
-		m_delayCycle = false;
-	}
-	else
-	{
-		if (m_decodeCycle == 0)
-		{
-			u8 op = GetByte(m_regs.PC++);
-			m_co = &gOpcodes[op];
-			if (m_co && m_co->cycles > 0)
-			{
-				m_opcodeCycleCount = m_co->cycles;
-			}
-		}
-		else if (m_decodeCycle == 1 && m_co->addressMode >= AM_Immediate)
-		{
-			m_regs.operand = GetByte(m_regs.PC++);
-		}
-		else if (m_decodeCycle == 2 && m_co->addressMode >= AM_Absolute)
-		{
-			m_regs.operand = m_regs.operand | ((u16)GetByte(m_regs.PC++) << 8);
-		}
-
-		if (++m_decodeCycle == m_opcodeCycleCount)
-		{
-			if (m_co->m_decode)
-			{
-				// execute the instruction,  some instructions can generate and extra delay cycle
-				m_delayCycle = m_co->m_decode(this);
-			}
-			m_decodeCycle = 0;
-		}
-	}
-}
-
-u8 Emulator::GetByte(u16 addr)
+u8 EmulatorC64::GetByte(u16 addr)
 {
 	// todo: check banking options
 
 	return m_ram[addr];
 }
 
-void Emulator::SetByte(u16 addr, u8 val)
+void EmulatorC64::SetByte(u16 addr, u8 val)
 {
 	// todo: check banking options - send to vic chip, etc
 
 	m_ram[addr] = val;
 }
 
-void Emulator::ConvertSnapshot()
+void EmulatorC64::ConvertSnapshot()
 {
 	FILE* fh = fopen("c64.vsf","rb");
 	if (fh)
@@ -222,11 +184,11 @@ void Emulator::ConvertSnapshot()
 	}
 }
 
-void Emulator::Update()
+void EmulatorC64::Update()
 {
 }
 
-void Emulator::Draw()
+void EmulatorC64::Draw()
 {
 }
 

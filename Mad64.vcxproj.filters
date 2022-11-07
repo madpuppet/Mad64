@@ -9,6 +9,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
+    <Filter Include="Source Files\chips">
+      <UniqueIdentifier>{ce66db3d-2362-40b1-a283-cd069b1c259f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -50,13 +53,28 @@
     <ClCompile Include="source\tinyfiledialogs.c">
       <Filter>3rd Party</Filter>
     </ClCompile>
-    <ClCompile Include="source\emulator.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="source\chips\cia1.cpp">
+      <Filter>Source Files\chips</Filter>
     </ClCompile>
-    <ClCompile Include="source\c64ram.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="source\chips\cia2.cpp">
+      <Filter>Source Files\chips</Filter>
     </ClCompile>
-    <ClCompile Include="source\cpu6502.cpp">
+    <ClCompile Include="source\chips\cpu6502.cpp">
+      <Filter>Source Files\chips</Filter>
+    </ClCompile>
+    <ClCompile Include="source\chips\sid.cpp">
+      <Filter>Source Files\chips</Filter>
+    </ClCompile>
+    <ClCompile Include="source\chips\vic.cpp">
+      <Filter>Source Files\chips</Filter>
+    </ClCompile>
+    <ClCompile Include="source\chips\memc64.cpp">
+      <Filter>Source Files\chips</Filter>
+    </ClCompile>
+    <ClCompile Include="source\chips\c64ram.cpp">
+      <Filter>Source Files\chips</Filter>
+    </ClCompile>
+    <ClCompile Include="source\emulatorc64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -364,9 +382,6 @@
     <ClInclude Include="source\logWindow.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\emulator.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="source\contextualHelp.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -376,7 +391,28 @@
     <ClInclude Include="resource.h">
       <Filter>3rd Party</Filter>
     </ClInclude>
-    <ClInclude Include="source\cpu6502.h">
+    <ClInclude Include="source\chips\cia1.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\chips\cia2.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\chips\cpu6502.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\chips\sid.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\chips\vic.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\chips\memc64.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\chips\c64ram.h">
+      <Filter>Source Files\chips</Filter>
+    </ClInclude>
+    <ClInclude Include="source\emulatorc64.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

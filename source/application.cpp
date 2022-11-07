@@ -71,7 +71,7 @@ Application::Application()
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
-        m_emulator = new Emulator();
+        m_emulator = new EmulatorC64();
 //        m_emulator->ConvertSnapshot();
 
         for (auto& p : m_settings->loadedFilePaths)

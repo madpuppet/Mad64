@@ -1,5 +1,7 @@
 #pragma once
 
+#include "graphicChunk.h"
+
 class SourceLine
 {
 public:
