@@ -160,7 +160,7 @@ bool IsEmulationAtLine(CompilerSourceInfo *csi, int line)
 {
 	if (csi && csi->m_lines.size() > line)
 	{
-		int emulatorAddr = gApp->GetEmulator()->m_regs.PC;
+		int emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
 		auto cli = csi->m_lines[line];
 		u16 memStart = cli->memAddr;
 		u16 memEnd = memStart + (u16)cli->data.size();
@@ -220,7 +220,7 @@ void EditWindow::Draw()
 		// draw addresses
 		SDL_RenderSetClipRect(r, &m_memAddrRect);
 		int sourceVersion = file->GetSourceVersion();
-		u16 emulatorAddr = gApp->GetEmulator()->m_regs.PC;
+		u16 emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
 		for (int i = startLine; i < endLine; i++)
 		{
 			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
@@ -361,7 +361,7 @@ void EditWindow::Draw()
 			if (csi && csi->m_lines.size() > i)
 			{
 				auto cli = csi->m_lines[i];
-				if (!cli->error && (cli->addressMode == AM_Relative))
+				if (!cli->error && (cli->addressMode == Cpu6502::AM_Rel))
 				{
 					int branchAddress = cli->memAddr + (int)cli->operand + 2;
 					int branchLine = csi->FindLineByAddress(branchAddress);

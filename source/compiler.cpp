@@ -2,7 +2,7 @@
 #include "compiler.h"
 #include "graphicChunk.h"
 #include "contextualHelp.h"
-#include "emulator.h"
+#include "emulatorc64.h"
 
 char s_asciiToScreenCode[] = {
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 00
@@ -659,12 +659,12 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
         li->memAddr = (u32)addr;
         return;
     }
-    else if (IsOpcode(token.c_str()))
+    else if (m_cpu->IsOpcode(token.c_str()))
     {
         // decode the opcode
         li->type = LT_Instruction;
         li->memAddr = currentMemAddr;
-        li->addressMode = AM_Implied;
+        li->addressMode = Cpu6502::AM_Imp;
         li->opcode = 0;
         li->operandValue = 0;
         li->dataExpr.push_back(new CompilerExpression());
@@ -673,13 +673,13 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
         if (fifo.Peek().empty())
         {
             // implied
-            li->addressMode = AM_Implied;
+            li->addressMode = Cpu6502::AM_Imp;
         }
         else if (StrEqual(fifo.Peek(), "#"))
         {
             // immediate
             fifo.Pop();
-            li->addressMode = AM_Immediate;
+            li->addressMode = Cpu6502::AM_Imm;
 
             PopExpressionValue(fifo, li, li->dataExpr[0], 0);
         }
@@ -696,7 +696,7 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
                 fifo.Pop();
                 if (fifo.Pop() != "x")
                     ERR("Expected 'x' for indirect X addressing mode");
-                li->addressMode = AM_IndirectX;
+                li->addressMode = Cpu6502::AM_IndX;
             }
             else
             {
@@ -710,11 +710,11 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
                     fifo.Pop();
                     if (fifo.Pop() != "y")
                         ERR("Expected 'y' for indirect Y addressing mode");
-                    li->addressMode = AM_IndirectY;
+                    li->addressMode = Cpu6502::AM_IndY;
                 }
                 else
                 {
-                    li->addressMode = AM_Indirect;
+                    li->addressMode = Cpu6502::AM_Ind;
                 }
             }
         }
@@ -723,9 +723,9 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
             // zeroPage, zeroPageX, absoluteX, absoluteY, relative
             PopExpressionValue(fifo, li, li->dataExpr[0], 0);
 
-            if (FindOpcode(token, AM_Relative))
+            if (m_cpu->FindOpcode(token, Cpu6502::AM_Rel))
             {
-                li->addressMode = AM_Relative;
+                li->addressMode = Cpu6502::AM_Rel;
             }
             else
             {
@@ -740,30 +740,30 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
                     if (fifo.Peek() == "x")
                     {
                         fifo.Pop();
-                        li->addressMode = isZeroPage ? AM_ZeroPageX : AM_AbsoluteX;
+                        li->addressMode = isZeroPage ? Cpu6502::AM_ZeroX : Cpu6502::AM_AbsX;
                     }
                     else if (fifo.Peek() == "y")
                     {
                         fifo.Pop();
-                        li->addressMode = isZeroPage ? AM_ZeroPageY : AM_AbsoluteY;
+                        li->addressMode = isZeroPage ? Cpu6502::AM_ZeroY : Cpu6502::AM_AbsY;
                     }
                     else
                         ERR("Expected x or y for absolute indexed addressing mode")
                 }
                 else
                 {
-                    li->addressMode = isZeroPage ? AM_ZeroPage : AM_Absolute;
+                    li->addressMode = isZeroPage ? Cpu6502::AM_Zero : Cpu6502::AM_Abs;
                 }
             }
         }
 
-        auto opcode = FindOpcode(token, li->addressMode);
+        auto opcode = m_cpu->FindOpcode(token, li->addressMode);
         if (opcode == nullptr)
-            ERR("Opcode '%s' with address mode '%s'", token.c_str(), gAddressingModeName[li->addressMode]);
+            ERR("Opcode '%s' with address mode '%s'", token.c_str(), m_cpu->GetAddressingModeName(li->addressMode));
 
         li->opcode = opcode->opc;
 
-        currentMemAddr += gAddressingModeSize[li->addressMode];
+        currentMemAddr += m_cpu->GetAddressingModeSize(li->addressMode);
     }
     else if (token == "@")
     {
@@ -1014,7 +1014,7 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
     {
         if (!li->dataEvaluated)
         {
-            int instructionLength = gAddressingModeSize[li->addressMode];
+            int instructionLength = m_cpu->GetAddressingModeSize(li->addressMode);
             if (instructionLength > 1)
             {
                 if (!EvaluateExpression(li, li->dataExpr[0], li->operand))
@@ -1025,18 +1025,18 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
             li->data.push_back(li->opcode);
             if (instructionLength == 2)
             {
-                if (li->addressMode == AM_Relative)
+                if (li->addressMode == Cpu6502::AM_Rel)
                     li->operand = li->operand - (li->memAddr + 2);
 
                 if (li->operand > 255)
-                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, gAddressingModeName[li->addressMode]);
+                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, m_cpu->GetAddressingModeName(li->addressMode));
 
                 li->data.push_back((u8)(li->operand) & 0xff);
             }
             else if (instructionLength == 3)
             {
                 if ((i32)li->operand < -32768 || (i32)li->operand > 65535)
-                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, gAddressingModeName[li->addressMode]);
+                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, m_cpu->GetAddressingModeName(li->addressMode));
 
                 li->data.push_back((u8)li->operand);
                 li->data.push_back((u8)((u16)li->operand >> 8));
@@ -1208,7 +1208,7 @@ GraphicChunk* CompilerSourceInfo::GetDecodeGC(int line)
             if (sl->type == LT_Instruction)
             {
                 char buffer[16];
-                auto opcode = &gOpcodes[sl->opcode];
+                auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
                 SDL_snprintf(buffer, 16, "%d", opcode->cycles);
                 sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, cycleCol, 0, 0));
             }
@@ -1245,6 +1245,7 @@ void Compiler::StartThreadedCompile()
 void Compiler::Compile(SourceFile* file)
 {
     Profile PF("Compile Prep");
+    m_cpu = gApp->GetEmulator()->GetCpu();
     if (m_nextFile)
         delete m_nextFile;
     m_nextFile = new TokenisedFile(file);
@@ -1897,7 +1898,8 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
 
             case LT_Instruction:
                 {
-                    auto cmd = FindMatchingCommand(gOpcodes[li->opcode].name);
+                    auto op = m_cpu->GetOpcode(li->opcode);
+                    auto cmd = FindMatchingCommand(op->name);
                     if (cmd)
                     {
                         lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
@@ -1908,11 +1910,11 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
                     }
 
                     // find possible labels
-                    if (gAddressingModeSize[gOpcodes[li->opcode].addressMode] > 1)
+                    if (m_cpu->GetAddressingModeSize(op->addressMode) > 1)
                     {
                         vector<CompilerLabel*> labels;
                         double val = (double)li->operand;
-                        if (gOpcodes[li->opcode].addressMode == AM_Relative)
+                        if (op->addressMode == Cpu6502::AM_Rel)
                             val = (double)(li->memAddr + li->operand + 2);
 
                         AddLabelsMatchingValue(ci, labels, val);

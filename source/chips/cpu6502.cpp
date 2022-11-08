@@ -1,7 +1,17 @@
 #include "common.h"
 #include "cpu6502.h"
 
+#define OPC( n, am, o, cyc ) m_opcodes[o].name = #n; m_opcodes[o].addressMode = AM_##am;\
+     m_opcodes[o].opc = o; m_opcodes[o].cycles = cyc; m_opcodes[o].decode = DELEGATE(Cpu6502::Decode_##n##_##am);
+
+//========================================
 //=== Addressing mode decodes
+//========================================
+
+u16 Cpu6502::Decode_Zero_Addr()
+{
+    return m_regs.operand;
+}
 
 u16 Cpu6502::Decode_ZeroX_Addr()
 {
@@ -13,18 +23,18 @@ u16 Cpu6502::Decode_ZeroY_Addr()
 }
 u16 Cpu6502::Decode_Abs_Addr()
 {
-    return MemReadByte(m_regs.operand);
+    return m_regs.operand;
 }
 u16 Cpu6502::Decode_AbsX_Addr() 
 {
     u16 addr = (m_regs.operand + m_regs.X) & 0xffff;
-    m_regs.delayCycle = (addr & 0xff) < m_regs.X;
+    m_regs.delayCycles = ((addr & 0xff) < m_regs.X) ? 1 : 0;
     return addr;
 }
 u16 Cpu6502::Decode_AbsY_Addr()
 {
     u16 addr = (m_regs.operand + m_regs.Y) & 0xffff;
-    m_regs.delayCycle = (addr & 0xff) < m_regs.Y;
+    m_regs.delayCycles = ((addr & 0xff) < m_regs.Y) ? 1 : 0;
     return addr;
 }
 u16 Cpu6502::Decode_Ind_Addr()
@@ -40,56 +50,212 @@ u16 Cpu6502::Decode_IndY_Addr()
 {
     u8 indAddr = (u8)m_regs.operand;
     u16 addr = (((u16)MemReadByte(indAddr) | ((u16)MemReadByte((indAddr + 1) & 0xff) << 8)) + m_regs.Y) & 0xffff;
-    m_regs.delayCycle = (addr & 0xff) < m_regs.Y;
+    m_regs.delayCycles = ((addr & 0xff) < m_regs.Y) ? 1 : 0;
     return MemReadByte(addr);
 }
 
+//========================================
 //=== Opcode decodes
+//========================================
 
-void Cpu6502::Decode_SEC()
+void Cpu6502::Decode_Unknown()
+{
+    // just do nothing and return
+}
+
+void Cpu6502::Decode_SEC_Imp()
 {
     m_regs.SR |= SR_Carry;
 }
 
-void Cpu6502::Decode_CLC()
+void Cpu6502::Decode_CLC_Imp()
 {
     m_regs.SR &= ~SR_Carry;
 }
 
-void Cpu6502::Decode_TAX()
+void Cpu6502::Decode_SEI_Imp()
+{
+    m_regs.SR |= SR_Interrupt;
+}
+
+void Cpu6502::Decode_CLI_Imp()
+{
+    m_regs.SR &= ~SR_Interrupt;
+}
+
+void Cpu6502::Decode_CLV_Imp()
+{
+    m_regs.SR &= ~SR_Overflow;
+}
+
+void Cpu6502::Decode_DEX_Imp()
+{
+    --m_regs.X;
+    m_regs.SetNZ(m_regs.X);
+}
+
+void Cpu6502::Decode_DEY_Imp()
+{
+    --m_regs.Y;
+    m_regs.SetNZ(m_regs.Y);
+}
+
+void Cpu6502::Decode_INX_Imp()
+{
+    ++m_regs.X;
+    m_regs.SetNZ(m_regs.X);
+}
+
+void Cpu6502::Decode_INY_Imp()
+{
+    ++m_regs.Y;
+    m_regs.SetNZ(m_regs.Y);
+}
+
+void Cpu6502::Decode_SED_Imp()
+{
+    m_regs.SR |= SR_Decimal;
+}
+
+void Cpu6502::Decode_CLD_Imp()
+{
+    m_regs.SR &= ~SR_Decimal;
+}
+
+void Cpu6502::Decode_NOP_Imp()
+{
+}
+
+void Cpu6502::Decode_PHA_Imp()
+{
+    MemWriteByte(m_regs.SP--, m_regs.A);
+}
+
+void Cpu6502::Decode_PHP_Imp()
+{
+    MemWriteByte(m_regs.SP--, m_regs.SR);
+}
+
+void Cpu6502::Decode_PLA_Imp()
+{
+    m_regs.A = MemReadByte(++m_regs.SP);
+    m_regs.SetNZ(m_regs.A);
+}
+
+void Cpu6502::Decode_PLP_Imp()
+{
+    m_regs.SR = MemReadByte(++m_regs.SP);
+}
+
+void Cpu6502::Decode_TAX_Imp()
 {
     m_regs.X = m_regs.A;
     m_regs.SetNZ(m_regs.A);
 }
 
-void Cpu6502::Decode_TAY()
+void Cpu6502::Decode_TAY_Imp()
 {
     m_regs.Y = m_regs.A;
     m_regs.SetNZ(m_regs.A);
 }
 
-void Cpu6502::Decode_TSX()
+void Cpu6502::Decode_TSX_Imp()
 {
     m_regs.X = m_regs.SP;
     m_regs.SetNZ(m_regs.SP);
 }
 
-void Cpu6502::Decode_TXA()
+void Cpu6502::Decode_TXA_Imp()
 {
     m_regs.A = m_regs.X;
     m_regs.SetNZ(m_regs.X);
 }
 
-void Cpu6502::Decode_TXS()
+void Cpu6502::Decode_TXS_Imp()
 {
     m_regs.SP = m_regs.X;
     m_regs.SetNZ(m_regs.X);
 }
 
-void Cpu6502::Decode_TYA()
+void Cpu6502::Decode_TYA_Imp()
 {
     m_regs.SP = m_regs.Y;
     m_regs.SetNZ(m_regs.Y);
+}
+
+void Cpu6502::Decode_BRK_Imp()
+{
+    u16 ret = (u16)(m_regs.PC+1);
+    MemWriteByte(0x100 + m_regs.SP--, (u8)(ret>>8));
+    MemWriteByte(0x100 + m_regs.SP--, (u8)ret);
+    MemWriteByte(0x100 + m_regs.SP--, m_regs.SR|SR_Break);
+    m_regs.SR |= SR_Interrupt;
+    u16 addr = (u16)MemReadByte(0xfffe) | ((u16)MemReadByte(0xffff) << 8);
+}
+
+void Cpu6502::Decode_RTI_Imp()
+{
+    u8 sr = MemReadByte(0x100 + ++m_regs.SP);
+    u16 addr = MemReadByte(0x100 + ++m_regs.SP);
+    addr = addr | (MemReadByte(0x10- + ++m_regs.SP) << 8);
+    m_regs.SR = (m_regs.SR & 0x30) | (sr & 0xcf);
+    m_regs.PC = addr + 1;
+}
+
+void Cpu6502::Decode_RTS_Imp()
+{
+    u16 addr = MemReadByte(0x101 + m_regs.SP);
+    addr = addr | (MemReadByte(0x102 + m_regs.SP) << 8);
+    m_regs.SP += 2;
+    m_regs.PC = addr + 1;
+}
+
+void Cpu6502::Decode_Branch()
+{
+    u16 srcPage = m_regs.PC & 0xff00;
+    m_regs.PC = (u16)((int)m_regs.PC + (i8)m_regs.operand);
+    m_regs.delayCycles = (srcPage != (m_regs.PC & 0xff00)) ? 2 : 1;
+}
+
+void Cpu6502::Decode_BCC_Rel()
+{
+    if (!(m_regs.SR & SR_Carry))
+        Decode_Branch();
+}
+void Cpu6502::Decode_BCS_Rel()
+{
+    if (m_regs.SR & SR_Carry)
+        Decode_Branch();
+}
+void Cpu6502::Decode_BEQ_Rel()
+{
+    if (m_regs.SR & SR_Zero)
+        Decode_Branch();
+}
+void Cpu6502::Decode_BNE_Rel()
+{
+    if (!(m_regs.SR & SR_Zero))
+        Decode_Branch();
+}
+void Cpu6502::Decode_BMI_Rel()
+{
+    if (m_regs.SR & SR_Negative)
+        Decode_Branch();
+}
+void Cpu6502::Decode_BPL_Rel()
+{
+    if (!(m_regs.SR & SR_Negative))
+        Decode_Branch();
+}
+void Cpu6502::Decode_BVC_Rel()
+{
+    if (!(m_regs.SR & SR_Overflow))
+        Decode_Branch();
+}
+void Cpu6502::Decode_BVS_Rel()
+{
+    if (m_regs.SR & SR_Overflow)
+        Decode_Branch();
 }
 
 void Cpu6502::Decode_ADC(u8 M)
@@ -105,7 +271,7 @@ void Cpu6502::Decode_ADC(u8 M)
 
 void Cpu6502::Decode_ADC_Imm()
 {
-    Decode_ADC(m_regs.operand);
+    Decode_ADC((u8)m_regs.operand);
 }
 
 void Cpu6502::Decode_ADC_Zero()
@@ -143,6 +309,154 @@ void Cpu6502::Decode_ADC_IndY()
     Decode_ADC(MemReadByte(Decode_IndY_Addr()));
 }
 
+void Cpu6502::Decode_CMP(u8 M)
+{
+    u16 result = (u16)m_regs.A - M;
+    u8 N = result & SR_Negative;
+    u8 Z = (result & 0xff) ? 0 : SR_Zero;
+    u8 C = result & 0x8000 ? 1 : 0;
+    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry)) | N | Z | C;
+}
+
+void Cpu6502::Decode_CMP_Imm()
+{
+    Decode_CMP((u8)m_regs.operand);
+}
+
+void Cpu6502::Decode_CMP_Zero()
+{
+    Decode_CMP(MemReadByte(m_regs.operand));
+}
+
+void Cpu6502::Decode_CMP_ZeroX()
+{
+    Decode_CMP(MemReadByte(Decode_ZeroX_Addr()));
+}
+
+void Cpu6502::Decode_CMP_Abs()
+{
+    Decode_CMP(MemReadByte(Decode_Abs_Addr()));
+}
+
+void Cpu6502::Decode_CMP_AbsX()
+{
+    Decode_CMP(MemReadByte(Decode_AbsX_Addr()));
+}
+
+void Cpu6502::Decode_CMP_AbsY()
+{
+    Decode_CMP(MemReadByte(Decode_AbsY_Addr()));
+}
+
+void Cpu6502::Decode_CMP_IndX()
+{
+    Decode_CMP(MemReadByte(Decode_IndX_Addr()));
+}
+
+void Cpu6502::Decode_CMP_IndY()
+{
+    Decode_CMP(MemReadByte(Decode_IndY_Addr()));
+}
+
+void Cpu6502::Decode_CPX(u8 M)
+{
+    u16 result = (u16)m_regs.X - M;
+    u8 N = result & SR_Negative;
+    u8 Z = (result & 0xff) ? 0 : SR_Zero;
+    u8 C = result & 0x8000 ? 1 : 0;
+    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry)) | N | Z | C;
+}
+
+void Cpu6502::Decode_CPX_Imm()
+{
+    Decode_CPX((u8)m_regs.operand);
+}
+
+void Cpu6502::Decode_CPX_Zero()
+{
+    Decode_CPX(MemReadByte(m_regs.operand));
+}
+
+void Cpu6502::Decode_CPX_Abs()
+{
+    Decode_CPX(MemReadByte(Decode_Abs_Addr()));
+}
+
+void Cpu6502::Decode_CPY(u8 M)
+{
+    u16 result = (u16)m_regs.Y - M;
+    u8 N = result & SR_Negative;
+    u8 Z = (result & 0xff) ? 0 : SR_Zero;
+    u8 C = result & 0x8000 ? 1 : 0;
+    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry)) | N | Z | C;
+}
+
+void Cpu6502::Decode_CPY_Imm()
+{
+    Decode_CPY((u8)m_regs.operand);
+}
+
+void Cpu6502::Decode_CPY_Zero()
+{
+    Decode_CPY(MemReadByte(m_regs.operand));
+}
+
+void Cpu6502::Decode_CPY_Abs()
+{
+    Decode_CPY(MemReadByte(Decode_Abs_Addr()));
+}
+
+void Cpu6502::Decode_SBC(u8 M)
+{
+    u16 result = (u16)m_regs.A - M - (m_regs.SR & SR_Carry);
+    u8 N = result & SR_Negative;
+    u8 Z = (result & 0xff) ? 0 : SR_Zero;
+    u8 V = ((m_regs.A ^ result) & (m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
+    u8 C = result & 0x100 ? 1 : 0;
+    m_regs.A = (u8)result;
+    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+}
+
+void Cpu6502::Decode_SBC_Imm()
+{
+    Decode_SBC((u8)m_regs.operand);
+}
+
+void Cpu6502::Decode_SBC_Zero()
+{
+    Decode_SBC(MemReadByte(m_regs.operand));
+}
+
+void Cpu6502::Decode_SBC_ZeroX()
+{
+    Decode_SBC(MemReadByte(Decode_ZeroX_Addr()));
+}
+
+void Cpu6502::Decode_SBC_Abs()
+{
+    Decode_SBC(MemReadByte(Decode_Abs_Addr()));
+}
+
+void Cpu6502::Decode_SBC_AbsX()
+{
+    Decode_SBC(MemReadByte(Decode_AbsX_Addr()));
+}
+
+void Cpu6502::Decode_SBC_AbsY()
+{
+    Decode_SBC(MemReadByte(Decode_AbsY_Addr()));
+}
+
+void Cpu6502::Decode_SBC_IndX()
+{
+    Decode_SBC(MemReadByte(Decode_IndX_Addr()));
+}
+
+void Cpu6502::Decode_SBC_IndY()
+{
+    Decode_SBC(MemReadByte(Decode_IndY_Addr()));
+}
+
 void Cpu6502::Decode_AND(u8 M)
 {
     m_regs.A &= M;
@@ -151,7 +465,7 @@ void Cpu6502::Decode_AND(u8 M)
 
 void Cpu6502::Decode_AND_Imm()
 {
-    Decode_AND(m_regs.operand);
+    Decode_AND((u8)m_regs.operand);
 }
 
 void Cpu6502::Decode_AND_Zero()
@@ -189,6 +503,85 @@ void Cpu6502::Decode_AND_IndY()
     Decode_AND(MemReadByte(Decode_IndY_Addr()));
 }
 
+void Cpu6502::Decode_ASL(u16 addr)
+{
+    u8 val = MemReadByte(addr);
+    u8 newCarry = (val & 0x80) ? SR_Carry : 0;
+    val = (u8)((u16)val << 1);
+    MemWriteByte(addr, val);
+    m_regs.SetNZC(val, newCarry);
+}
+
+void Cpu6502::Decode_ASL_Imp()
+{
+    u8 newCarry = (m_regs.A & 0x80) ? SR_Carry : 0;
+    m_regs.A = (u8)((u16)m_regs.A << 1);
+    m_regs.SetNZC(m_regs.A, newCarry);
+}
+
+void Cpu6502::Decode_ASL_Zero()
+{
+    Decode_ASL(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_ASL_ZeroX()
+{
+    Decode_ASL(Decode_ZeroX_Addr());
+}
+
+void Cpu6502::Decode_ASL_Abs()
+{
+    Decode_ASL(Decode_Abs_Addr());
+}
+
+void Cpu6502::Decode_ASL_AbsX()
+{
+    Decode_ASL(Decode_AbsX_Addr());
+}
+
+void Cpu6502::Decode_BIT(u16 addr)
+{
+    u8 M = MemReadByte(addr);
+    u8 Z = (M & m_regs.A) ? 0 : 1;
+    m_regs.SP = (m_regs.SP & ~(SR_Negative | SR_Overflow | SR_Zero)) | (M & (SR_Negative | SR_Overflow)) | SR_Zero;
+}
+
+void Cpu6502::Decode_BIT_Zero()
+{
+    Decode_BIT(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_BIT_Abs()
+{
+    Decode_BIT(Decode_Abs_Addr());
+}
+
+void Cpu6502::Decode_DEC(u16 addr)
+{
+    u8 val = (MemReadByte(addr) - 1) & 0xff;
+    MemWriteByte(addr, val);
+    m_regs.SetNZ(val);
+}
+
+void Cpu6502::Decode_DEC_Zero()
+{
+    Decode_DEC(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_DEC_ZeroX()
+{
+    Decode_DEC(Decode_ZeroX_Addr());
+}
+
+void Cpu6502::Decode_DEC_Abs()
+{
+    Decode_DEC(Decode_Abs_Addr());
+}
+void Cpu6502::Decode_DEC_AbsX()
+{
+    Decode_DEC(Decode_AbsX_Addr());
+}
+
 void Cpu6502::Decode_EOR(u8 M)
 {
     m_regs.A ^= M;
@@ -197,7 +590,7 @@ void Cpu6502::Decode_EOR(u8 M)
 
 void Cpu6502::Decode_EOR_Imm()
 {
-    Decode_EOR(m_regs.operand);
+    Decode_EOR((u8)m_regs.operand);
 }
 
 void Cpu6502::Decode_EOR_Zero()
@@ -235,6 +628,70 @@ void Cpu6502::Decode_EOR_IndY()
     Decode_EOR(MemReadByte(Decode_IndY_Addr()));
 }
 
+void Cpu6502::Decode_INC(u16 addr)
+{
+    u8 M = MemReadByte(addr);
+    M = M + 1;
+    m_regs.SetNZ(M);
+    MemWriteByte(addr, M);
+}
+
+void Cpu6502::Decode_INC_Zero()
+{
+    Decode_INC(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_INC_ZeroX()
+{
+    Decode_INC(Decode_ZeroX_Addr());
+}
+
+void Cpu6502::Decode_INC_Abs()
+{
+    Decode_INC(Decode_Abs_Addr());
+}
+
+void Cpu6502::Decode_INC_AbsX()
+{
+    Decode_INC(Decode_AbsX_Addr());
+}
+
+void Cpu6502::Decode_LSR(u16 addr)
+{
+    u8 val = MemReadByte(addr);
+    u8 newCarry = val & 0x01;
+    val = (u8)((u16)val >> 1);
+    MemWriteByte(addr, val);
+    m_regs.SetNZC(val, newCarry);
+}
+
+void Cpu6502::Decode_LSR_Imp()
+{
+    u8 newCarry = m_regs.A & 0x01;
+    m_regs.A = (u8)((u16)m_regs.A >> 1);
+    m_regs.SetNZC(m_regs.A, newCarry);
+}
+
+void Cpu6502::Decode_LSR_Zero()
+{
+    Decode_LSR(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_LSR_ZeroX()
+{
+    Decode_LSR(Decode_ZeroX_Addr());
+}
+
+void Cpu6502::Decode_LSR_Abs()
+{
+    Decode_LSR(Decode_Abs_Addr());
+}
+
+void Cpu6502::Decode_LSR_AbsX()
+{
+    Decode_LSR(Decode_AbsX_Addr());
+}
+
 void Cpu6502::Decode_ORA(u8 M)
 {
     m_regs.A |= M;
@@ -243,7 +700,7 @@ void Cpu6502::Decode_ORA(u8 M)
 
 void Cpu6502::Decode_ORA_Imm()
 {
-    Decode_ORA(m_regs.operand);
+    Decode_ORA((u8)m_regs.operand);
 }
 
 void Cpu6502::Decode_ORA_Zero()
@@ -281,6 +738,12 @@ void Cpu6502::Decode_ORA_IndY()
     Decode_ORA(MemReadByte(Decode_IndY_Addr()));
 }
 
+void Cpu6502::Decode_LDA(u16 addr)
+{
+    m_regs.A = MemReadByte(addr);
+    m_regs.SetNZ(m_regs.A);
+}
+
 void Cpu6502::Decode_LDA_Imm()
 {
     m_regs.A = (u8)m_regs.operand;
@@ -289,36 +752,33 @@ void Cpu6502::Decode_LDA_Imm()
 
 void Cpu6502::Decode_LDA_Zero()
 {
-    m_regs.A = MemReadByte(m_regs.operand);
-    m_regs.SetNZ(m_regs.A);
+    Decode_LDA(m_regs.operand);
 }
 
 void Cpu6502::Decode_LDA_ZeroX()
 {
-    m_regs.A = MemReadByte(Decode_ZeroX_Addr());
-    m_regs.SetNZ(m_regs.A);
+    Decode_LDA(Decode_ZeroX_Addr());
 }
 
 void Cpu6502::Decode_LDA_Abs()
 {
-    m_regs.A = MemReadByte(Decode_Abs_Addr());
-    m_regs.SetNZ(m_regs.A);
+    Decode_LDA(Decode_Abs_Addr());
 }
 
 void Cpu6502::Decode_LDA_AbsX()
 {
-    m_regs.A = MemReadByte(Decode_Abs_Addr());
-    m_regs.SetNZ(m_regs.A);
+    Decode_LDA(Decode_AbsX_Addr());
 }
 
 void Cpu6502::Decode_LDA_AbsY()
 {
-    m_regs.A = MemReadByte(Decode_AbsY_Addr());
-    m_regs.SetNZ(m_regs.A);
+    Decode_LDA(Decode_AbsY_Addr());
 }
 
 void Cpu6502::Decode_LDA_IndX()
 {
+    Decode_LDA(Decode_IndX_Addr());
+
     m_regs.A = MemReadByte(Decode_IndX_Addr());
     m_regs.SetNZ(m_regs.A);
 }
@@ -329,6 +789,113 @@ void Cpu6502::Decode_LDA_IndY()
     m_regs.SetNZ(m_regs.A);
 }
 
+void Cpu6502::Decode_LDX(u16 addr)
+{
+    m_regs.X = MemReadByte(addr);
+    m_regs.SetNZ(m_regs.X);
+}
+void Cpu6502::Decode_LDX_Imm()
+{
+    m_regs.X = (u8)m_regs.operand;
+}
+void Cpu6502::Decode_LDX_Zero()
+{
+    Decode_LDX(m_regs.operand);
+}
+void Cpu6502::Decode_LDX_ZeroY()
+{
+    Decode_LDX(Decode_ZeroY_Addr());
+}
+void Cpu6502::Decode_LDX_Abs()
+{
+    Decode_LDX(Decode_Abs_Addr());
+}
+void Cpu6502::Decode_LDX_AbsY()
+{
+    Decode_LDX(Decode_AbsY_Addr());
+}
+
+void Cpu6502::Decode_LDY(u16 addr)
+{
+    m_regs.Y = MemReadByte(addr);
+    m_regs.SetNZ(m_regs.Y);
+}
+void Cpu6502::Decode_LDY_Imm()
+{
+    m_regs.Y = (u8)m_regs.operand;
+}
+void Cpu6502::Decode_LDY_Zero()
+{
+    Decode_LDY(m_regs.operand);
+}
+void Cpu6502::Decode_LDY_ZeroX()
+{
+    Decode_LDY(Decode_ZeroX_Addr());
+}
+void Cpu6502::Decode_LDY_Abs()
+{
+    Decode_LDY(Decode_Abs_Addr());
+}
+void Cpu6502::Decode_LDY_AbsX()
+{
+    Decode_LDY(Decode_AbsX_Addr());
+}
+
+void Cpu6502::Decode_JMP_Abs()
+{
+    m_regs.PC = Decode_Abs_Addr();
+}
+
+void Cpu6502::Decode_JMP_Ind()
+{
+    m_regs.PC = Decode_Ind_Addr();
+}
+
+void Cpu6502::Decode_JSR_Abs()
+{
+    MemWriteByte(0x100 + m_regs.SP--, (u8)(m_regs.PC>>8));
+    MemWriteByte(0x100 + m_regs.SP--, (u8)m_regs.PC);
+    m_regs.PC = Decode_Abs_Addr();
+}
+
+void Cpu6502::Decode_ROR(u16 addr)
+{
+    u8 val = MemReadByte(addr);
+    u8 newCarry = val & 1;
+    u8 oldCarry = (m_regs.SR & SR_Carry) ? 0x80 : 0;
+    val = (u8)((u16)val >> 1) | oldCarry;
+    MemWriteByte(addr, val);
+    m_regs.SetNZC(val, newCarry);
+}
+
+void Cpu6502::Decode_ROR_Imp()
+{
+    u8 newCarry = m_regs.A & 1;
+    u8 oldCarry = (m_regs.SR & SR_Carry) ? 0x80 : 0;
+    m_regs.A = (u8)((u16)m_regs.A >> 1) | oldCarry;
+    m_regs.SetNZC(m_regs.A, newCarry);
+}
+
+void Cpu6502::Decode_ROR_Zero()
+{
+    Decode_ROR(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_ROR_ZeroX()
+{
+    Decode_ROR(Decode_ZeroX_Addr());
+}
+
+void Cpu6502::Decode_ROR_Abs()
+{
+    Decode_ROR(Decode_Abs_Addr());
+}
+
+void Cpu6502::Decode_ROR_AbsX()
+{
+    Decode_ROR(Decode_AbsX_Addr());
+}
+
 void Cpu6502::Decode_STA_Zero()
 {
     MemWriteByte(m_regs.operand, m_regs.A);
@@ -336,320 +903,285 @@ void Cpu6502::Decode_STA_Zero()
 
 void Cpu6502::Decode_STA_ZeroX()
 {
-    MemWriteByte(Decode_ZeroX_Addr()), m_regs.A);
+    MemWriteByte(Decode_ZeroX_Addr(), m_regs.A);
 }
 
 void Cpu6502::Decode_STA_Abs()
 {
-    MemWriteByte(Decode_Abs_Addr()), m_regs.A);
+    MemWriteByte(Decode_Abs_Addr(), m_regs.A);
 }
 
 void Cpu6502::Decode_STA_AbsX()
 {
-    MemWriteByte(Decode_AbsX_Addr()), m_regs.A);
+    MemWriteByte(Decode_AbsX_Addr(), m_regs.A);
 }
 
 void Cpu6502::Decode_STA_AbsY()
 {
-    MemWriteByte(Decode_AbsY_Addr()), m_regs.A);
+    MemWriteByte(Decode_AbsY_Addr(), m_regs.A);
 }
 
 void Cpu6502::Decode_STA_IndX()
 {
-    MemWriteByte(Decode_IndX_Addr()), m_regs.A);
+    MemWriteByte(Decode_IndX_Addr(), m_regs.A);
 }
 
 void Cpu6502::Decode_STA_IndY()
 {
-    MemWriteByte(Decode_IndY_Addr()), m_regs.A);
+    MemWriteByte(Decode_IndY_Addr(), m_regs.A);
 }
 
 
-void Cpu6502::Decode_LDX_Imm()
-{
-    m_regs.X = (u8)m_regs.operand;
-    u8 N = (m_regs.operand & SR_Negative);
-    u8 Z = (m_regs.operand ? 0 : SR_Zero);
-    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
-    return false;
-}
-void Cpu6502::Decode_STX_Abs()
-{
-    u16 M = m_regs.operand;
-    e->SetByte(M, m_regs.X);
-    return false;
-}
 void Cpu6502::Decode_STX_Zero()
 {
-    u16 M = m_regs.operand;
-    e->SetByte(M, m_regs.X);
-    return false;
+    MemWriteByte(Decode_Zero_Addr(), m_regs.X);
 }
+
 void Cpu6502::Decode_STX_ZeroY()
 {
-    u16 M = m_regs.operand + m_regs.Y;
-    e->SetByte(M, m_regs.X);
-    return false;
+    MemWriteByte(Decode_ZeroY_Addr(), m_regs.X);
 }
 
-void Cpu6502::Decode_LDY_Imm()
+void Cpu6502::Decode_STX_Abs()
 {
-    m_regs.Y = (u8)m_regs.operand;
-    u8 N = (m_regs.operand & SR_Negative);
-    u8 Z = (m_regs.operand ? 0 : SR_Zero);
-    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
-    return false;
-}
-void Cpu6502::Decode_DEX()
-{
-    m_regs.X = m_regs.X - 1;
-    u8 N = (m_regs.X & SR_Negative);
-    u8 Z = (m_regs.X ? 0 : SR_Zero);
-    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
-    return false;
-}
-void Cpu6502::Decode_DEY()
-{
-    m_regs.Y = m_regs.Y - 1;
-    u8 N = (m_regs.Y & SR_Negative);
-    u8 Z = (m_regs.Y ? 0 : SR_Zero);
-    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative)) | N | Z;
-    return false;
-}
-void Cpu6502::Decode_BNE()
-{
-    if (m_regs.SR & SR_Zero)
-    {
-        m_regs.PC += (i8)m_regs.operand;
-        return true;
-    }
-    return false;
-}
-void Cpu6502::Decode_RTS()
-{
-    u16 addr = e->GetByte(0x101 + m_regs.SP);
-    addr = addr | (e->GetByte(0x102 + m_regs.SP) << 8);
-    m_regs.SP += 2;
-    m_regs.PC = addr + 1;
-    return false;
+    MemWriteByte(Decode_Abs_Addr(), m_regs.X);
 }
 
-Cpu6502::Opcode gOpcodesRaw[] =
+void Cpu6502::Decode_STY_Zero()
 {
-    {"ADC", Cpu6502::AM_Immediate, 0x69, 2},
-    {"ADC", Cpu6502::AM_ZeroPage,  0x65, 3},
-    {"ADC", Cpu6502::AM_ZeroPageX, 0x75, 4},
-    {"ADC", Cpu6502::AM_Absolute,  0x6D, 4},
-    {"ADC", Cpu6502::AM_AbsoluteX, 0x7D, 4},
-    {"ADC", Cpu6502::AM_AbsoluteY, 0x79, 4},
-    {"ADC", Cpu6502::AM_IndirectX, 0x61, 6},
-    {"ADC", Cpu6502::AM_IndirectY, 0x71, 5, true, false, &Decode_ADC_IndY},
+    MemWriteByte(Decode_Zero_Addr(), m_regs.Y);
+}
 
-    {"AND", Cpu6502::AM_Immediate, 0x29, 2, false, false, &Decode_AND_Imm},
-    {"AND", Cpu6502::AM_ZeroPage,  0x25, 3, false, false, &Decode_AND_Zero},
-    {"AND", Cpu6502::AM_ZeroPageX, 0x35, 4, false, false, &Decode_AND_ZeroX},
-    {"AND", Cpu6502::AM_Absolute,  0x2D, 4, false, false, &Decode_AND_Abs},
-    {"AND", Cpu6502::AM_AbsoluteX, 0x3D, 4, true, false, &Decode_AND_AbsX},
-    {"AND", Cpu6502::AM_AbsoluteY, 0x39, 4, true, false, &Decode_AND_AbsY},
-    {"AND", Cpu6502::AM_IndirectX, 0x21, 6, false, false, &Decode_AND_IndX},
-    {"AND", Cpu6502::AM_IndirectY, 0x31, 5, true, false, &Decode_AND_IndY},
+void Cpu6502::Decode_STY_ZeroX()
+{
+    MemWriteByte(Decode_ZeroX_Addr(), m_regs.Y);
+}
 
-    {"ASL", Cpu6502::AM_Implied,   0x0A, 2},
-    {"ASL", Cpu6502::AM_ZeroPage,  0x06, 5},
-    {"ASL", Cpu6502::AM_ZeroPageX, 0x16, 6},
-    {"ASL", Cpu6502::AM_Absolute,  0x0E, 6},
-    {"ASL", Cpu6502::AM_AbsoluteX, 0x1E, 7},
+void Cpu6502::Decode_STY_Abs()
+{
+    MemWriteByte(Decode_Abs_Addr(), m_regs.Y);
+}
 
-    {"BCC", Cpu6502::AM_Relative,  0x90, 2, false, true},
-    {"BCS", Cpu6502::AM_Relative,  0xB0, 2, false, true},
-    {"BEQ", Cpu6502::AM_Relative,  0xF0, 2, false, true},
 
-    {"BIT", Cpu6502::AM_ZeroPage,  0x24, 3},
-    {"BIT", Cpu6502::AM_Absolute,  0x2C, 4},
 
-    {"BMI", Cpu6502::AM_Relative,  0x30, 2, false, true},
-    {"BNE", Cpu6502::AM_Relative,  0xD0, 2, false, true, &Decode_BNE},
-    {"BPL", Cpu6502::AM_Relative,  0x10, 2, false, true},
-
-    {"BRK", Cpu6502::AM_Implied,   0x30, 7},
-
-    {"BVC", Cpu6502::AM_Relative,  0x50, 2, false, true},
-    {"BVS", Cpu6502::AM_Relative,  0x70, 2, false, true},
-
-    {"CLC", Cpu6502::AM_Implied,   0x18, 2, false, false, &Decode_SEC},
-    {"CLD", Cpu6502::AM_Implied,   0xD8, 2},
-    {"CLI", Cpu6502::AM_Implied,   0x58, 2},
-    {"CLV", Cpu6502::AM_Implied,   0xB8, 2},
-
-    {"CMP", Cpu6502::AM_Immediate, 0xC9, 2},
-    {"CMP", Cpu6502::AM_ZeroPage,  0xC5, 3},
-    {"CMP", Cpu6502::AM_ZeroPageX, 0xD5, 4},
-    {"CMP", Cpu6502::AM_Absolute,  0xCD, 4},
-    {"CMP", Cpu6502::AM_AbsoluteX, 0xDD, 4, true},
-    {"CMP", Cpu6502::AM_AbsoluteY, 0xD9, 4, true},
-    {"CMP", Cpu6502::AM_IndirectX, 0xC1, 6},
-    {"CMP", Cpu6502::AM_IndirectY, 0xD1, 5, true},
-
-    {"CPX", Cpu6502::AM_Immediate, 0xE0, 2},
-    {"CPX", Cpu6502::AM_ZeroPage,  0xE4, 3},
-    {"CPX", Cpu6502::AM_Absolute,  0xEC, 4},
-
-    {"CPY", Cpu6502::AM_Immediate, 0xC0, 2},
-    {"CPY", Cpu6502::AM_ZeroPage,  0xC4, 3},
-    {"CPY", Cpu6502::AM_Absolute,  0xCC, 4},
-
-    {"DEC", Cpu6502::AM_ZeroPage,  0xC6, 5},
-    {"DEC", Cpu6502::AM_ZeroPageX, 0xD6, 6},
-    {"DEC", Cpu6502::AM_Absolute,  0xCE, 6},
-    {"DEC", Cpu6502::AM_AbsoluteX, 0xDE, 7},
-
-    {"DEX", Cpu6502::AM_Implied,   0xCA, 2, false, false, &Decode_DEX},
-    {"DEY", Cpu6502::AM_Implied,   0x88, 2, false, false, &Decode_DEY},
-
-    {"EOR", Cpu6502::AM_Immediate, 0x49, 2, false, false, &Decode_EOR_Imm},
-    {"EOR", Cpu6502::AM_ZeroPage,  0x45, 3, false, false, &Decode_EOR_Zero},
-    {"EOR", Cpu6502::AM_ZeroPageX, 0x55, 4, false, false, &Decode_EOR_ZeroX},
-    {"EOR", Cpu6502::AM_Absolute,  0x4D, 4, false, false, &Decode_EOR_Abs},
-    {"EOR", Cpu6502::AM_AbsoluteX, 0x5D, 4, true, false, &Decode_EOR_AbsX},
-    {"EOR", Cpu6502::AM_AbsoluteY, 0x59, 4, true, false, &Decode_EOR_AbsY},
-    {"EOR", Cpu6502::AM_IndirectX, 0x41, 6, false, false, &Decode_EOR_IndX},
-    {"EOR", Cpu6502::AM_IndirectY, 0x51, 5, true, false, &Decode_EOR_IndY},
-
-    {"INC", Cpu6502::AM_ZeroPage,  0xE6, 5},
-    {"INC", Cpu6502::AM_ZeroPageX, 0xF6, 6},
-    {"INC", Cpu6502::AM_Absolute,  0xEE, 6},
-    {"INC", Cpu6502::AM_AbsoluteX, 0xFE, 7},
-
-    {"INX", Cpu6502::AM_Implied,   0xE8, 2},
-    {"INY", Cpu6502::AM_Implied,   0xC8, 2},
-
-    {"JMP", Cpu6502::AM_Absolute,  0x4C, 3},
-    {"JMP", Cpu6502::AM_Indirect,  0x6C, 5},
-
-    {"JSR", Cpu6502::AM_Absolute,  0x20, 6},
-
-    {"LDA", Cpu6502::AM_Immediate, 0xA9, 2, false, false, &Decode_LDA_Imm},
-    {"LDA", Cpu6502::AM_ZeroPage,  0xA5, 3},
-    {"LDA", Cpu6502::AM_ZeroPageX, 0xB5, 4},
-    {"LDA", Cpu6502::AM_Absolute,  0xAD, 4},
-    {"LDA", Cpu6502::AM_AbsoluteX, 0xBD, 4, true},
-    {"LDA", Cpu6502::AM_AbsoluteY, 0xB9, 4, true},
-    {"LDA", Cpu6502::AM_IndirectX, 0xA1, 6},
-    {"LDA", Cpu6502::AM_IndirectY, 0xB1, 5, true},
-
-    {"LDX", Cpu6502::AM_Immediate, 0xA2, 2, false, false, &Decode_LDX_Imm},
-    {"LDX", Cpu6502::AM_ZeroPage,  0xA6, 3},
-    {"LDX", Cpu6502::AM_ZeroPageY, 0xB6, 4},
-    {"LDX", Cpu6502::AM_Absolute,  0xAE, 4},
-    {"LDX", Cpu6502::AM_AbsoluteY, 0xBE, 4, true},
-
-    {"LDY", Cpu6502::AM_Immediate, 0xA0, 2, false, false, &Decode_LDY_Imm },
-    {"LDY", Cpu6502::AM_ZeroPage,  0xA4, 3},
-    {"LDY", Cpu6502::AM_ZeroPageX, 0xB4, 4},
-    {"LDY", Cpu6502::AM_Absolute,  0xAC, 4},
-    {"LDY", Cpu6502::AM_AbsoluteX, 0xBC, 4, true},
-
-    {"LSR", Cpu6502::AM_Implied,   0x4A, 2},
-    {"LSR", Cpu6502::AM_ZeroPage,  0x46, 5},
-    {"LSR", Cpu6502::AM_ZeroPageX, 0x56, 6},
-    {"LSR", Cpu6502::AM_Absolute,  0x4E, 6},
-    {"LSR", Cpu6502::AM_AbsoluteX, 0x5E, 7},
-
-    {"NOP", Cpu6502::AM_Implied,   0xEA, 2},
-
-    {"ORA", Cpu6502::AM_Immediate, 0x09, 2},
-    {"ORA", Cpu6502::AM_ZeroPage,  0x05, 3},
-    {"ORA", Cpu6502::AM_ZeroPageX, 0x15, 4},
-    {"ORA", Cpu6502::AM_Absolute,  0x0D, 4},
-    {"ORA", Cpu6502::AM_AbsoluteX, 0x1D, 4, true},
-    {"ORA", Cpu6502::AM_AbsoluteY, 0x19, 4, true},
-    {"ORA", Cpu6502::AM_IndirectX, 0x01, 6},
-    {"ORA", Cpu6502::AM_IndirectY, 0x11, 5, true},
-
-    {"PHA", Cpu6502::AM_Implied,   0x48, 3},
-    {"PHP", Cpu6502::AM_Implied,   0x08, 3},
-    {"PLA", Cpu6502::AM_Implied,   0x68, 4},
-    {"PLP", Cpu6502::AM_Implied,   0x28, 4},
-
-    {"ROR", Cpu6502::AM_Immediate, 0x6A, 2},
-    {"ROR", Cpu6502::AM_ZeroPage,  0x66, 5},
-    {"ROR", Cpu6502::AM_ZeroPageX, 0x76, 6},
-    {"ROR", Cpu6502::AM_Absolute,  0x4E, 6},
-    {"ROR", Cpu6502::AM_AbsoluteX, 0x7E, 7},
-
-    {"RTI", Cpu6502::AM_Implied,   0x40, 6},
-    {"RTS", Cpu6502::AM_Implied,   0x60, 6, false, false, &Decode_RTS},
-
-    { "SBC", Cpu6502::AM_Immediate, 0xE9, 2},
-    { "SBC", Cpu6502::AM_ZeroPage,  0xE5, 3},
-    { "SBC", Cpu6502::AM_ZeroPageX, 0xF5, 4},
-    { "SBC", Cpu6502::AM_Absolute,  0xED, 4},
-    { "SBC", Cpu6502::AM_AbsoluteX, 0xFD, 4, true},
-    { "SBC", Cpu6502::AM_AbsoluteY, 0xF9, 4, true},
-    { "SBC", Cpu6502::AM_IndirectX, 0xE1, 6},
-    { "SBC", Cpu6502::AM_IndirectY, 0xF1, 5, true},
-
-    { "SEC", Cpu6502::AM_Implied,   0x38, 2, false, false, &Decode_SEC},
-    { "SED", Cpu6502::AM_Implied,   0xF8, 2 },
-    { "SEI", Cpu6502::AM_Implied,   0x78, 2 },
-
-    { "STA", Cpu6502::AM_ZeroPage,  0x85, 3, false, false, &Decode_STA_Zero},
-    { "STA", Cpu6502::AM_ZeroPageX, 0x95, 4 },
-    { "STA", Cpu6502::AM_Absolute,  0x8D, 4 },
-    { "STA", Cpu6502::AM_AbsoluteX, 0x9D, 5 },
-    { "STA", Cpu6502::AM_AbsoluteY, 0x99, 5 },
-    { "STA", Cpu6502::AM_IndirectX, 0x81, 6 },
-    { "STA", Cpu6502::AM_IndirectY, 0x91, 6 },
-
-    { "STX", Cpu6502::AM_ZeroPage,  0x86, 3 , false, false, &Decode_STX_Zero },
-    { "STX", Cpu6502::AM_ZeroPageY, 0x96, 4 , false, false, &Decode_STX_ZeroY },
-    { "STX", Cpu6502::AM_Absolute,  0x8E, 4 , false, false, &Decode_STX_Abs },
-
-    { "STY", Cpu6502::AM_ZeroPage,  0x84, 3 },
-    { "STY", Cpu6502::AM_ZeroPageX, 0x94, 4 },
-    { "STY", Cpu6502::AM_Absolute,  0x8C, 4 },
-
-    { "TAX", Cpu6502::AM_Implied,   0xAA, 3, false, false, &Decode_TAX},
-    { "TAY", Cpu6502::AM_Implied,   0xA8, 3, false, false, &Decode_TAY},
-    { "TSX", Cpu6502::AM_Implied,   0xBA, 3, false, false, &Decode_TSX},
-    { "TXA", Cpu6502::AM_Implied,   0x8A, 3, false, false, &Decode_TXA},
-    { "TXS", Cpu6502::AM_Implied,   0x9A, 3, false, false, &Decode_TXS},
-    { "TYA", Cpu6502::AM_Implied,   0x98, 3, false, false, &Decode_TYA}
-};
+Cpu6502::Opcode gOpcodeUnknown = { "???", Cpu6502::AM_Imp, 0x00, 2 };
 
 int gAddressingModeSize[] =
 {
-    1,  //    AM_Implied,              // operand
-    2,  //    AM_Immediate,            // operand #value
+    1,  //    AM_Imp,              // operand
+    2,  //    AM_Imm,            // operand #value
     2,  //    AM_Relative,             // operand value
-    2,  //    AM_ZeroPage,             // operand value
-    2,  //    AM_ZeroPageX,            // operand value,x
-    2,  //    AM_ZeroPageY,            // operand value,y
-    2,  //    AM_IndirectX,            // operand (value, x)
-    2,  //    AM_IndirectY,            // operand (value), y
-    3,  //    AM_Absolute,             // operand value
-    3,  //    AM_AbsoluteX,            // operand value,x
-    3,  //    AM_AbsoluteY,            // operand value,y
-    3   //    AM_Indirect              // operand (value)
+    2,  //    AM_Zero,             // operand value
+    2,  //    AM_ZeroX,            // operand value,x
+    2,  //    AM_ZeroY,            // operand value,y
+    2,  //    AM_IndX,            // operand (value, x)
+    2,  //    AM_IndY,            // operand (value), y
+    3,  //    AM_Abs,             // operand value
+    3,  //    AM_AbsX,            // operand value,x
+    3,  //    AM_AbsY,            // operand value,y
+    3   //    AM_Ind              // operand (value)
 };
 
 const char* gAddressingModeName[] =
 {
-    "Implied", "Immediate", "Zero Page", "Zero Page X", "Zero Page Y", "Absolute", "Absolute X", "Absolute Y", "Indirect", "Indirect X", "Indirect Y", "Relative"
+    "Imp", "Imm", "Zero Page", "Zero Page X", "Zero Page Y", "Abs", "Abs X", "Abs Y", "Ind", "Ind X", "Ind Y", "Relative"
 };
 
 Cpu6502::Cpu6502()
 {
-    memset(m_opcodes, 0, sizeof(m_opcodes));
+    gOpcodeUnknown.decode = DELEGATE(Cpu6502::Decode_Unknown);
+    for (int i = 0; i < 256; i++)
+    {
+        m_opcodes[i] = gOpcodeUnknown;
+    }
+
+    // declare all the opcodes into the m_opcodes array and auto generate the decode function hooks
+    OPC(ADC, Imm, 0x69, 2);
+    OPC(ADC, Zero,  0x65, 3);
+    OPC(ADC, ZeroX, 0x75, 4);
+    OPC(ADC, Abs,  0x6D, 4);
+    OPC(ADC, AbsX, 0x7D, 4);
+    OPC(ADC, AbsY, 0x79, 4);
+    OPC(ADC, IndX, 0x61, 6);
+    OPC(ADC, IndY, 0x71, 5);
+
+    OPC(AND, Imm, 0x29, 2);
+    OPC(AND, Zero,  0x25, 3);
+    OPC(AND, ZeroX, 0x35, 4);
+    OPC(AND, Abs,  0x2D, 4);
+    OPC(AND, AbsX, 0x3D, 4);
+    OPC(AND, AbsY, 0x39, 4);
+    OPC(AND, IndX, 0x21, 6);
+    OPC(AND, IndY, 0x31, 5);
+
+    OPC(ASL, Imp,   0x0A, 2);
+    OPC(ASL, Zero,  0x06, 5);
+    OPC(ASL, ZeroX, 0x16, 6);
+    OPC(ASL, Abs,  0x0E, 6);
+    OPC(ASL, AbsX, 0x1E, 7);
+
+    OPC(BCC, Rel,  0x90, 2);
+    OPC(BCS, Rel,  0xB0, 2);
+    OPC(BEQ, Rel,  0xF0, 2);
+
+    OPC(BIT, Zero,  0x24, 3);
+    OPC(BIT, Abs,  0x2C, 4);
+
+    OPC(BMI, Rel,  0x30, 2);
+    OPC(BNE, Rel,  0xD0, 2);
+    OPC(BPL, Rel,  0x10, 2);
+
+    OPC(BRK, Imp,   0x30, 7);
+
+    OPC(BVC, Rel,  0x50, 2);
+    OPC(BVS, Rel,  0x70, 2);
+
+    OPC(CLC, Imp,   0x18, 2);
+    OPC(CLD, Imp,   0xD8, 2);
+    OPC(CLI, Imp,   0x58, 2);
+    OPC(CLV, Imp,   0xB8, 2);
+
+    OPC(CMP, Imm, 0xC9, 2);
+    OPC(CMP, Zero,  0xC5, 3);
+    OPC(CMP, ZeroX, 0xD5, 4);
+    OPC(CMP, Abs,  0xCD, 4);
+    OPC(CMP, AbsX, 0xDD, 4);
+    OPC(CMP, AbsY, 0xD9, 4);
+    OPC(CMP, IndX, 0xC1, 6);
+    OPC(CMP, IndY, 0xD1, 5);
+
+    OPC(CPX, Imm, 0xE0, 2);
+    OPC(CPX, Zero,  0xE4, 3);
+    OPC(CPX, Abs,  0xEC, 4);
+
+    OPC(CPY, Imm, 0xC0, 2);
+    OPC(CPY, Zero,  0xC4, 3);
+    OPC(CPY, Abs,  0xCC, 4);
+
+    OPC(DEC, Zero,  0xC6, 5);
+    OPC(DEC, ZeroX, 0xD6, 6);
+    OPC(DEC, Abs,  0xCE, 6);
+    OPC(DEC, AbsX, 0xDE, 7);
+
+    OPC(DEX, Imp,   0xCA, 2);
+    OPC(DEY, Imp,   0x88, 2);
+
+    OPC(EOR, Imm, 0x49, 2);
+    OPC(EOR, Zero,  0x45, 3);
+    OPC(EOR, ZeroX, 0x55, 4);
+    OPC(EOR, Abs,  0x4D, 4);
+    OPC(EOR, AbsX, 0x5D, 4);
+    OPC(EOR, AbsY, 0x59, 4);
+    OPC(EOR, IndX, 0x41, 6);
+    OPC(EOR, IndY, 0x51, 5);
+
+    OPC(INC, Zero,  0xE6, 5);
+    OPC(INC, ZeroX, 0xF6, 6);
+    OPC(INC, Abs,  0xEE, 6);
+    OPC(INC, AbsX, 0xFE, 7);
+
+    OPC(INX, Imp,   0xE8, 2);
+    OPC(INY, Imp,   0xC8, 2);
+
+    OPC(JMP, Abs,  0x4C, 3);
+    OPC(JMP, Ind,  0x6C, 5);
+
+    OPC(JSR, Abs,  0x20, 6);
+
+    OPC(LDA, Imm, 0xA9, 2);
+    OPC(LDA, Zero,  0xA5, 3);
+    OPC(LDA, ZeroX, 0xB5, 4);
+    OPC(LDA, Abs,  0xAD, 4);
+    OPC(LDA, AbsX, 0xBD, 4);
+    OPC(LDA, AbsY, 0xB9, 4);
+    OPC(LDA, IndX, 0xA1, 6);
+    OPC(LDA, IndY, 0xB1, 5);
+
+    OPC(LDX, Imm, 0xA2, 2);
+    OPC(LDX, Zero,  0xA6, 3);
+    OPC(LDX, ZeroY, 0xB6, 4);
+    OPC(LDX, Abs,  0xAE, 4);
+    OPC(LDX, AbsY, 0xBE, 4);
+
+    OPC(LDY, Imm, 0xA0, 2);
+    OPC(LDY, Zero,  0xA4, 3);
+    OPC(LDY, ZeroX, 0xB4, 4);
+    OPC(LDY, Abs,  0xAC, 4);
+    OPC(LDY, AbsX, 0xBC, 4);
+
+    OPC(LSR, Imp,   0x4A, 2);
+    OPC(LSR, Zero,  0x46, 5);
+    OPC(LSR, ZeroX, 0x56, 6);
+    OPC(LSR, Abs,  0x4E, 6);
+    OPC(LSR, AbsX, 0x5E, 7);
+
+    OPC(NOP, Imp,   0xEA, 2);
+
+    OPC(ORA, Imm, 0x09, 2);
+    OPC(ORA, Zero,  0x05, 3);
+    OPC(ORA, ZeroX, 0x15, 4);
+    OPC(ORA, Abs,  0x0D, 4);
+    OPC(ORA, AbsX, 0x1D, 4);
+    OPC(ORA, AbsY, 0x19, 4);
+    OPC(ORA, IndX, 0x01, 6);
+    OPC(ORA, IndY, 0x11, 5);
+
+    OPC(PHA, Imp,   0x48, 3);
+    OPC(PHP, Imp,   0x08, 3);
+    OPC(PLA, Imp,   0x68, 4);
+    OPC(PLP, Imp,   0x28, 4);
+
+    OPC(ROR, Imp, 0x6A, 2);
+    OPC(ROR, Zero,  0x66, 5);
+    OPC(ROR, ZeroX, 0x76, 6);
+    OPC(ROR, Abs,  0x4E, 6);
+    OPC(ROR, AbsX, 0x7E, 7);
+
+    OPC(RTI, Imp,   0x40, 6);
+    OPC(RTS, Imp,   0x60, 6);
+
+    OPC(SBC, Imm, 0xE9, 2);
+    OPC(SBC, Zero,  0xE5, 3);
+    OPC(SBC, ZeroX, 0xF5, 4);
+    OPC(SBC, Abs,  0xED, 4);
+    OPC(SBC, AbsX, 0xFD, 4);
+    OPC(SBC, AbsY, 0xF9, 4);
+    OPC(SBC, IndX, 0xE1, 6);
+    OPC(SBC, IndY, 0xF1, 5);
+
+    OPC(SEC, Imp,   0x38, 2);
+    OPC(SED, Imp,   0xF8, 2);
+    OPC(SEI, Imp,   0x78, 2);
+
+    OPC(STA, Zero,  0x85, 3);
+    OPC(STA, ZeroX, 0x95, 4);
+    OPC(STA, Abs,  0x8D, 4);
+    OPC(STA, AbsX, 0x9D, 5);
+    OPC(STA, AbsY, 0x99, 5);
+    OPC(STA, IndX, 0x81, 6);
+    OPC(STA, IndY, 0x91, 6);
+
+    OPC(STX, Zero,  0x86, 3);
+    OPC(STX, ZeroY, 0x96, 4);
+    OPC(STX, Abs,  0x8E, 4);
+
+    OPC(STY, Zero,  0x84, 3);
+    OPC(STY, ZeroX, 0x94, 4);
+    OPC(STY, Abs,  0x8C, 4);
+
+    OPC(TAX, Imp,   0xAA, 3);
+    OPC(TAY, Imp,   0xA8, 3);
+    OPC(TSX, Imp,   0xBA, 3);
+    OPC(TXA, Imp,   0x8A, 3);
+    OPC(TXS, Imp,   0x9A, 3);
+    OPC(TYA, Imp,   0x98, 3);
 
     // copy opcode data to indexed table - we'll need this for fast emulation
-    int cnt = sizeof(gOpcodesRaw) / sizeof(Opcode);
-    for (int i = 0; i < cnt; i++)
+    // TODO: make this a hash table
+    for (int i = 0; i < 256; i++)
     {
-        m_opcodes[gOpcodesRaw[i].opc] = gOpcodesRaw[i];
-
-        if ((i == 0) || (gOpcodesRaw[i - 1].name != gOpcodesRaw[i].name))
-            m_uniqueOpcodes.push_back(&gOpcodesRaw[i]);
+        if (std::find(m_uniqueOpcodes.begin(), m_uniqueOpcodes.end(), m_opcodes[i].name) == m_uniqueOpcodes.end())
+            m_uniqueOpcodes.push_back(m_opcodes[i].name);
     }
 }
 
@@ -664,7 +1196,7 @@ bool Cpu6502::IsOpcode(const char* text)
 {
     for (auto opcode : m_uniqueOpcodes)
     {
-        if (StrEqual(text, opcode->name))
+        if (StrEqual(text, opcode))
         {
             return true;
         }
@@ -674,54 +1206,62 @@ bool Cpu6502::IsOpcode(const char* text)
 
 Cpu6502::Opcode* Cpu6502::FindOpcode(const string& name, AddressingMode am)
 {
-    int cnt = sizeof(gOpcodesRaw) / sizeof(Opcode);
-    for (int i = 0; i < cnt; i++)
+    // TODO: make this a hash lookup
+    for (int i=0; i<255; i++)
     {
-        if (StrEqual(name, gOpcodesRaw[i].name) && gOpcodesRaw[i].addressMode == am)
+        if (StrEqual(name, m_opcodes[i].name) && m_opcodes[i].addressMode == am)
         {
-            return &gOpcodesRaw[i];
+            return &m_opcodes[i];
         }
     }
     return nullptr;
 }
 
+int Cpu6502::GetAddressingModeSize(AddressingMode am)
+{
+    return gAddressingModeSize[am];
+}
+const char *Cpu6502::GetAddressingModeName(AddressingMode am)
+{
+    return gAddressingModeName[am];
+}
+
 bool Cpu6502::Step()
 {
     m_regs.frameCycle++;
-    if (m_regs.delayCycle)
+    if (m_regs.delayCycles)
     {
-        m_regs.delayCycle = false;
-        return true;
+        return (--m_regs.delayCycles) == 0;
     }
     else
     {
         if (m_regs.decodeCycle == 0)
         {
-            u8 op = m_mem->ReadByte(m_regs.PC++);
-            m_co = &gOpcodes[op];
-            if (m_co && m_co->cycles > 0)
-            {
-                m_opcodeCycleCount = m_co->cycles;
-            }
+            u8 op = MemReadByte(m_regs.PC++);
+            m_regs.op = &m_opcodes[op];
+            m_regs.opcodeCycleCount = m_regs.op->cycles;
         }
-        else if (m_decodeCycle == 1 && m_co->addressMode >= AM_Immediate)
+        else if (m_regs.decodeCycle == 1 && m_regs.op->addressMode >= AM_Imm)
         {
-            m_regs.operand = GetByte(m_regs.PC++);
+            m_regs.operand = MemReadByte(m_regs.PC++);
         }
-        else if (m_decodeCycle == 2 && m_co->addressMode >= AM_Absolute)
+        else if (m_regs.decodeCycle == 2 && m_regs.op->addressMode >= AM_Abs)
         {
-            m_regs.operand = m_regs.operand | ((u16)GetByte(m_regs.PC++) << 8);
+            m_regs.operand = m_regs.operand | ((u16)MemReadByte(m_regs.PC++) << 8);
         }
 
-        if (++m_decodeCycle == m_opcodeCycleCount)
+        if (++m_regs.decodeCycle == m_regs.opcodeCycleCount)
         {
-            if (m_co->m_decode)
+            if (m_regs.op->decode)
             {
-                // execute the instruction,  some instructions can generate and extra delay cycle
-                m_delayCycle = m_co->m_decode(this);
+                // execute the instruction,  this will update regs/memory and may generate delay cycles
+                m_regs.op->decode();
+                m_regs.decodeCycle = 0;
+                if (!m_regs.delayCycles)
+                    return true;
             }
-            m_decodeCycle = 0;
         }
     }
+    return false;
 }
 

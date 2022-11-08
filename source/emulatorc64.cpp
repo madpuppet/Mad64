@@ -9,6 +9,9 @@ EmulatorC64::EmulatorC64()
 	m_mem = new MemC64();
 	m_cpu = new Cpu6502();
 	m_vic = new Vic();
+
+	m_cpu->SetMemReadByte(DELEGATE_EX(m_mem, MemC64::ReadByte));
+	m_cpu->SetMemWriteByte(DELEGATE_EX(m_mem, MemC64::WriteByte));
 }
 
 EmulatorC64::~EmulatorC64()
@@ -32,20 +35,6 @@ bool EmulatorC64::Step()
 	m_cia1->Step();
 	m_cia2->Step();
 	return m_cpu->Step();
-}
-
-u8 EmulatorC64::GetByte(u16 addr)
-{
-	// todo: check banking options
-
-	return m_ram[addr];
-}
-
-void EmulatorC64::SetByte(u16 addr, u8 val)
-{
-	// todo: check banking options - send to vic chip, etc
-
-	m_ram[addr] = val;
 }
 
 void EmulatorC64::ConvertSnapshot()

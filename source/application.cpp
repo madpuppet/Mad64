@@ -66,8 +66,6 @@ Application::Application()
         SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x60));
         SDL_UpdateWindowSurface(m_window);
 
-        InitArrays();
-
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
@@ -409,10 +407,7 @@ void Application::OnKeyDown(SDL_Event* e)
 
     case SDLK_F10:
         // single step
-        do
-        {
-            m_emulator->Step();
-        } while (m_emulator->m_decodeCycle != 0 || m_emulator->m_delayCycle);
+        while (!m_emulator->Step());
         return;
 
     case SDLK_F11:

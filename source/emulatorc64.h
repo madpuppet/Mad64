@@ -21,13 +21,16 @@ public:
 	void Reset(u8 *ram, u8 *ramMask, u16 cpuStart);
 
 	// step one cycle
-	void Step();
+	// return true if cpu completed an instruction
+	bool Step();
 
 	u8 GetByte(u16 addr);
 	void SetByte(u16 addr, u8 val);
 
 	// copy regs in a thread safe way
 	void CopyRegs(Cpu6502::Registers& regs) { regs = m_cpu->Regs(); }
+	u16 GetCurrentPC() { return m_cpu->Regs().PC; }
+	Cpu6502* GetCpu() { return m_cpu; }
 
 protected:
 	Cpu6502* m_cpu;

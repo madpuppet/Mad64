@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 project(Mad64 VERSION 2022.06)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+
+if (!WIN32)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+endif()
 
 add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
@@ -19,11 +22,18 @@ add_executable(Mad64
 	source/sourcefile.cpp
 	source/textInput.cpp
 	source/thread.cpp
-	source/c64ram.cpp
-	source/emulator.cpp
-	source/tinyfiledialogs.c)
+	source/emulatorc64.cpp
+	source/tinyfiledialogs.c
+	source/chips/c64ram.cpp
+	source/chips/cia1.cpp
+	source/chips/cia2.cpp
+	source/chips/cpu6502.cpp
+	source/chips/memc64.cpp
+	source/chips/sid.cpp
+	source/chips/vic.cpp
+)
 	
-target_include_directories(Mad64 PUBLIC "include")
+target_include_directories(Mad64 PUBLIC "include", "source")
 target_link_directories(Mad64 PUBLIC "lib")
 
 target_link_libraries(Mad64 SDL2 SDL2_ttf SDL2main)

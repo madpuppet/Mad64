@@ -384,6 +384,9 @@ protected:
     // this file being compiled - can be collected if compilation is not active
     CompilerSourceInfo* m_compiledFile;
 
+    // pointer to cpu to get opcode information - doesn't interact with any dynamic parts
+    Cpu6502* m_cpu;
+
     // compiler loop
     virtual int Go();
 };

@@ -318,6 +318,8 @@ void SourceLine::VisualizeIfNecessary()
         return;
 
     auto settings = gApp->GetSettings();
+    auto cpu = gApp->GetEmulator()->GetCpu();
+
     int whiteSpaceWidth = gApp->GetWhiteSpaceWidth();
     if (!m_tokens.empty())
     {
@@ -365,7 +367,7 @@ void SourceLine::VisualizeIfNecessary()
                 SDL_Color col = settings->textColor;
                 if (token[0] == ';')
                     col = settings->commentColor;
-                else if (IsOpcode(token.c_str()))
+                else if (cpu->IsOpcode(token.c_str()))
                     col = settings->opCodeColor;
                 else if (token[0] == '$' || (token[0] >= '0' && token[0] <= '9'))
                     col = settings->numericColor;
