@@ -13,6 +13,8 @@ public:
 	EmulatorC64();
 	~EmulatorC64();
 
+	u32 CyclesPerSecond() { return 985248; }
+
 	void ConvertSnapshot();
 	void Update();
 	void Draw();
@@ -31,6 +33,7 @@ public:
 	void CopyRegs(Cpu6502::Registers& regs) { regs = m_cpu->Regs(); }
 	u16 GetCurrentPC() { return m_cpu->Regs().PC; }
 	Cpu6502* GetCpu() { return m_cpu; }
+	Vic* GetVic() { return m_vic; }
 
 protected:
 	Cpu6502* m_cpu;

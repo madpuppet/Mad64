@@ -287,6 +287,8 @@ void LogWindow::Draw()
 		}
 	}
 
+	gApp->GetEmulator()->GetVic()->Render(m_logArea.x, y, 2);
+
 	// draw scroll bar
 	int barY1, barY2;
 	CalcScrollBar(barY1, barY2);
