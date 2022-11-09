@@ -124,10 +124,6 @@ protected:
 	bool m_memMapDirty;
 	float m_markerAnim;
 
-	// *** REGISTERS SECTION ***
-	Cpu6502::Registers m_regs;
-	void RebuildRegisters();
-
 	vector<MappedLogItem> m_items;
 };
 

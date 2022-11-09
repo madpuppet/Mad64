@@ -21,12 +21,28 @@ void MemC64::Reset(u8* mem, u8* memMask)
 
 u8 MemC64::ReadByte(u16 addr)
 {
+	if (addr >= 0xd000 && addr < 0xd100)
+		return ReadVicRegByte(addr - 0xd000);
+	else
+		return m_ram[addr];
+}
+
+u8 MemC64::ReadVicBankByte(u16 addr)
+{
 	return m_ram[addr];
+}
+
+u8 MemC64::ReadColorRamByte(u16 addr)
+{
+	return m_ram[0xd800 + (addr&0x3ff)];
 }
 
 void MemC64::WriteByte(u16 addr, u8 value)
 {
-	m_ram[addr] = value;
+	if (addr >= 0xd000 && addr < 0xd100)
+		WriteVicRegByte(addr - 0xd000, value);
+	else
+		m_ram[addr] = value;
 }
 
 

@@ -111,5 +111,8 @@ protected:
     u64 m_clickTime;
     u64 m_frameTick;
     float m_timeDelta;
+
+    // emulation
+    bool m_runEmulation;
 };
 extern Application *gApp;

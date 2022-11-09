@@ -7,27 +7,150 @@ public:
 
     struct ScreenConfig
     {
-        int screenHeight;       // total raster lines
-        int screenWidth;        // total 'pixels' wide
-        int cyclesPerLine;      // machine cycles per line
-        int badLineCycles;      // machine cycles used up on badlines
-        int insideX;            // start X of background
-        int insideY;            // start Y of background
-        int insideWidth;        // width of background
-        int insideHeight;       // height of background
+        int screenHeight;           // total raster lines
+        int screenWidth;            // total 'pixels' wide
+        int cyclesPerLine;          // machine cycles per line
+        int badLineCycles;          // machine cycles used up on badlines
+        int leftBorderStartCycle;   // first cycle for border rendering for the line
+        int backgroundStartCycle;   // first cycle for background rendering for the line
+        int rightBorderStartCycle;  // first cycle where right border should start rendering
+        int hblankStartCycles;      // start of hblank cycles after right border
+        int topBorderStartLine;
+        int backgroundStartLine;
+        int bottomBorderStartLine;
+        int bottomBorderVBlankLine;
     };
     void Reset();
     void Step();
 
     void Render(int x, int y, int zoom);
 
+    enum Control1
+    {
+        YSCROLL = 7,
+        RSEL = 8,
+        DEN = 16,
+        BMM = 32,
+        ECM = 64,
+        RST8 = 128
+    };
+    enum Control2
+    {
+        XSCROLL = 7,
+        CSEL = 8,
+        MCM = 16,
+        RES = 32
+    };
+ 
+    enum MemoryPointers
+    {
+        CharacterBank = 0xe,
+        VideoMatrix = 0xf0
+    };
+
+    struct Registers
+    {
+        u8 sprite0X;
+        u8 sprite0Y;
+        u8 sprite1X;
+        u8 sprite1Y;
+        u8 sprite2X;
+        u8 sprite2Y;
+        u8 sprite3X;
+        u8 sprite3Y;
+        u8 sprite4X;
+        u8 sprite4Y;
+        u8 sprite5X;
+        u8 sprite5Y;
+        u8 sprite6X;
+        u8 sprite6Y;
+        u8 sprite7X;
+        u8 sprite7Y;
+        u8 spriteXMSB;
+        u8 control1;
+        u8 rasterCounter;
+        u8 lightPenX;
+        u8 lightPenY;
+        u8 spriteEnable;
+        u8 control2;
+        u8 spriteYEnlarge;
+        u8 memoryPointers;
+        u8 interruptRegister;
+        u8 interruptEnable;
+        u8 spritePriority;
+        u8 spriteMulticolor;
+        u8 spriteXEnlarge;
+        u8 spriteSpriteCollision;
+        u8 spriteDataCollision;
+        u8 borderColor;
+        u8 backgroundColor0;
+        u8 backgroundColor1;
+        u8 backgroundColor2;
+        u8 backgroundColor3;
+        u8 spriteMulticolor0;
+        u8 spriteMulticolor1;
+        u8 spriteColor0;
+        u8 spriteColor1;
+        u8 spriteColor2;
+        u8 spriteColor3;
+        u8 spriteColor4;
+        u8 spriteColor5;
+        u8 spriteColor6;
+        u8 spriteColor7;
+    };
+    Registers& Regs() { return m_regs; }
+    int CurrentRasterLine() { return m_rasterLine; }
+    int CurrentRasterRow() { return m_rasterLineCycle; }
+
+    // give access to 16k of memory
+    void SetReadVicByte(const ReadByteHook& hook) { ReadVicByte = hook; }
+    void SetReadColorByte(const ReadByteHook& hook) { ReadColorByte = hook; }
+
+    // give access to 16k of memory
+    u8 ReadVicRegByte(u16 addr) 
+    {
+        u16 bound_addr = addr % sizeof(Registers);
+        return ((u8*)&m_regs)[bound_addr];
+    }
+    void WriteVicRegByte(u16 addr, u8 val)
+    {
+        u16 bound_addr = addr % sizeof(Registers);
+        ((u8*)&m_regs)[bound_addr] = val;
+    }
+
 private:
     ScreenConfig m_scPal;
     ScreenConfig m_scNtsc;
     ScreenConfig *m_scCurrent;
 
+    // memory hooks
+    ReadByteHook ReadVicByte;
+    ReadByteHook ReadColorByte;
+
     SDL_Texture* m_texture;
     u8* m_textureMem;
+
+    Registers m_regs;
+    int m_rasterLine;
+    int m_rasterLineCycle;
+    int m_backgroundCycle;
+    int m_charRow;
+    bool m_bHBlank;
+    bool m_bVBlank;
+    bool m_bHBorder;
+    bool m_bVBorder;
+    bool m_bBackground;
+
+    // data fetched for this 8 line block
+    u8 m_bBMM;
+    u8 m_bECM;
+    u8 m_bMCM;
+    u16 m_cachedChars[40];     // text characters for this line [12 bits where high bits are from color memory]
+    void CacheLine();
+
+    SDL_Rect m_textureDirty;
+    SDL_Rect m_textureDirtyExtra;
+    void FlushTexture();
 };
 
 

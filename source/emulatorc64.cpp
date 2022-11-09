@@ -10,8 +10,16 @@ EmulatorC64::EmulatorC64()
 	m_cpu = new Cpu6502();
 	m_vic = new Vic();
 
+	// hook chips up to communicate with each other in a way that they don't need to know what the chips are
+
+	m_mem->SetReadVicRegByte(DELEGATE_EX(m_vic, Vic::ReadVicRegByte));
+	m_mem->SetWriteVicRegByte(DELEGATE_EX(m_vic, Vic::WriteVicRegByte));
+
 	m_cpu->SetMemReadByte(DELEGATE_EX(m_mem, MemC64::ReadByte));
 	m_cpu->SetMemWriteByte(DELEGATE_EX(m_mem, MemC64::WriteByte));
+
+	m_vic->SetReadVicByte(DELEGATE_EX(m_mem, MemC64::ReadVicBankByte));
+	m_vic->SetReadColorByte(DELEGATE_EX(m_mem, MemC64::ReadColorRamByte));
 }
 
 EmulatorC64::~EmulatorC64()

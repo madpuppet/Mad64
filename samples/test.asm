@@ -3,11 +3,14 @@
 temp = $50
 
 start:
-    lda #$60
-    sta temp
-    lda #$20
-    adc temp
-    sta $d020
-    rts
-    
+    ldx #$ff
+loop:
+    ldy #$ff
+loop2:
+    sty vic.borderColor
+    dey
+    bne loop2
+    dex
+    bne loop
+    jmp start
     

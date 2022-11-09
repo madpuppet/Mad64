@@ -42,7 +42,10 @@ RIGHT CLICK    on the search or replace box to clear and select the box
 ;====== EMULATION
                
 CTRL-F5        Compile and Load PRG file in Vice (use settings file to set up path to VICE)
-F10            Single Step emulator
+F10            Single cycle step
+SHIFT-F10      Single frame step
+ALT-F10        Single rasterline step
+CTRL-F10       Run continuously at normal speed
 
 ;====== ASSEMBLER SYNTAX
 

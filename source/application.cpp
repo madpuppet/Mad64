@@ -158,6 +158,16 @@ void Application::Update()
     m_logWindow->Update();
     m_compiler->Update();
     m_emulator->Update();
+
+    if (m_runEmulation)
+    {
+        int cycles = (int)m_emulator->CyclesPerSecond() * m_timeDelta;
+        Log("Running %d cycles", cycles);
+        for (int i = 0; i < cycles; i++)
+        {
+            m_emulator->Step();
+        }
+    }
 }
 
 void Application::Draw()
@@ -406,8 +416,31 @@ void Application::OnKeyDown(SDL_Event* e)
         break;
 
     case SDLK_F10:
-        // single step
-        while (!m_emulator->Step());
+        if (e->key.keysym.mod & KMOD_CTRL)
+        {
+            m_runEmulation = !m_runEmulation;
+        }
+        else if (e->key.keysym.mod & KMOD_SHIFT)
+        {
+            // frame step
+            for (int i = 0; i < 312 * 63; i++)
+            {
+                while (!m_emulator->Step());
+            }
+        }
+        else if (e->key.keysym.mod & KMOD_ALT)
+        {
+            // rasterline step
+            for (int i = 0; i < 63; i++)
+            {
+                while (!m_emulator->Step());
+            }
+        }
+        else
+        {
+            // single step
+            while (!m_emulator->Step());
+        }
         return;
 
     case SDLK_F11:

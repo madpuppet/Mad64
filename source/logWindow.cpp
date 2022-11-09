@@ -143,13 +143,24 @@ void LogWindow::Update()
 	if (m_logGroups[LF_Registers].m_groupOpen)
 	{
 		// update registers
-		gApp->GetEmulator()->CopyRegs(m_regs);
+		auto cpu = gApp->GetEmulator()->GetCpu();
+		auto vic = gApp->GetEmulator()->GetVic();
+		Cpu6502::Registers& cpuRegs = cpu->Regs();
+		Vic::Registers& vicRegs = vic->Regs();
+		int rasterLine = vic->CurrentRasterLine();
+		int rasterRow = vic->CurrentRasterRow();
+
 		ClearLog(LF_Registers);
 		LogText(LF_Registers, "CYCLE       PC   SR SP  A  X  Y   N V - B D I Z C");
 		LogText(LF_Registers, FormatString("%08x    %04x %02x %02x  %02x %02x %02x  %d %d   %d %d %d %d %d",
-			m_regs.frameCycle, m_regs.PC, m_regs.SR, m_regs.SP, m_regs.A, m_regs.X, m_regs.Y,
-			(m_regs.SR & Cpu6502::SR_Negative) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Overflow) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Break) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Decimal) ? 1 : 0,
-			(m_regs.SR & Cpu6502::SR_Interrupt) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Zero) ? 1 : 0, (m_regs.SR & Cpu6502::SR_Carry) ? 1 : 0));
+			cpuRegs.frameCycle, cpuRegs.PC, cpuRegs.SR, cpuRegs.SP, cpuRegs.A, cpuRegs.X, cpuRegs.Y,
+			(cpuRegs.SR & Cpu6502::SR_Negative) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Overflow) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Break) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Decimal) ? 1 : 0,
+			(cpuRegs.SR & Cpu6502::SR_Interrupt) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Zero) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Carry) ? 1 : 0));
+
+		LogText(LF_Registers, "ROW COL     ECM MCM BMM  RSL CSL");
+		LogText(LF_Registers, FormatString("%03x %03x      %d   %d   %d    %d   %d", rasterLine, rasterRow,
+			vicRegs.control1 & Vic::ECM ? 1 : 0, vicRegs.control2 & Vic::MCM ? 1 : 0, vicRegs.control1 & Vic::BMM ? 1 : 0,
+			vicRegs.control1 & Vic::RSEL ? 1 : 0, vicRegs.control1 & Vic::CSEL ? 1 : 0));
 	}
 }
 
