@@ -101,6 +101,8 @@ public:
     Registers& Regs() { return m_regs; }
     int CurrentRasterLine() { return m_rasterLine; }
     int CurrentRasterRow() { return m_rasterLineCycle; }
+    int GetScreenWidth() { return m_scCurrent->screenWidth; }
+    int GetScreenHeight() { return m_scCurrent->screenHeight; }
 
     // give access to 16k of memory
     void SetReadVicByte(const ReadByteHook& hook) { ReadVicByte = hook; }
@@ -134,12 +136,15 @@ private:
     int m_rasterLine;
     int m_rasterLineCycle;
     int m_backgroundCycle;
-    int m_charRow;
+    int m_charRow;      // which Row of character (0..25)
+    int m_charLine;     // which line inside a single row (0..7)
+    int m_charCol;      // which character this cycle (0..40)
     bool m_bHBlank;
     bool m_bVBlank;
     bool m_bHBorder;
     bool m_bVBorder;
-    bool m_bBackground;
+    bool m_bBGVert;     // in vertical background area
+    bool m_bBGHoriz;    // in horizontal background area
 
     // data fetched for this 8 line block
     u8 m_bBMM;

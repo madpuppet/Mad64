@@ -23,6 +23,7 @@ Application::Application()
     m_clickX = 0;
     m_clickY = 0;
     m_clickTime = 0;
+    m_hasFocus = false;
 
     LogStart();
     gApp = this;
@@ -65,17 +66,19 @@ Application::Application()
         SDL_Surface *screenSurface = SDL_GetWindowSurface(m_window);
         SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x60));
         SDL_UpdateWindowSurface(m_window);
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
         m_emulator = new EmulatorC64();
-//        m_emulator->ConvertSnapshot();
+        m_logWindow->SetOpenLogs(m_settings->openLogs);
 
         for (auto& p : m_settings->loadedFilePaths)
         {
             LoadFile(p.c_str());
         }
+        m_editWindow->SetActiveFileIdx(m_settings->activeLoadedFilePath);
 
         m_mouseCapture = Capture_None;
         m_keyCapture = Capture_None;
@@ -121,8 +124,16 @@ int Application::MainLoop()
     SDL_Event e;
     while (!m_quit)
     {
-        if (SDL_WaitEventTimeout(&e,10))
-            HandleEvent(&e);
+        if (m_settings->lowCPUMode || !m_hasFocus)
+        {
+            if (SDL_WaitEventTimeout(&e,10))
+                HandleEvent(&e);
+        }
+        else
+        {
+            if (SDL_PollEvent(&e))
+                HandleEvent(&e);
+        }
 
         Update();
         Draw();
@@ -161,8 +172,7 @@ void Application::Update()
 
     if (m_runEmulation)
     {
-        int cycles = (int)m_emulator->CyclesPerSecond() * m_timeDelta;
-        Log("Running %d cycles", cycles);
+        int cycles = (int)(m_emulator->CyclesPerSecond() * m_timeDelta);
         for (int i = 0; i < cycles; i++)
         {
             m_emulator->Step();
@@ -233,6 +243,14 @@ void Application::HandleEvent(SDL_Event *e)
     case SDL_WINDOWEVENT:
         switch (e->window.event)
         {
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+                m_hasFocus = true;
+                break;
+
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+                m_hasFocus = false;
+                break;
+
             case SDL_WINDOWEVENT_SIZE_CHANGED:
                 m_editWindow->OnResize();
                 break;
@@ -355,6 +373,7 @@ void Application::CreateNewFile()
         source->GetLines().push_back(newLine);
         m_editWindow->OnFileLoaded(source);
 
+        m_settings->activeFilePath = GetPath(file);
         m_settings->loadedFilePaths.push_back(name);
         m_settings->Save();
     }
@@ -425,7 +444,7 @@ void Application::OnKeyDown(SDL_Event* e)
             // frame step
             for (int i = 0; i < 312 * 63; i++)
             {
-                while (!m_emulator->Step());
+                m_emulator->Step();
             }
         }
         else if (e->key.keysym.mod & KMOD_ALT)
@@ -433,7 +452,7 @@ void Application::OnKeyDown(SDL_Event* e)
             // rasterline step
             for (int i = 0; i < 63; i++)
             {
-                while (!m_emulator->Step());
+                m_emulator->Step();
             }
         }
         else

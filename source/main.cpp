@@ -98,7 +98,15 @@ u32string UTF8toUNICODE(string text)
     return conv_utf8_utf32.from_bytes(text);
 }
 
-
+string GetPath(const string& path)
+{
+    size_t pos = path.find_last_of("\\/");
+    if (pos != string::npos)
+    {
+        return path.substr(0, pos);
+    }
+    return path;
+}
 
 
 

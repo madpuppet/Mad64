@@ -33,6 +33,7 @@ public:
 	void OnFileLoaded(SourceFile *file);
 	void OnFileClosed(SourceFile* file);
 	void SetActiveFile(SourceFile* file);
+	void SetActiveFileIdx(int index);
 	SourceFile* GetActiveFile() { return m_activeSourceFileItem ? m_activeSourceFileItem->file : nullptr;  }
 	int GetActiveLine() { return m_activeSourceFileItem ? m_activeSourceFileItem->activeLine : 0; }
 	int GetActiveCol() { return m_activeSourceFileItem ? m_activeSourceFileItem->activeColumn : 0; }
@@ -181,21 +182,8 @@ protected:
 	// status bar
 	struct StatusInfo
 	{
-		bool overwriteMode;
-		bool tabsToSpaces;
-		bool autoIndent;
-
-		int line;
-		int column;
-		int totalLines;
-		int totalColumns;
-		int undo;
-		int totalUndo;
-
-		GraphicElement* m_geModes;
-		GraphicElement* m_geLine;
-		GraphicElement* m_geColumn;
-		GraphicElement* m_geUndo;
+		GraphicElement* m_ge;
+		float m_avgTimeDelta;
 	} m_status;
 	void InitStatus();
 	void UpdateStatus();

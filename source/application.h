@@ -28,6 +28,7 @@ public:
 
     int MainLoop();
     bool IsShuttingDown() { return m_quit; }
+    bool IsEmulatorRunning() { return m_runEmulation; }
 
     TTF_Font* GetFont() { return m_font; }
     SDL_Renderer* GetRenderer() { return m_renderer; }
@@ -111,6 +112,7 @@ protected:
     u64 m_clickTime;
     u64 m_frameTick;
     float m_timeDelta;
+    bool m_hasFocus;
 
     // emulation
     bool m_runEmulation;

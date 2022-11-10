@@ -32,10 +32,15 @@ inline float min(float x, float y) { return x < y ? x : y; }
 inline float sign(float x) { return (x == 0) ? 0 : (x < 0 ? -1.0f : 1.0f); }
 inline float lerp(float v1, float v2, float blend) { return (v1 + (v2 - v1) * blend); }
 
+// does a range contain a value (NOTE: max range is exclusive so s1=0, s2=5 includes all values 0,1,2,3,4 but not 5
+inline bool contains(int s1, int s2, int val) { return val >= s1 && val < s2; }
+inline bool containsRange(int s1, int s2, int r1, int r2) { return r2 >= s1 && r1 < s2; }
+
 inline bool StrEqual(const char* a, const char* b) { return SDL_strcasecmp(a, b) == 0; }
 inline bool StrEqual(const string& s1, const char* s2) { return s1.empty() ? (s2[0] == 0) : (SDL_strcasecmp(s1.c_str(), s2) == 0); }
 inline bool StrEqual(const string& s1, const string& s2) { return s1.empty() ? s2.empty() : (SDL_strcasecmp(s1.c_str(), s2.c_str()) == 0); }
 inline bool HasExtension(const char *s, const char* ext) { const char *strExt = SDL_strrchr(s, '.'); return (strExt) ? StrEqual(strExt, ext) : false; }
+extern string GetPath(const string& path);
 extern void CopyToClipboard(vector<string>& buffer);
 extern void CopyFromClipboard(vector<string>& buffer);
 extern char KeySymToAscii(const SDL_Keysym &sym);

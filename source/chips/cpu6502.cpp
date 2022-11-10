@@ -1031,7 +1031,7 @@ Cpu6502::Cpu6502()
     OPC(BNE, Rel,  0xD0, 2);
     OPC(BPL, Rel,  0x10, 2);
 
-    OPC(BRK, Imp,   0x30, 7);
+    OPC(BRK, Imp,   0x00, 7);
 
     OPC(BVC, Rel,  0x50, 2);
     OPC(BVS, Rel,  0x70, 2);

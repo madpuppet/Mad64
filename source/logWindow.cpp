@@ -1,8 +1,36 @@
 #include "common.h"
 #include "logWindow.h"
 
-static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory", "Registers"};
-static const char* s_short_titles[] = { "CMP", "HLP", "LAB", "MEM", "REG" };
+static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory", "Registers", "Emulator"};
+static const char* s_short_titles[] = { "CMP", "HLP", "LAB", "MEM", "REG", "EMU"};
+static char s_titleChars[] = { 'C','H','L','M','R','E' };
+
+string LogWindow::GetOpenLogs()
+{
+	string result = "";
+	for (int i = 0; i < LF_MAX; i++)
+	{
+		if (m_logGroups[i].m_groupOpen)
+			result += s_titleChars[i];
+	}
+	return result;
+}
+
+void LogWindow::SetOpenLogs(const string& logs)
+{
+	for (int i = 0; i < LF_MAX; i++)
+		m_logGroups[i].m_groupOpen = false;
+
+	for (auto ch : logs)
+	{
+		for (int i = 0; i < LF_MAX; i++)
+		{
+			if (ch == s_titleChars[i])
+				m_logGroups[i].m_groupOpen = true;
+		}
+	}
+}
+
 
 LogWindow::LogWindow()
 {
@@ -20,6 +48,7 @@ LogWindow::LogWindow()
 	m_highlightRow = -1;
 	m_autoScroll = 0;
 	m_logGroups[2].m_groupOpen = false;
+	m_emulatorZoom = 2;
 
 	BuildIcons();
 
@@ -92,7 +121,6 @@ void LogWindow::ClearLog(LogFilter filter)
 	for (auto line : lg.m_logLines)
 		delete line;
 	lg.m_logLines.clear();
-	ClampTargetScroll();
 	if (filter == LF_Memory)
 		m_memMapDirty = true;
 }
@@ -131,15 +159,6 @@ GraphicElement *LogWindow::LogItem::GetGE()
 
 void LogWindow::Update()
 {
-	if (m_autoScroll)
-	{
-		m_targetScroll += TIMEDELTA * m_autoScroll;
-		ClampTargetScroll();
-	}
-	m_scroll += (int)((m_targetScroll - (float)m_scroll) * 0.25f);
-
-	m_markerAnim = fmodf(m_markerAnim + 1/60.0f, 1.0f);
-
 	if (m_logGroups[LF_Registers].m_groupOpen)
 	{
 		// update registers
@@ -162,6 +181,15 @@ void LogWindow::Update()
 			vicRegs.control1 & Vic::ECM ? 1 : 0, vicRegs.control2 & Vic::MCM ? 1 : 0, vicRegs.control1 & Vic::BMM ? 1 : 0,
 			vicRegs.control1 & Vic::RSEL ? 1 : 0, vicRegs.control1 & Vic::CSEL ? 1 : 0));
 	}
+
+	if (m_autoScroll)
+	{
+		m_targetScroll += TIMEDELTA * m_autoScroll;
+	}
+	ClampTargetScroll();
+	m_scroll += (int)((m_targetScroll - (float)m_scroll) * 0.25f);
+
+	m_markerAnim = fmodf(m_markerAnim + 1/60.0f, 1.0f);
 }
 
 void LogWindow::DrawLine(int lineIdx, int y, bool highlight)
@@ -184,8 +212,6 @@ void LogWindow::Draw()
 	int y = m_logArea.y - m_scroll;
 	int lineIdx = 0;
 	int fileHeight = CalcLogHeight();
-	int startLine = max(0, m_scroll / settings->lineHeight);
-	int endLine = min((m_logArea.h + m_scroll) / settings->lineHeight + 1, fileHeight);
 
 	// draw toggle buttons
 	SDL_RenderSetClipRect(r, &m_titleArea);
@@ -212,6 +238,9 @@ void LogWindow::Draw()
 	}
 
 	SDL_RenderSetClipRect(r, &m_logArea);
+
+	int yMin = m_logArea.y;
+	int yMax = m_logArea.y + m_logArea.h;
 	for (int i = 0; i < LF_MAX; i++)
 	{
 		auto &lg = m_logGroups[i];
@@ -219,77 +248,117 @@ void LogWindow::Draw()
 			continue;
 
 		int x = m_logArea.x + settings->textXMargin;
-		if (lineIdx >= startLine && lineIdx < endLine)
+		if (containsRange(yMin, yMax, y, y+settings->lineHeight))
 		{
-			if (settings->renderLineBackgrounds)
-				DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+			DrawLine(lineIdx, y, lineIdx == m_highlightRow);
 			GetGroupTitleGE((LogFilter)i)->RenderAt(r, x, y + settings->textYMargin);
-			lineIdx++;
-			y += settings->lineHeight;
 		}
+		lineIdx++;
+		y += settings->lineHeight;
 
 		if (i == LF_Memory)
 		{
-			if (m_memMapDirty)
+			if (containsRange(yMin, yMax, y, y + 512 + settings->textYMargin*2))
 			{
-				SDL_Rect rect = { 0, 0, 256, 256 };
-				SDL_UpdateTexture(m_memMapTexture, &rect, m_memMap, 256);
-				m_memMapDirty = false;
-			}
-
-			SDL_Rect destRect = { m_logArea.x + settings->textXMargin, y, 512, 512 };
-			SDL_RenderCopy(r, m_memMapTexture, nullptr, &destRect);
-
-			MappedLogItem item;
-			item.area = { destRect };
-			item.group = LF_Memory;
-			item.item = 0;
-			m_items.push_back(item);
-
-			// draw a flashing box at the current location
-			auto file = gApp->GetEditWindow()->GetActiveFile();
-			if (file)
-			{
-				auto csi = file->GetCompileInfo();
-				if (csi)
+				if (m_memMapDirty)
 				{
-					int line = gApp->GetEditWindow()->GetActiveLine();
-					if (csi->m_lines.size() > line)
+					SDL_Rect rect = { 0, 0, 256, 256 };
+						SDL_UpdateTexture(m_memMapTexture, &rect, m_memMap, 256);
+						m_memMapDirty = false;
+				}
+
+				SDL_Rect destRect = { m_logArea.x + settings->textXMargin, y + settings->textYMargin, 512, 512 };
+					SDL_RenderCopy(r, m_memMapTexture, nullptr, &destRect);
+
+					MappedLogItem item;
+				item.area = { destRect };
+				item.group = LF_Memory;
+				item.item = 0;
+				m_items.push_back(item);
+
+				// draw a flashing box at the current location
+				auto file = gApp->GetEditWindow()->GetActiveFile();
+				if (file)
+				{
+					auto csi = file->GetCompileInfo();
+					if (csi)
 					{
-						auto cli = csi->m_lines[line];
-						if (!cli->data.empty())
+						int line = gApp->GetEditWindow()->GetActiveLine();
+						if (csi->m_lines.size() > line)
 						{
-							int s = 4;
-							int x = destRect.x + (cli->memAddr & 255)*2;
-							int y = destRect.y + (cli->memAddr >> 8)*2;
-							int brightness = (int)(sinf(m_markerAnim * 3.1452f * 4) * 120) + 128;
-							SDL_SetRenderDrawColor(r, brightness, brightness, brightness, brightness);
-							SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-							SDL_RenderDrawLine(r, x - s, y - s, x + s, y - s);
-							SDL_RenderDrawLine(r, x + s, y - s, x + s, y + s);
-							SDL_RenderDrawLine(r, x + s, y + s, x - s, y + s);
-							SDL_RenderDrawLine(r, x - s, y + s, x - s, y - s);
-							SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+							auto cli = csi->m_lines[line];
+							if (!cli->data.empty())
+							{
+								int s = 4;
+								int x = destRect.x + (cli->memAddr & 255) * 2;
+								int y = destRect.y + (cli->memAddr >> 8) * 2;
+								int brightness = (int)(sinf(m_markerAnim * 3.1452f * 4) * 120) + 128;
+								SDL_SetRenderDrawColor(r, brightness, brightness, brightness, brightness);
+								SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+								SDL_RenderDrawLine(r, x - s, y - s, x + s, y - s);
+								SDL_RenderDrawLine(r, x + s, y - s, x + s, y + s);
+								SDL_RenderDrawLine(r, x + s, y + s, x - s, y + s);
+								SDL_RenderDrawLine(r, x - s, y + s, x - s, y - s);
+								SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+							}
 						}
 					}
 				}
 			}
-			y += 512;
+			y += 512 + settings->textYMargin * 2;
+		}
+		else if (i == LF_Emulator)
+		{
+			auto vic = gApp->GetEmulator()->GetVic();
+			int h = vic->GetScreenHeight() * m_emulatorZoom;
+
+			if (containsRange(yMin, yMax, y, y + h + settings->textYMargin*2))
+			{
+				vic->Render(m_logArea.x + settings->textXMargin, y + settings->textYMargin, m_emulatorZoom);
+				MappedLogItem item;
+				item.area = { x + settings->textXMargin, y + settings->textYMargin, m_logArea.w, h };
+				item.group = i;
+				item.item = -1;
+				m_items.push_back(item);
+
+				if (!gApp->IsEmulatorRunning())
+				{
+					// draw flashing box at current raster line / raster byte
+					int rasterLine = vic->CurrentRasterLine();
+					int rasterCol = vic->CurrentRasterRow();
+					int sx = 4 * m_emulatorZoom + 4;
+					int sy = 4;
+					int xx = item.area.x + rasterCol * 8 * m_emulatorZoom + 4;
+					int yy = item.area.y + rasterLine * m_emulatorZoom;
+					int brightness = (int)(sinf(m_markerAnim * 3.1452f * 4) * 120) + 128;
+					SDL_SetRenderDrawColor(r, brightness, brightness, brightness, brightness);
+					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+					SDL_RenderDrawLine(r, xx - sx, yy - sy, xx + sx, yy - sy);
+					SDL_RenderDrawLine(r, xx + sx, yy - sy, xx + sx, yy + sy);
+					SDL_RenderDrawLine(r, xx + sx, yy + sy, xx - sx, yy + sy);
+					SDL_RenderDrawLine(r, xx - sx, yy + sy, xx - sx, yy - sy);
+					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+				}
+			}
+			y += h + settings->textYMargin * 2;
 		}
 		else
 		{
 			int groupItem = 0;
 			for (auto line : lg.m_logLines)
 			{
-				if (settings->renderLineBackgrounds)
-					DrawLine(lineIdx, y, lineIdx == m_highlightRow);
-				line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
+				if (containsRange(yMin, yMax, y, y + settings->lineHeight))
+				{
+					if (settings->renderLineBackgrounds)
+						DrawLine(lineIdx, y, lineIdx == m_highlightRow);
+					line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
 
-				MappedLogItem item;
-				item.area = { x, y, m_logArea.w, settings->lineHeight };
-				item.group = i;
-				item.item = groupItem;
-				m_items.push_back(item);
+					MappedLogItem item;
+					item.area = { x, y, m_logArea.w, settings->lineHeight };
+					item.group = i;
+					item.item = groupItem;
+					m_items.push_back(item);
+				}
 
 				lineIdx++;
 				y += settings->lineHeight;
@@ -297,8 +366,6 @@ void LogWindow::Draw()
 			}
 		}
 	}
-
-	gApp->GetEmulator()->GetVic()->Render(m_logArea.x, y, 2);
 
 	// draw scroll bar
 	int barY1, barY2;
@@ -323,25 +390,34 @@ void LogWindow::Draw()
 int LogWindow::CalcLogHeight()
 {
 	auto settings = gApp->GetSettings();
+	auto vic = gApp->GetEmulator()->GetVic();
 	int y = 0;
 	for (int i = 0; i < LF_MAX; i++)
 	{
 		auto& lg = m_logGroups[(LogFilter)i];
 		if (lg.m_groupOpen)
 		{
-			y += settings->lineHeight * (int)lg.m_logLines.size() + settings->lineHeight;
+			switch (i)
+			{
+				case LF_Memory:
+					y += settings->lineHeight + 512 + settings->textYMargin*2;
+					break;
+				case LF_Emulator:
+					y += settings->lineHeight + vic->GetScreenHeight() * m_emulatorZoom + settings->textYMargin * 2;
+					break;
+				default:
+					y += settings->lineHeight * (int)lg.m_logLines.size() + settings->lineHeight;
+					break;
+			}
 		}
 	}
 
-	if (m_logGroups[LF_Memory].m_groupOpen)
-		y += 256;
 
 	return y;
 }
 
 bool LogWindow::CalcScrollBar(int& start, int& end)
 {
-	int lineHeight = gApp->GetSettings()->lineHeight;
 	start = 0;
 	end = 0;
 	int fileHeight = CalcLogHeight();

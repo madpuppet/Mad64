@@ -29,7 +29,15 @@ u8 MemC64::ReadByte(u16 addr)
 
 u8 MemC64::ReadVicBankByte(u16 addr)
 {
-	return m_ram[addr];
+	addr &= 0x3fff;
+	if (addr >= 0x1000 && addr < 0x2000)
+	{
+		return gC64_charRom[addr - 0x1000];
+	}
+	else
+	{
+		return m_ram[addr];
+	}
 }
 
 u8 MemC64::ReadColorRamByte(u16 addr)

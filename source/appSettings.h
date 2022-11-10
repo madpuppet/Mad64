@@ -9,6 +9,7 @@ public:
     bool overwriteMode;  // overwrite or insert
     bool autoIndent;     // on return, do we indent the next line
     bool renderLineBackgrounds;   // turn this off for much faster rendering
+    bool lowCPUMode;     // app will delay 10ms each cycle to free up CPU time to the system, even when focused
 
     string vicePath;     // path to vice
     string fontPath;     // path to font
@@ -36,6 +37,8 @@ public:
 
     vector<string> loadedFilePaths;
     string activeFilePath;
+    int activeLoadedFilePath;
+    string openLogs;
 
     bool Load();
     bool Save();

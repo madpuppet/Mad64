@@ -135,15 +135,8 @@ void DrawColouredLine(int x, int y1, int y2, bool highlighted)
 
 void EditWindow::ClearVisuals()
 {
-	delete m_status.m_geLine;
-	delete m_status.m_geColumn;
-	delete m_status.m_geModes;
-	delete m_status.m_geUndo;
-
-	m_status.m_geLine = nullptr;
-	m_status.m_geColumn = nullptr;
-	m_status.m_geModes = nullptr;
-	m_status.m_geUndo = nullptr;
+	delete m_status.m_ge;
+	m_status.m_ge = nullptr;
 
 	for (auto sfi : m_fileTabs)
 	{
@@ -555,25 +548,34 @@ void EditWindow::ClampActiveLine()
 
 void EditWindow::SetActiveFile(SourceFile* file)
 {
-	for (auto sfi : m_fileTabs)
+	for (int i=0; i<m_fileTabs.size(); i++)
 	{
-		if (sfi->file == file)
+		if (file == m_fileTabs[i]->file)
 		{
-			m_activeSourceFileItem = sfi;
-			ClampActiveLine();
-
-			if (HasExtension(file->GetPath().c_str(), ".asm"))
-			{
-				gApp->GetCompiler()->Compile(file);
-				gApp->GetCompiler()->LogContextualHelp(file, sfi->activeLine);
-			}
-			else
-			{
-				gApp->GetLogWindow()->ClearAllLogs();
-			}
-			CalcRects();
+			SetActiveFileIdx(i);
 			return;
 		}
+	}
+}
+
+
+void EditWindow::SetActiveFileIdx(int idx)
+{
+	if (idx >= 0 && idx < m_fileTabs.size())
+	{
+		m_activeSourceFileItem = m_fileTabs[idx];
+		ClampActiveLine();
+
+		if (HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm"))
+		{
+			gApp->GetCompiler()->Compile(m_activeSourceFileItem->file);
+			gApp->GetCompiler()->LogContextualHelp(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine);
+		}
+		else
+		{
+			gApp->GetLogWindow()->ClearAllLogs();
+		}
+		CalcRects();
 	}
 }
 
@@ -1512,94 +1514,43 @@ struct StatusInfo
 	GraphicElement* m_geLine;
 	GraphicElement* m_geColumn;
 	GraphicElement* m_geTotalLines;
+	GraphicElement* m_geFPS;
 	GraphicChunk* m_gc;
 } m_status;
 
 void EditWindow::InitStatus()
 {
 	auto settings = gApp->GetSettings();
-
-	m_status.overwriteMode = settings->overwriteMode;
-	m_status.autoIndent = settings->autoIndent;
-	m_status.tabsToSpaces = settings->tabsToSpaces;
-	m_status.undo = 0;
-	m_status.totalUndo = 0;
-
-	if (m_activeSourceFileItem)
-	{
-		m_status.line = m_activeSourceFileItem->activeLine;
-		m_status.column = m_activeSourceFileItem->activeColumn;
-		m_status.totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
-		m_status.totalColumns = (int)m_activeSourceFileItem->file->GetLines()[m_status.line]->GetChars().size();
-	}
-	else
-	{
-		m_status.line = 0;
-		m_status.column = 0;
-		m_status.totalLines = 0;
-	}
-
-	m_status.m_geModes = nullptr;
-	m_status.m_geLine = nullptr;
-	m_status.m_geColumn = nullptr;
-	m_status.m_geUndo = nullptr;
+	m_status.m_ge = nullptr;
 }
 void EditWindow::UpdateStatus()
 {
 	auto settings = gApp->GetSettings();
 
-	SDL_Color col = { 0,255,255,255 };
-	if (!m_status.m_geModes || m_status.overwriteMode != settings->overwriteMode || m_status.autoIndent != settings->autoIndent || m_status.tabsToSpaces != settings->tabsToSpaces)
-	{
-		delete m_status.m_geModes;
-		m_status.overwriteMode = settings->overwriteMode;
-		m_status.autoIndent = settings->autoIndent;
-		m_status.tabsToSpaces = settings->tabsToSpaces;
-
-		char text[64];
-		sprintf(text, "%s %s %s", settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "IND" : "---", settings->tabsToSpaces ? "SPC" : "TAB");
-		m_status.m_geModes = GraphicElement::CreateFromText(gApp->GetFont(), text, col, 0, 0);
-	};
+	float td = TIMEDELTA;
+	m_status.m_avgTimeDelta = (m_status.m_avgTimeDelta + td*3.0f) * 0.25f;
 
 	if (m_activeSourceFileItem)
 	{
+		SDL_Color col = { 0,255,255,255 };
+		auto cmdMgr = m_activeSourceFileItem->file->GetCmdManager();
 		auto file = m_activeSourceFileItem->file;
 		auto line = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine];
-		if (!m_status.m_geLine || m_status.line != m_activeSourceFileItem->activeLine || m_status.totalLines != (int)file->GetLines().size())
-		{
-			delete m_status.m_geLine;
-			m_status.line = m_activeSourceFileItem->activeLine;
-			m_status.totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
-
-			char temp[256];
-			sprintf(temp, "LINE: %d/%d", m_status.line+1, m_status.totalLines);
-			m_status.m_geLine = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
-		}
-
-		if (!m_status.m_geColumn || m_status.column != m_activeSourceFileItem->activeColumn || m_status.totalColumns != (int)line->GetChars().size())
-		{
-			delete m_status.m_geColumn;
-			m_status.column = m_activeSourceFileItem->activeColumn;
-			m_status.totalColumns = (int)line->GetChars().size();
-
-			char temp[256];
-			sprintf(temp, "COL: %d/%d", m_status.column+1, (int)line->GetChars().size());
-			m_status.m_geColumn = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
-		}
-
-		auto cmdMgr = m_activeSourceFileItem->file->GetCmdManager();
 		int totalCmds = cmdMgr->GetTotalCmds();
 		int currentCmd = cmdMgr->GetCurrentCmdIndex();
-		if (!m_status.m_geUndo || m_status.undo != currentCmd || m_status.totalUndo != totalCmds)
-		{
-			delete m_status.m_geUndo;
-			m_status.undo = currentCmd;
-			m_status.totalUndo = totalCmds;
+		int totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
 
-			char temp[256];
-			sprintf(temp, "CMD: %d/%d", currentCmd, totalCmds);
-			m_status.m_geUndo = GraphicElement::CreateFromText(gApp->GetFont(), temp, col, 0, 0);
-		}
+		char fpsText[256];
+		sprintf(
+			fpsText, "%2.1f MS  %4d FPS    %s %s %s    LINE: %05d/%05d    COL %03d/%03d    CMD: %03d/%03d",
+			m_status.m_avgTimeDelta * 1000, (int)(1.0f / m_status.m_avgTimeDelta),
+			settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "IND" : "---", settings->tabsToSpaces ? "SPC" : "TAB",
+			m_activeSourceFileItem->activeLine + 1, totalLines, m_activeSourceFileItem->activeColumn + 1, (int)line->GetChars().size(),
+			currentCmd, totalCmds
+		);
+
+		delete m_status.m_ge;
+		m_status.m_ge = GraphicElement::CreateFromText(gApp->GetFont(), fpsText, col, 0, 0);
 	}
 }
 void EditWindow::DrawStatus()
@@ -1611,25 +1562,7 @@ void EditWindow::DrawStatus()
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &m_statusRect);
 
-	if (m_status.m_geModes)
-	{
-		SDL_Rect rect = { m_statusRect.w - charW * 70, m_statusRect.y + settings->textYMargin, m_status.m_geModes->GetRect().w, m_status.m_geModes->GetRect().h };
-		SDL_RenderCopy(r, m_status.m_geModes->GetTexture(), NULL, &rect);
-	}
-	if (m_status.m_geLine && m_status.m_geColumn && m_status.m_geUndo)
-	{
-		int lineW = m_status.m_geLine->GetRect().w;
-		int colW = m_status.m_geColumn->GetRect().w;
-		int undoW = m_status.m_geUndo->GetRect().w;
-
-		SDL_Rect lineRect = { m_statusRect.w - lineW - 15, m_statusRect.y + settings->textYMargin, lineW, m_status.m_geLine->GetRect().h };
-		SDL_Rect colRect = { m_statusRect.w - colW - charW * 20 - 15, m_statusRect.y + settings->textYMargin, colW, m_status.m_geLine->GetRect().h };
-		SDL_Rect undoRect = { m_statusRect.w - undoW - charW * 40 - 15, m_statusRect.y + settings->textYMargin, undoW, m_status.m_geLine->GetRect().h };
-
-		SDL_RenderCopy(r, m_status.m_geColumn->GetTexture(), NULL, &colRect);
-		SDL_RenderCopy(r, m_status.m_geLine->GetTexture(), NULL, &lineRect);
-		SDL_RenderCopy(r, m_status.m_geUndo->GetTexture(), NULL, &undoRect);
-	}
+	m_status.m_ge->RenderAt( r, settings->textXMargin, m_statusRect.y + settings->textYMargin );
 }
 
 void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)

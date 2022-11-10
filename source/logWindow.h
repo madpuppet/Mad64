@@ -15,6 +15,7 @@ public:
 		LF_LabelHelp,
 		LF_Memory,
 		LF_Registers,
+		LF_Emulator,
 		LF_MAX
 	};
 
@@ -95,6 +96,9 @@ public:
 	void SelectCursor(int x, int y);
 	void UpdateMemoryMap();
 
+	string GetOpenLogs();
+	void SetOpenLogs(const string& logs);
+
 protected:
 	SDL_Rect m_area;
 	SDL_Rect m_titleArea;
@@ -106,6 +110,7 @@ protected:
 	int m_scroll;
 	float m_targetScroll;
 	int m_highlightRow;
+	int m_emulatorZoom;
 
 	enum DragMode
 	{

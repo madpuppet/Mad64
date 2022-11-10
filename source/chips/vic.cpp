@@ -1,11 +1,12 @@
 #include "common.h"
 #include "vic.h"
+#include "c64ram.h"
 
 static u32 s_palette[16] = {
-    0x000000, 0xffffff, 0xa1683c, 0x6abfc6,
-    0x626262, 0x9f4e44, 0xc9d487, 0x887ecb,
-    0x898989, 0xcb7e74, 0x9ae29b, 0x50439b,
-    0xadadad, 0x6d5412, 0x5cab5e, 0xa057a3
+    0x000000, 0xffffff, 0x880000, 0xaaffee,
+    0xcc44cc, 0x00cc55, 0x0000AA, 0xeeee77,
+    0xdd8855, 0x664400, 0xff7777, 0x333333,
+    0x777777, 0xaaff66, 0x0088ff, 0xbbbbbb
 };
 
 Vic::Vic()
@@ -22,10 +23,10 @@ Vic::Vic()
     m_scPal.hblankStartCycles = 56;
 
     // 30 + 16 + 200 + 16 + 30
-    m_scPal.topBorderStartLine = 30;
-    m_scPal.backgroundStartLine = 46;
-    m_scPal.bottomBorderStartLine = 246;
-    m_scPal.bottomBorderVBlankLine = 262;
+    m_scPal.topBorderStartLine = 16;
+    m_scPal.backgroundStartLine = 51;
+    m_scPal.bottomBorderStartLine = 251;
+    m_scPal.bottomBorderVBlankLine = 286;
 
     m_scNtsc.screenHeight = 312;
     m_scNtsc.screenWidth = 504;
@@ -52,6 +53,8 @@ Vic::Vic()
 
     SDL_Rect area = { 0, 0, m_scCurrent->screenWidth, m_scCurrent->screenHeight };
     SDL_UpdateTexture(m_texture, &area, m_textureMem, m_scCurrent->screenWidth * 4);
+
+    Reset();
 }
 
 void Vic::Render(int x, int y, int zoom)
@@ -118,7 +121,10 @@ void Vic::Reset()
     m_bHBorder = true;
     m_bHBlank = true;
     m_bVBlank = true;
-    m_bBackground = false;
+    m_bBGVert = false;
+    m_bBGHoriz = false;
+
+    memcpy(&m_regs, gC64_vicIIRegisters, sizeof(m_regs));
 
     //test pattern
     u32* ptr = (u32*)m_textureMem;
@@ -127,7 +133,7 @@ void Vic::Reset()
         for (int x = 0; x < m_scCurrent->screenWidth; x++)
         {
             int c = (x + y) & 1;
-            *ptr++ = (c ? 0xff0f0f0f : 0xff000000);// ((*ptr >> 4) & 0x0f0f0f0f) + ;
+            *ptr++ = (c ? 0xff400000 : 0xff000040);
         }
     }
 }
@@ -139,11 +145,11 @@ void Vic::CacheLine()
     m_bMCM = m_regs.control1 & MCM;
 
     // grab 40 bytes of character data
-    u16 videoAddr = (((u16)(m_regs.memoryPointers & VideoMatrix)) << 2) + m_charRow * 40;
+    u16 videoAddr = (((u16)(m_regs.memoryPointers & VideoMatrix)) << 6) + m_charRow * 40;
     u16 colorAddr = m_charRow * 40;
     for (int i = 0; i < 40; i++)
     {
-        m_cachedChars[i] = ReadVicByte(videoAddr) | (ReadColorByte(colorAddr) << 8);
+        m_cachedChars[i] = ReadVicByte(videoAddr+i) | (ReadColorByte(colorAddr+i) << 8);
     }
 }
 
@@ -166,7 +172,7 @@ void Vic::Step()
         }
         else
         {
-            if (m_bBackground)
+            if (m_bBGHoriz && m_bBGVert)
             {
                 if (m_regs.control1 & BMM)
                 {
@@ -174,8 +180,20 @@ void Vic::Step()
                 }
                 else
                 {
-                    // text mode
+                    // fetch char byte
+                    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
+                    u16 ch = m_cachedChars[m_charCol];
+                    u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
+                    u8 data = ReadVicByte(charAddr);
+                    u32 foregroundCol = s_palette[(ch >> 8) & 0xf];
+                    u32 backgroundCol = s_palette[m_regs.backgroundColor0 & 0xf];
 
+                    // blit each pixel
+                    for (int i = 0; i < 8; i++)
+                    {
+                        u32 col = (data & (1 << (7-i))) ? foregroundCol : backgroundCol;
+                        *videoOut++ = col;
+                    }
                 }
             }
         }
@@ -183,6 +201,7 @@ void Vic::Step()
 
     // next cycle...
     m_rasterLineCycle++;
+    m_charCol++;
 
     if (!m_textureDirty.h)
         m_textureDirty.h = 1;
@@ -194,15 +213,17 @@ void Vic::Step()
     else if (m_rasterLineCycle == m_scCurrent->backgroundStartCycle)
     {
         m_bHBorder = !m_bHBorder;
-        m_bBackground = true;
+        m_bBGHoriz = true;
+        m_charCol = 0;
     }
     else if (m_rasterLineCycle == m_scCurrent->rightBorderStartCycle)
     {
-        m_bBackground = false;
+        m_bBGHoriz = false;
         m_bHBorder = !m_bHBorder;
     }
     else if (m_rasterLineCycle == m_scCurrent->cyclesPerLine)
     {
+        m_charLine++;
         m_rasterLine++;
         m_rasterLineCycle = 0;
         m_textureDirty.h = min(m_textureDirty.h + 1, m_scCurrent->screenHeight-m_textureDirty.y);
@@ -219,19 +240,21 @@ void Vic::Step()
         if (m_rasterLine == m_scCurrent->backgroundStartLine)
         {
             m_bVBorder = !m_bVBorder;
-            m_bBackground = true;
+            m_bBGVert = true;
             m_charRow = 0;
+            m_charLine = 0;
             CacheLine();
         }
         else if (m_rasterLine == m_scCurrent->bottomBorderStartLine)
         {
             m_bVBorder = !m_bVBorder;
-            m_bBackground = false;
+            m_bBGVert = false;
         }
-        else if (m_bBackground && ((m_rasterLine & 7) == 0))
+        else if (m_bBGVert && (m_charLine == 8))
         {
             CacheLine();
             m_charRow++;
+            m_charLine = 0;
         }
 
         if (m_rasterLine == m_scCurrent->screenHeight)

@@ -85,7 +85,9 @@ AppSettings::AppSettings()
     overwriteMode = false;
     autoIndent = true;
     renderLineBackgrounds = true;
+    lowCPUMode = false;
     vicePath = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
+    openLogs = "CHLMRE";
     lineHeight = 24;
     fontPath = "font.ttf";
     fontSize = 16;
@@ -106,6 +108,7 @@ AppSettings::AppSettings()
     xPosContextHelp = 1600;
     scrollBarWidth = 20;
     loadedFilePaths.push_back("readme.txt");
+    activeLoadedFilePath = 0;
 }
 
 bool AppSettings::Load()
@@ -114,6 +117,7 @@ bool AppSettings::Load()
     size_t size;
     string path = pref;
     path = path + "settings.ini";
+    activeLoadedFilePath = 0;
 
     Log("Load Settings file: %s", path.c_str());
     void *data = SDL_LoadFile(path.c_str(), &size);
@@ -144,6 +148,10 @@ bool AppSettings::Load()
                 else if (SDL_strcasecmp(token, "renderLineBackgrounds") == 0)
                 {
                     renderLineBackgrounds = val ? true : false;
+                }
+                else if (SDL_strcasecmp(token, "lowCPUMode") == 0)
+                {
+                    lowCPUMode = val ? true : false;
                 }
                 else if (SDL_strcasecmp(token, "FontSize") == 0)
                 {
@@ -243,6 +251,10 @@ bool AppSettings::Load()
                 {
                     ReadString(value, vicePath);
                 }
+                else if (SDL_strcasecmp(token, "openLogs") == 0)
+                {
+                    ReadString(value, openLogs);
+                }
                 else if (SDL_strcasecmp(token, "loadedFilePaths") == 0)
                 {
                     loadedFilePaths.clear();
@@ -251,6 +263,10 @@ bool AppSettings::Load()
                 else if (SDL_strcasecmp(token, "activeFilePath") == 0)
                 {
                     activeFilePath = value;
+                }
+                else if (SDL_strcasecmp(token, "activeLoadedFilePath") == 0)
+                {
+                    activeLoadedFilePath = val;
                 }
             }
         }
@@ -307,6 +323,8 @@ bool AppSettings::Save()
         fprintf(fh, "autoIndent=%d\n\n", autoIndent ? 1 : 0);
         fprintf(fh, "; render alternating coloured lines behind the text\n");
         fprintf(fh, "renderLineBackgrounds=%d\n\n", renderLineBackgrounds ? 1 : 0);
+        fprintf(fh, "; mad64 will delay 10ms each loop to give time back to the OS\n");
+        fprintf(fh, "lowCPUMode=%d\n\n", lowCPUMode ? 1 : 0);
         fprintf(fh, "; path to font 'otf' or 'ttf' file \n");
         fprintf(fh, "fontPath=%s\n\n", fontPath.c_str());
         fprintf(fh, "; font point size to render with\n");
@@ -351,6 +369,10 @@ bool AppSettings::Save()
             fprintf(fh, "vicePath=%s\n\n", vicePath.c_str());
         }
 
+        openLogs = gApp->GetLogWindow()->GetOpenLogs();
+        fprintf(fh, "; each letter indicates a log group that is open  \n");
+        fprintf(fh, "openLogs=%s\n\n", openLogs.c_str());
+
         if (!loadedFilePaths.empty())
         {
             fprintf(fh, "; list of files to load on startup\n");
@@ -358,6 +380,18 @@ bool AppSettings::Save()
             for (int i = 1; i < loadedFilePaths.size(); i++)
                 fprintf(fh, ",%s", loadedFilePaths[i].c_str());
             fprintf(fh, "\n\n");
+
+            auto sf = gApp->GetEditWindow()->GetActiveFile();
+            for (int i = 0; i < loadedFilePaths.size(); i++)
+            {
+                if (StrEqual(loadedFilePaths[i], sf->GetPath()))
+                {
+                    fprintf(fh, "; which of loadedFilePaths is active\n");
+                    fprintf(fh, "activeLoadedFilePath=%d\n\n", i);
+                    break;
+                }
+            }
+
         }
 
         if (!activeFilePath.empty())

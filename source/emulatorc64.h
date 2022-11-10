@@ -15,12 +15,11 @@ public:
 
 	u32 CyclesPerSecond() { return 985248; }
 
-	void ConvertSnapshot();
 	void Update();
 	void Draw();
 
 	// reset memory and PC pointer
-	void Reset(u8 *ram, u8 *ramMask, u16 cpuStart);
+	void Reset(u8* ram, u8* ramMask, u16 cpuStart);
 
 	// step one cycle
 	// return true if cpu completed an instruction
@@ -41,7 +40,6 @@ protected:
 	Cia2* m_cia2;
 	MemC64* m_mem;
 	Sid* m_sid;
-}
+};
 
 
-;
