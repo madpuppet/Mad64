@@ -5,6 +5,11 @@ temp = $50
 start:
     ldx #0
 forever:
+    txa
+    and #2
+    stx temp
+    adc temp
+    sta $d020
     dex
     jmp forever
 
