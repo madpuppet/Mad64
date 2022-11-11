@@ -252,8 +252,8 @@ void Vic::Step()
         }
         else if (m_bBGVert && (m_charLine == 8))
         {
-            CacheLine();
             m_charRow++;
+            CacheLine();
             m_charLine = 0;
         }
 
