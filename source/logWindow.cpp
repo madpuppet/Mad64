@@ -382,7 +382,7 @@ void LogWindow::Draw()
 
 	// draw scroll bar
 	int barY1, barY2;
-	CalcScrollBar(barY1, barY2);
+	CalcVertScrollBar(barY1, barY2);
 
 	SDL_Rect BarBack = { m_logArea.x + m_logArea.w - settings->scrollBarWidth, m_logArea.y, settings->scrollBarWidth, m_logArea.h };
 	SDL_Rect Bar = { BarBack.x + 4, barY1, settings->scrollBarWidth - 4, barY2 - barY1 };
@@ -429,7 +429,7 @@ int LogWindow::CalcLogHeight()
 	return y;
 }
 
-bool LogWindow::CalcScrollBar(int& start, int& end)
+bool LogWindow::CalcVertScrollBar(int& start, int& end)
 {
 	start = 0;
 	end = 0;
@@ -444,6 +444,7 @@ bool LogWindow::CalcScrollBar(int& start, int& end)
 
 	return relStart > 0.0f || relEnd < 1.0f;
 }
+
 bool LogWindow::FindLogLineAt(int x, int y, int& line)
 {
 	int group, item;

@@ -74,7 +74,7 @@ public:
 	void SetMemMap(u8* colorMap) { memcpy(m_memMap, colorMap, 65536); m_memMapDirty = true; }
 	void Update();
 	void Draw();
-	bool CalcScrollBar(int& start, int& end);
+	bool CalcVertScrollBar(int& start, int& end);
 	int CalcLogHeight();
 	void DrawLine(int lineIdx, int y, bool highlight);
 	void SnapScrollBarToMouseY(int y);

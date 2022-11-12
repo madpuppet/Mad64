@@ -95,11 +95,13 @@ public:
 	}
 
 protected:
-	void ClampTargetScroll();
+	void ClampTargetVertScroll();
+	void ClampTargetHorizScroll();
 
 	// calculate scroll bar top and bottom screenspace coords
 	// returns true if scrollbar needs to render (ie. the start/end is not full screen)
-	bool CalcScrollBar(int& start, int& end);
+	bool CalcVertScrollBar(int& start, int& end);
+	bool CalcHorizScrollBar(int& start, int& end);
 	void SelectCursor(int x, int y);
 	void MakeActiveLineVisible();
 
@@ -111,15 +113,21 @@ protected:
 	bool MouseToRowCol(int x, int y, int& row, int& col);
 	void ProcessMouseMarking(int x, int y);
 	void SnapScrollBarToMouseY(int y);
+	void SnapScrollBarToMouseX(int x);
 
 	struct SourceFileItem
 	{
 		SourceFile* file;
 		GraphicElement* geText;
-		int scroll;
-		float targetScroll;
+		int vertScroll;
+		int horizScroll;
+		float targetVertScroll;
+		float targetHorizScroll;
 		int activeLine, activeColumn, activeTargetX;
 		bool modified;
+
+		int editWindowHScrollWidth;    // locked scroll width = don't reduce unless the HorizScroll == 0
+		int editWindowTextWidth;       // 
 	};
 	vector<SourceFileItem*> m_fileTabs;
 	SourceFileItem* m_activeSourceFileItem;
@@ -155,7 +163,7 @@ protected:
 	int m_autoScroll;
 	int m_autoScroll_mouseX;
 	int m_autoScroll_mouseY;
-	
+
 	// track mouse move for wheel events
 	int m_mouseX, m_mouseY;
 
@@ -166,6 +174,7 @@ protected:
 		DRAG_DivideText,
 		DRAG_DivideContext,
 		DRAG_EditVertScroll,
+		DRAG_EditHorizScroll,
 		DRAG_LogVertScroll
 	};
 	DragMode m_dragMode;

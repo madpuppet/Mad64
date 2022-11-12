@@ -97,6 +97,19 @@ void GraphicChunk::DrawAt(i32 x, i32 y)
     }
 }
 
+int GraphicChunk::CalcMaxWidth()
+{
+    int w = 0;
+    for (auto ge : elements)
+    {
+        if (ge->IsEnabled())
+        {
+            w = SDL_max(ge->GetRect().x + ge->GetRect().w, w);
+        }
+    }
+    return w;
+}
+
 void GraphicChunk::DrawElemAt(int i, i32 x, i32 y)
 {
     if (i < elements.size())
