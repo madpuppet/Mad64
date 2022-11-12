@@ -111,6 +111,16 @@ extern void Log(const char* pFormat, ...);
 
 typedef DMFastDelegate::FastDelegate1<u16, u8> ReadByteHook;
 typedef DMFastDelegate::FastDelegate2<u16, u8> WriteByteHook;
+typedef DMFastDelegate::FastDelegate3<u8, u16, u8> BreakpointHook;
+
+enum BreakpointType
+{
+	BRK_Read     = 1,
+	BRK_Write    = 2,
+	BRK_Execute  = 4,
+
+	BRK_ALL = BRK_Read|BRK_Write|BRK_Execute
+};
 
 #include "application.h"
 

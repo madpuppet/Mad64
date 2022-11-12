@@ -40,6 +40,7 @@ public:
     LogWindow* GetLogWindow() { return m_logWindow; }
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
+    void ApplyBreakpoints();
 
     void SetCursor(CursorType ct);
 
@@ -116,5 +117,6 @@ protected:
 
     // emulation
     bool m_runEmulation;
+    float m_flashScreenRed;
 };
 extern Application *gApp;

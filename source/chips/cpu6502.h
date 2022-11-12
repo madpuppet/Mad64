@@ -90,11 +90,17 @@ public:
 
     void SetMemReadByte(const ReadByteHook& hook) { MemReadByte = hook; }
     void SetMemWriteByte(const WriteByteHook& hook) { MemWriteByte = hook; }
+    void SetBreakpointCheck(const BreakpointHook& hook) { BreakpointCheck = hook; }
 
 private:
     // HOOKS
     ReadByteHook MemReadByte;
     WriteByteHook MemWriteByte;
+    BreakpointHook BreakpointCheck;
+
+    // read byte, write byte,  check for breakpoint
+    u8 ReadByte(u16 addr);
+    void WriteByte(u16 addr, u8 val);
 
     // REGS
     Registers m_regs;

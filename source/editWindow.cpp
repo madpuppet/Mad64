@@ -220,6 +220,7 @@ void EditWindow::Draw()
 			int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->scroll;
 			auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
 			bool emulating = IsEmulationAtLine(csi, i);
+			u8 breakpoint = file->GetLines()[i]->GetBreakpoint();
 			if (settings->renderLineBackgrounds || brighten || emulating)
 			{
 				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
@@ -241,6 +242,13 @@ void EditWindow::Draw()
 			}
 			if (gc)
 				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
+			if (breakpoint)
+			{
+				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+				SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+				SDL_SetRenderDrawColor(r, 255, 0, 0, 128);
+				SDL_RenderFillRect(r, &lineQuad);
+			}
 		}
 
 		// draw decode
@@ -486,6 +494,7 @@ void EditWindow::CalcRects()
 		activeXPosContextHelp = settings->xPosContextHelp;
 	}
 
+	m_allEditRect = { 0, settings->lineHeight, activeXPosContextHelp, editHeight };
 	m_memAddrRect = { 0, settings->lineHeight, activeXPosDecode, editHeight };
 	m_decodeRect = { activeXPosDecode, settings->lineHeight, activeXPosText - activeXPosDecode, editHeight };
 	m_sourceEditRect = { activeXPosText, settings->lineHeight, activeXPosContextHelp - activeXPosText, editHeight };
@@ -614,7 +623,7 @@ void EditWindow::OnFileClosed(SourceFile* file)
 
 void EditWindow::OnMouseWheel(SDL_Event* e)
 {
-	if (Contains(m_sourceEditRect,m_mouseX, m_mouseY))
+	if (Contains(m_allEditRect,m_mouseX, m_mouseY))
 	{
 		if (m_activeSourceFileItem)
 		{
@@ -755,6 +764,30 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 		// drag third divide
 		m_dragMode = DRAG_DivideContext;
 		m_dragOffset = e->button.x - activeXPosContextHelp;
+	}
+	else if (Contains(m_memAddrRect, e->button.x, e->button.y))
+	{
+		auto file = GetActiveFile();
+		if (file)
+		{
+			auto csi = file->GetCompileInfo();
+			if (csi)
+			{
+				int line, col;
+				if (MouseToRowCol(e->button.x, e->button.y, line, col))
+				{
+					auto l = file->GetLines()[line];
+					auto cl = csi->m_lines[line];
+					if (l->GetBreakpoint())
+						l->SetBreakpoint(0);
+					else
+					{
+						l->SetBreakpoint(cl->type == LT_Instruction ? BRK_Execute : BRK_Read | BRK_Write);
+					}
+					gApp->ApplyBreakpoints();
+				}
+			}
+		}
 	}
 	else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
 	{

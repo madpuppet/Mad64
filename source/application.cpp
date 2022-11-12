@@ -24,6 +24,7 @@ Application::Application()
     m_clickY = 0;
     m_clickTime = 0;
     m_hasFocus = false;
+    m_flashScreenRed = 0.0f;
 
     LogStart();
     gApp = this;
@@ -176,8 +177,17 @@ void Application::Update()
         for (int i = 0; i < cycles; i++)
         {
             m_emulator->Step();
+            if (m_emulator->WasBreakpointHit())
+            {
+                m_emulator->ClearBreakpointHit();
+                m_runEmulation = false;
+                m_flashScreenRed = 1.0f;
+                break;
+            }
         }
     }
+
+    m_flashScreenRed = max(0, m_flashScreenRed - TIMEDELTA*5.0f);
 }
 
 void Application::Draw()
@@ -186,6 +196,13 @@ void Application::Draw()
     SDL_RenderFillRect(m_renderer, NULL);
     m_editWindow->Draw();
     SDL_RenderPresent(m_renderer);
+
+    if (m_flashScreenRed)
+    {
+        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, (int)(m_flashScreenRed*255));
+        SDL_RenderFillRect(m_renderer, NULL);
+    }
 }
 
 void Application::HandleEvent(SDL_Event *e)
@@ -379,6 +396,26 @@ void Application::CreateNewFile()
     }
 }
 
+void Application::ApplyBreakpoints()
+{
+    m_emulator->ClearAllBreakpoints();
+    auto file = m_editWindow->GetActiveFile();
+    auto csi = file->GetCompileInfo();
+    if (csi)
+    {
+        auto lines = file->GetLines();
+        auto clines = csi->m_lines;
+        for (size_t i = 0; i < lines.size(); i++)
+        {
+            auto l = lines[i];
+            auto cl = clines[i];
+            u8 brk = l->GetBreakpoint();
+            if (brk && cl->data.size() > 0)
+                m_emulator->AddBreakpoint((u16)cl->memAddr, (u16)cl->data.size(), brk);
+        }
+    }
+}
+
 void Application::OnKeyDown(SDL_Event* e)
 {
     switch (e->key.keysym.sym)
@@ -433,9 +470,29 @@ void Application::OnKeyDown(SDL_Event* e)
             return;
         }
         break;
-
+    case SDLK_F9:
+        {
+            if (m_editWindow->IsActiveAsmFile())
+            {
+                auto file = m_editWindow->GetActiveFile();
+                auto csi = file->GetCompileInfo();
+                {
+                    int line = m_editWindow->GetActiveLine();
+                    auto l = file->GetLines()[line];
+                    auto cl = csi->m_lines[line];
+                    if (l->GetBreakpoint())
+                        l->SetBreakpoint(0);
+                    else
+                    {
+                        l->SetBreakpoint(cl->type == LT_Instruction ? BRK_Execute : BRK_Read | BRK_Write);
+                    }
+                    gApp->ApplyBreakpoints();
+                }
+            }
+        }
+        return;
     case SDLK_F10:
-        if (e->key.keysym.mod & KMOD_CTRL)
+        if (e->key.keysym.mod & KMOD_CTRL && m_editWindow->IsActiveAsmFile())
         {
             m_runEmulation = !m_runEmulation;
         }

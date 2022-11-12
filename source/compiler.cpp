@@ -1272,9 +1272,9 @@ void Compiler::Update()
             for (auto l : m_compiledFile->m_labels)
             {
                 if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
-                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr);
+                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 0, (u16)l->m_value);
                 else
-                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr);
+                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 0, (u16)l->m_value);
             }
             lw->SetMemMap(m_compiledFile->m_ramColorMap);
 
@@ -1286,6 +1286,7 @@ void Compiler::Update()
             auto startLabel = gApp->GetCompiler()->FindMatchingLabel(m_compiledFile, "start");
             if (startLabel)
             {
+                gApp->ApplyBreakpoints();
                 gApp->GetEmulator()->Reset(m_compiledFile->m_ramDataMap, m_compiledFile->m_ramMask, (u16)startLabel->m_value);
             }
 

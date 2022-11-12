@@ -11,12 +11,12 @@ EmulatorC64::EmulatorC64()
 	m_vic = new Vic();
 
 	// hook chips up to communicate with each other in a way that they don't need to know what the chips are
-
 	m_mem->SetReadVicRegByte(DELEGATE_EX(m_vic, Vic::ReadVicRegByte));
 	m_mem->SetWriteVicRegByte(DELEGATE_EX(m_vic, Vic::WriteVicRegByte));
 
 	m_cpu->SetMemReadByte(DELEGATE_EX(m_mem, MemC64::ReadByte));
 	m_cpu->SetMemWriteByte(DELEGATE_EX(m_mem, MemC64::WriteByte));
+	m_cpu->SetBreakpointCheck(DELEGATE(EmulatorC64::CheckBreakpoint));
 
 	m_vic->SetReadVicByte(DELEGATE_EX(m_mem, MemC64::ReadVicBankByte));
 	m_vic->SetReadColorByte(DELEGATE_EX(m_mem, MemC64::ReadColorRamByte));
@@ -52,4 +52,88 @@ void EmulatorC64::Update()
 void EmulatorC64::Draw()
 {
 }
+
+u8 EmulatorC64::FindBreakpoint(u16 addr, u16 &size)
+{
+	for (auto& brk : m_breakpoints)
+	{
+		if (contains(brk.addr, brk.addr + brk.size, addr))
+		{
+			size = brk.size;
+			return brk.type;
+		}
+	}
+	size = 0;
+	return 0;
+}
+
+void EmulatorC64::AddBreakpoint(u16 addr, u16 size, u8 breakpointType)
+{
+	for (auto& brk : m_breakpoints)
+	{
+		if (brk.addr == addr && brk.size == size)
+		{
+			brk.type |= breakpointType;
+			return;
+		}
+	}
+
+	Breakpoint brk;
+	brk.addr = addr;
+	brk.size = size;
+	brk.type = breakpointType;
+	m_breakpoints.push_back(brk);
+}
+
+void EmulatorC64::RemoveBreakpoint(u16 addr, u16 size, u8 breakpointType)
+{
+	for (auto brkIt = m_breakpoints.begin(); brkIt != m_breakpoints.end(); brkIt++)
+	{
+		auto &brk = *brkIt;
+		if (brk.addr == addr && brk.size == size)
+		{
+			brk.type &= ~breakpointType;
+			if (brk.type == 0)
+			{
+				m_breakpoints.erase(brkIt);
+				return;
+			}
+		}
+	}
+}
+
+void EmulatorC64::ToggleBreakpoint(u16 addr, u16 size, u8 breakpointType)
+{
+	for (auto brkIt = m_breakpoints.begin(); brkIt != m_breakpoints.end(); brkIt++)
+	{
+		auto& brk = *brkIt;
+		if (brk.addr == addr && brk.size == size)
+		{
+			brk.type ^= breakpointType;
+			if (brk.type == 0)
+			{
+				m_breakpoints.erase(brkIt);
+				return;
+			}
+		}
+	}
+
+	Breakpoint brk;
+	brk.addr = addr;
+	brk.size = size;
+	brk.type = breakpointType;
+	m_breakpoints.push_back(brk);
+}
+
+void EmulatorC64::CheckBreakpoint(u8 breakpointType, u16 addr, u8 val)
+{
+	for (auto &brk : m_breakpoints)
+	{
+		if (contains(brk.addr, brk.addr + brk.size, addr) && (brk.type & breakpointType))
+		{
+			m_breakpointHit = true;
+		}
+	}
+}
+
 

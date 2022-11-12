@@ -83,7 +83,7 @@ GraphicElement* LogWindow::GetGroupTitleGE(LogFilter group)
 	return lg.m_geTitle;
 }
 
-void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
+void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx, u16 addr)
 {
 	auto settings = gApp->GetSettings();
 	SDL_Color color;
@@ -104,6 +104,7 @@ void LogWindow::LogText(LogFilter filter, string text, int lineNmbr, int colIdx)
 	logItem->col = color;
 	logItem->text = text;
 	logItem->line = lineNmbr;
+	logItem->addr = addr;
 	m_logGroups[filter].m_logLines.push_back(logItem);
 }
 
@@ -208,6 +209,7 @@ void LogWindow::Draw()
 {
 	auto settings = gApp->GetSettings();
 	auto r = gApp->GetRenderer();
+	auto emu = gApp->GetEmulator();
 
 	int y = m_logArea.y - m_scroll;
 	int lineIdx = 0;
@@ -352,6 +354,17 @@ void LogWindow::Draw()
 					if (settings->renderLineBackgrounds)
 						DrawLine(lineIdx, y, lineIdx == m_highlightRow);
 					line->GetGE()->RenderAt(r, x, y + settings->textYMargin);
+
+					if (i == LF_LabelHelp)
+					{
+						SDL_Color col = { 255,255,255 };
+						auto ge = GraphicElement::CreateFromText(gApp->GetFont(), 
+							FormatString("%02x %02x %02x %02x", emu->GetByte(line->addr), emu->GetByte(line->addr + 1), 
+								emu->GetByte(line->addr + 2), emu->GetByte(line->addr + 3)).c_str(),  col,
+							    x + line->GetGE()->GetRect().w + 40, y + settings->textYMargin);
+						ge->Render(r);
+						delete ge;
+					}
 
 					MappedLogItem item;
 					item.area = { x, y, m_logArea.w, settings->lineHeight };

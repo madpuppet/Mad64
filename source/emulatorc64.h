@@ -25,8 +25,21 @@ public:
 	// return true if cpu completed an instruction
 	bool Step();
 
-	u8 GetByte(u16 addr);
-	void SetByte(u16 addr, u8 val);
+	// helper to set/get memory in the current emulation
+	u8 GetByte(u16 addr) { return m_mem->ReadByte(addr); }
+	void SetByte(u16 addr, u8 val) { m_mem->WriteByte(addr,val); }
+
+	void AddBreakpoint(u16 addr, u16 size, u8 breakpointType);
+	void RemoveBreakpoint(u16 addr, u16 size, u8 breakpointType);
+	void ToggleBreakpoint(u16 addr, u16 size, u8 breakpointType);
+	void CheckBreakpoint(u8 breakpointType, u16 addr, u8 val);
+	void ClearAllBreakpoints() { m_breakpoints.clear(); }
+
+	// checks if a breakpoint exists.  Returns the type, and size
+	u8 FindBreakpoint(u16 addr, u16 &size);
+
+	bool WasBreakpointHit() { return m_breakpointHit; }
+	void ClearBreakpointHit() { m_breakpointHit = false; }
 
 	// copy regs in a thread safe way
 	u16 GetCurrentPC() { return m_cpu->Regs().PC; }
@@ -34,6 +47,16 @@ public:
 	Vic* GetVic() { return m_vic; }
 
 protected:
+	struct Breakpoint
+	{
+		u8 type;
+		u16 addr;
+		u16 size;
+	};
+	vector<Breakpoint> m_breakpoints;
+
+	bool m_breakpointHit;
+
 	Cpu6502* m_cpu;
 	Vic* m_vic;
 	Cia1* m_cia1;

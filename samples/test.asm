@@ -1,66 +1,55 @@
+* = $50
+temp:
+    dc.b 0
+lookup:
+    dc.b 0,0
+
 .basicStartup
 
-temp = $50
-
 start:
-    ldx #0
-forever:
-    txa
-    and #2
-    stx temp
-    adc temp
-    sta $d020
-    dex
-    jmp forever
-
     sei
-    lda #0
-    sta vic.backgroundColor0
 
-; START OF FRAME
-@loop:
-    lda vic.control1
-    bmi @loop-
-    lda vic.rasterCounter
-    bne @loop-
-    lda #1
-    sta vic.borderColor
+startLoop:
+    ldx #0
+    stx vic.borderColor
+    stx vic.backgroundColor0
+loop:
+    lda temp
+    and #1
+    clc
+    adc #30
+    sta $0400,x
+    sta $0400+960,x
+    txa
+    and #5
+    clc
+    adc #1
+    sta $d800,x
+    sta $d800+960,x
+    inx
+    cpx #40
+    bne loop
 
-; FIRST VISIBLE BORDER LINE
-@loop:
-    lda vic.rasterCounter
-    cmp #16
-    bne @loop-
-    lda #2
-    sta vic.borderColor
+    ldx #0
+sides:
+    lda line,x
+    sta lookup
+    lda line+1,x
+    sta lookup+1
+
+    ldy #0
+    sta (lookup),y
+    ldy #39
+    sta (lookup),y
+    inx
+    inx
+    cpx #50
+    bne sides
+
+    inc temp
+    jmp startLoop
     
-; FIRST VISIBLE BACKGROUND LINE
-@loop:
-    lda vic.rasterCounter
-    cmp #51
-    bne @loop-
-    lda #3
-    sta vic.borderColor
-
-; LAST VISIBLE BACKGROUND LINE    
-@loop:
-    lda vic.rasterCounter
-    cmp #251
-    bne @loop-
-    lda #4
-    sta vic.borderColor
-
-; LAST VISIBLE BORDER LINE
-@loop:
-    lda vic.control1
-    bpl @loop-
-    lda vic.rasterCounter
-    cmp #31
-    bne @loop-
-    lda #8
-    sta vic.borderColor
-
-    jmp start
-
-
+line:
+.generate.w 0,25,$0400+I*40
+    
     

@@ -89,6 +89,11 @@ public:
 	void ClearVisuals();
 	void CalcRects();
 
+	bool IsActiveAsmFile()
+	{
+		return m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm");
+	}
+
 protected:
 	void ClampTargetScroll();
 
@@ -168,6 +173,7 @@ protected:
 
 	void LayoutTabs();
 
+	SDL_Rect m_allEditRect;
 	SDL_Rect m_titleTabsRect;
 	SDL_Rect m_sourceEditRect;
 	SDL_Rect m_memAddrRect;
@@ -189,11 +195,6 @@ protected:
 	void UpdateStatus();
 	void DrawStatus();
 	bool ScanTokenAt(int line, int col, int &startCol, int &endCol);
-
-	bool IsActiveAsmFile()
-	{
-		return m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm");
-	}
 
 	int activeXPosDecode;
 	int activeXPosText;

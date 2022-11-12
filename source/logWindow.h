@@ -21,7 +21,7 @@ public:
 
 	struct LogItem
 	{
-		LogItem() : line(-1), ge(0) {}
+		LogItem() : line(-1), addr(0), ge(0) {}
 		~LogItem()
 		{
 			delete ge;
@@ -32,6 +32,7 @@ public:
 		string text;
 		SDL_Color col;
 		int line;
+		u32 addr;
 
 	protected:
 		// created on demand
@@ -65,7 +66,7 @@ public:
 	void BuildIcons();
 	void LayoutIcons();
 
-	void LogText(LogFilter filter, string text, int lineNmbr = -1, int col = 0);
+	void LogText(LogFilter filter, string text, int lineNmbr = -1, int col = 0, u16 addr = 0);
 	void LogTextArray(LogFilter filter, const char **textArray, int col);
 
 	void ClearAllLogs();

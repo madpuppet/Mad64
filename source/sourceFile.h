@@ -25,12 +25,17 @@ public:
     void VisualizeIfNecessary();
     void ClearAllVisuals();
 
+    // Set Breakpoint (0 to clear, or use combination of BRK_xxxx flags)
+    void SetBreakpoint(u8 breakpointType) { m_breakpoint = breakpointType; }
+    u8 GetBreakpoint() { return m_breakpoint; }
+
 protected:
     GraphicChunk* m_gcText;         // graphic chunk for text
 
     string m_chars;
     vector<string> m_tokens;
     vector<int> m_charXOffset;
+    u8 m_breakpoint;
 };
 
 class SourceFile
