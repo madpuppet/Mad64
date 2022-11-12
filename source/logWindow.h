@@ -16,6 +16,7 @@ public:
 		LF_Memory,
 		LF_Registers,
 		LF_Emulator,
+		LF_MemoryDump,
 		LF_MAX
 	};
 
@@ -112,6 +113,21 @@ protected:
 	float m_targetScroll;
 	int m_highlightRow;
 	int m_emulatorZoom;
+
+	enum DumpMode
+	{
+		DUMP_Hex,
+		DUMP_Decimal,
+		DUMP_Ascii,
+		DUMP_Binary,
+		DUMP_MonoCharSet,
+		DUMP_MultiColorCharSet,
+		DUMP_MonoSprites,
+		DUMP_MultiColorSprites,
+		DUMP_MonoBitmap,
+		DUMP_MultiColorBitmap
+	};
+	DumpMode m_dumpMode;
 
 	enum DragMode
 	{

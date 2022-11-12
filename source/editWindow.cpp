@@ -359,7 +359,7 @@ void EditWindow::Draw()
 			{
 				line->GetGCText()->DrawAt(activeXPosText + settings->textXMargin - m_activeSourceFileItem->horizScroll, y + settings->textYMargin);
 				m_activeSourceFileItem->editWindowTextWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, line->GetGCText()->CalcMaxWidth());
-				if (m_activeSourceFileItem->horizScroll)
+				if (m_activeSourceFileItem->horizScroll == 0)
 					m_activeSourceFileItem->editWindowHScrollWidth = 0;
 				m_activeSourceFileItem->editWindowHScrollWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, m_activeSourceFileItem->editWindowHScrollWidth);
 			}
@@ -427,7 +427,7 @@ void EditWindow::Draw()
 		SDL_RenderFillRect(r, &Bar);
 
 		// draw horiz scroll bar
-		if (m_activeSourceFileItem->editWindowHScrollWidth > (m_sourceEditRect.w - settings->scrollBarWidth))
+		if (m_activeSourceFileItem->horizScroll > 0 || m_activeSourceFileItem->editWindowHScrollWidth > (m_sourceEditRect.w - settings->scrollBarWidth))
 		{
 			int barX1, barX2;
 			CalcHorizScrollBar(barX1, barX2);
@@ -1680,6 +1680,26 @@ void EditWindow::DrawStatus()
 
 	m_status.m_ge->RenderAt( r, settings->textXMargin, m_statusRect.y + settings->textYMargin );
 }
+
+void EditWindow::GotoEmuPC()
+{
+	u16 pc = gApp->GetEmulator()->GetCurrentPC();
+	auto sf = m_activeSourceFileItem->file;
+	auto csi = sf->GetCompileInfo();
+	for (int i = 0; i < csi->m_lines.size(); i++)
+	{
+		auto cl = csi->m_lines[i];
+		if (cl->data.size() > 0 && pc >= cl->memAddr && (pc < cl->memAddr + cl->data.size()))
+		{
+			if (sf->GetLines().size() > i)
+			{
+				GotoLineCol(i, sf->GetLines()[i]->GetChars().size(), MARK_None, true);
+				return;
+			}
+		}
+	}
+}
+
 
 void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)
 {

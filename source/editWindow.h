@@ -47,6 +47,7 @@ public:
 	void CursorTopOfFile(MarkingType marking);
 	void CursorBottomOfFile(MarkingType marking);
 
+	void GotoEmuPC();
 	void GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos);
 	void ClearMarking() { m_marked = false; m_keyMarking = false; m_mouseMarking = false; }
 	void SetMarking(int startLine, int startColumn, int endLine, int endColumn)

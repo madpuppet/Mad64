@@ -24,7 +24,7 @@ sprite5Ptr = $7fd
 sprite6Ptr = $7fe
 sprite7Ptr = $7ff
     *=$80e
-    
+
 start:
     jsr cls
 

@@ -503,6 +503,7 @@ void Application::OnKeyDown(SDL_Event* e)
             {
                 m_emulator->Step();
             }
+            m_editWindow->GotoEmuPC();
         }
         else if (e->key.keysym.mod & KMOD_ALT)
         {
@@ -511,11 +512,13 @@ void Application::OnKeyDown(SDL_Event* e)
             {
                 m_emulator->Step();
             }
+            m_editWindow->GotoEmuPC();
         }
         else
         {
             // single step
             while (!m_emulator->Step());
+            m_editWindow->GotoEmuPC();
         }
         return;
 

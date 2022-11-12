@@ -1,9 +1,9 @@
 #include "common.h"
 #include "logWindow.h"
 
-static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory", "Registers", "Emulator"};
-static const char* s_short_titles[] = { "CMP", "HLP", "LAB", "MEM", "REG", "EMU"};
-static char s_titleChars[] = { 'C','H','L','M','R','E' };
+static const char* s_titles[] = { "Compiler", "Contextual Help", "Labels", "Memory", "Registers", "Emulator", "MemDump"};
+static const char* s_short_titles[] = { "CMP", "HLP", "LAB", "MEM", "REG", "EMU", "DMP"};
+static char s_titleChars[] = { 'C','H','L','M','R','E', 'D'};
 
 string LogWindow::GetOpenLogs()
 {
@@ -49,6 +49,7 @@ LogWindow::LogWindow()
 	m_autoScroll = 0;
 	m_logGroups[2].m_groupOpen = false;
 	m_emulatorZoom = 2;
+	m_dumpMode = DUMP_Hex;
 
 	BuildIcons();
 
@@ -344,6 +345,36 @@ void LogWindow::Draw()
 			}
 			y += h + settings->textYMargin * 2;
 		}
+		else if (i == LF_MemoryDump)
+		{
+			auto font = gApp->GetFont();
+			auto emu = gApp->GetEmulator();
+
+			int firstLine = (yMin - y) / settings->lineHeight;
+			int lastLine = (yMax - y) / settings->lineHeight;
+			SDL_Color col = { 250,250,250,255};
+			if (firstLine < 4096 && lastLine >= 0)
+			{
+				firstLine = SDL_clamp(firstLine, 0, 4095);
+				lastLine = SDL_clamp(lastLine, 0, 4095);
+				for (int l = firstLine; l < lastLine; l++)
+				{
+					int lineY = y + l * settings->lineHeight;
+					u16 addr = l*16;
+					string text = FormatString("%04x  %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x ",
+						addr, emu->GetByte(addr), emu->GetByte(addr+1), emu->GetByte(addr+2), emu->GetByte(addr+3),
+						emu->GetByte(addr+4), emu->GetByte(addr+5), emu->GetByte(addr+6), emu->GetByte(addr+7),
+						emu->GetByte(addr+8), emu->GetByte(addr+9), emu->GetByte(addr+10), emu->GetByte(addr+11),
+						emu->GetByte(addr+12), emu->GetByte(addr+13), emu->GetByte(addr+14), emu->GetByte(addr+15));
+
+					auto ge = GraphicElement::CreateFromText(font, text.c_str(), col, x, lineY);
+					ge->Render(r);
+					delete ge;
+				}
+			}
+
+			y += settings->lineHeight * 4096;
+		}
 		else
 		{
 			int groupItem = 0;
@@ -417,6 +448,9 @@ int LogWindow::CalcLogHeight()
 					break;
 				case LF_Emulator:
 					y += settings->lineHeight + vic->GetScreenHeight() * m_emulatorZoom + settings->textYMargin * 2;
+					break;
+				case LF_MemoryDump:
+					y += settings->lineHeight * 4096;
 					break;
 				default:
 					y += settings->lineHeight * (int)lg.m_logLines.size() + settings->lineHeight;

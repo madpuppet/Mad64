@@ -265,5 +265,9 @@ void Vic::Step()
             m_rasterLine = 0;
         }
     }
+
+    // update vic registers
+    m_regs.control1 = (m_regs.control1 & 0x7f) | ((m_rasterLine>>1) & 0x80);
+    m_regs.rasterCounter = m_rasterLine & 0xff;
 }
 
