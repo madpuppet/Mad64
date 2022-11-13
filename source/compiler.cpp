@@ -1934,6 +1934,9 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
                     }
                 }
                 break;
+
+            default:
+                break;
         }
     }
     else

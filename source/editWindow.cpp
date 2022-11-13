@@ -1026,6 +1026,8 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 		case DRAG_LogVertScroll:
 			gApp->GetLogWindow()->SnapScrollBarToMouseY(e->motion.y);
 			break;
+		default:
+			break;
 		}
 	}
 	else

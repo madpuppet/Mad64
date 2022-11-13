@@ -62,7 +62,7 @@ void ReadString(char* src, string& str)
 void ReadStringArray(char* src, vector<string>& arr)
 {
     char* next;
-    while (next = strchr(src, ','))
+    while ((next = strchr(src, ',')))
     {
         arr.push_back(MakeString(src, next));
         src = next + 1;
