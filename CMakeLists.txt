@@ -34,7 +34,7 @@ add_executable(Mad64
 	source/chips/vic.cpp
 )
 	
-target_include_directories(Mad64 PUBLIC "include", "source")
+target_include_directories(Mad64 PUBLIC "include" , "source")
 target_link_directories(Mad64 PUBLIC "lib")
 
 target_link_libraries(Mad64 SDL2 SDL2_ttf SDL2main)
