@@ -525,6 +525,10 @@ extern DECLSPEC void *SDLCALL SDL_memset(SDL_OUT_BYTECAP(len) void *dst, int c, 
     SDL_memcpy((dst), (src), sizeof (*(src)))
 
 
+#ifdef __APPLE__
+#include <string.h>
+#endif
+
 /* Note that memset() is a byte assignment and this is a 32-bit assignment, so they're not directly equivalent. */
 SDL_FORCE_INLINE void SDL_memset4(void *dst, Uint32 val, size_t dwords)
 {

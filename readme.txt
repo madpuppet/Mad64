@@ -3,6 +3,42 @@ MAD64 RELEASE 2022.07
 Mad64 is planned to be an all in one C64 development environment.
 It currently is an editor that assembles your code as you type. IN future it will be able to execute and emulate a c64 while you type.
 
+;====== HOW TO BUILD ======
+** WINDOWS 10/11 **
+For visual studio 2019 or 2022, use the mad64.sln including.  There are dependancies to download. Just build and run.
+
+You can also build commandline with cmake using:
+cmake -B build
+cmake --build build --config release
+
+** Linux (tested on UBUNTU & DEBIAN) **
+from a terminal:
+sudo apt install cmake
+sudo apt-get install build-essential
+sudo apt-get install libsdl2-dev
+sudo apt-get install libsdl2-ttf-dev
+sudo apt install git
+git clone https://github.com/madpuppet/Mad64
+cd Mad64
+git pull -- update latest
+cmake -B build
+cmake --build build --config release
+cd build
+./Mad64
+
+** MacOS (tested on MacOs 12) **
+Install Cmake from : https://cmake.org/download/
+Install Git from : https://sourceforge.net/projects/git-osx-installer/
+Install SDL2 from : https://github.com/libsdl-org/SDL/releases
+- download the dmg file, open it, and drag SDL2.framework to /Library/Frameworks in Finder.
+
+git clone https://github.com/madpuppet/Mad64
+cd Mad64
+PATH="/Applications/CMake.app/Contents/bin":"$PATH"
+
+
+
+
 ;====== FILE MANIPULATION
 
 CTRL-L         Load a text file
