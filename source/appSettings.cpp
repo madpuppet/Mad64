@@ -369,9 +369,12 @@ bool AppSettings::Save()
             fprintf(fh, "vicePath=%s\n\n", vicePath.c_str());
         }
 
-        openLogs = gApp->GetLogWindow()->GetOpenLogs();
-        fprintf(fh, "; each letter indicates a log group that is open  \n");
-        fprintf(fh, "openLogs=%s\n\n", openLogs.c_str());
+        if (gApp->GetLogWindow())
+        {
+            openLogs = gApp->GetLogWindow()->GetOpenLogs();
+            fprintf(fh, "; each letter indicates a log group that is open  \n");
+            fprintf(fh, "openLogs=%s\n\n", openLogs.c_str());
+        }
 
         if (!loadedFilePaths.empty())
         {
@@ -381,17 +384,19 @@ bool AppSettings::Save()
                 fprintf(fh, ",%s", loadedFilePaths[i].c_str());
             fprintf(fh, "\n\n");
 
-            auto sf = gApp->GetEditWindow()->GetActiveFile();
-            for (int i = 0; i < loadedFilePaths.size(); i++)
+            if (gApp->GetEditWindow())
             {
-                if (StrEqual(loadedFilePaths[i], sf->GetPath()))
+                auto sf = gApp->GetEditWindow()->GetActiveFile();
+                for (int i = 0; i < loadedFilePaths.size(); i++)
                 {
-                    fprintf(fh, "; which of loadedFilePaths is active\n");
-                    fprintf(fh, "activeLoadedFilePath=%d\n\n", i);
-                    break;
+                    if (StrEqual(loadedFilePaths[i], sf->GetPath()))
+                    {
+                        fprintf(fh, "; which of loadedFilePaths is active\n");
+                        fprintf(fh, "activeLoadedFilePath=%d\n\n", i);
+                        break;
+                    }
                 }
             }
-
         }
 
         if (!activeFilePath.empty())
