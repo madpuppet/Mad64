@@ -1695,7 +1695,7 @@ void EditWindow::GotoEmuPC()
 		{
 			if (sf->GetLines().size() > i)
 			{
-				GotoLineCol(i, sf->GetLines()[i]->GetChars().size(), MARK_None, true);
+				GotoLineCol(i, (int)sf->GetLines()[i]->GetChars().size(), MARK_None, true);
 				return;
 			}
 		}

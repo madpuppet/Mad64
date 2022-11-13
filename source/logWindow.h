@@ -92,6 +92,7 @@ public:
 
 	// find the code line represented by log data at x,y
 	bool FindLogLineAt(int x, int y, int& line);
+	bool FindLogLine(int group, int item, int& line);
 
 	void ClampTargetScroll();
 	void OnMouseUp(SDL_Event* e);

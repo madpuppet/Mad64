@@ -15,15 +15,9 @@ startLoop:
     stx vic.backgroundColor0
 loop:
     lda temp
-    and #1
-    clc
-    adc #30
+    and #$44
     sta $0400,x
     sta $0400+960,x
-    txa
-    and #5
-    clc
-    adc #1
     sta $d800,x
     sta $d800+960,x
     inx
@@ -37,6 +31,7 @@ sides:
     lda line+1,x
     sta lookup+1
 
+    lda #116
     ldy #0
     sta (lookup),y
     ldy #39

@@ -396,6 +396,16 @@ void Application::CreateNewFile()
     }
 }
 
+void Application::ToggleMemoryBreakpoint(u16 addr)
+{
+    auto it = std::find(m_memoryBreakpoints.begin(), m_memoryBreakpoints.end(), addr);
+    if (it == m_memoryBreakpoints.end())
+        m_memoryBreakpoints.push_back(addr);
+    else
+        m_memoryBreakpoints.erase(it);
+    ApplyBreakpoints();
+}
+
 void Application::ApplyBreakpoints()
 {
     m_emulator->ClearAllBreakpoints();
@@ -412,6 +422,10 @@ void Application::ApplyBreakpoints()
             u8 brk = l->GetBreakpoint();
             if (brk && cl->data.size() > 0)
                 m_emulator->AddBreakpoint((u16)cl->memAddr, (u16)cl->data.size(), brk);
+        }
+        for (auto addr : m_memoryBreakpoints)
+        {
+            m_emulator->AddBreakpoint(addr, 1, BRK_Read | BRK_Write);
         }
     }
 }

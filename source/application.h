@@ -41,6 +41,7 @@ public:
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
     void ApplyBreakpoints();
+    void ToggleMemoryBreakpoint(u16 addr);
 
     void SetCursor(CursorType ct);
 
@@ -66,6 +67,7 @@ public:
 
 protected:
     vector<SourceFile*> m_sourceFiles;
+    vector<u16> m_memoryBreakpoints;
 
     // cursors
     SDL_Cursor* m_cursors[Cursor_MAX];

@@ -51,7 +51,7 @@ u16 Cpu6502::Decode_IndY_Addr()
     u8 indAddr = (u8)m_regs.operand;
     u16 addr = (((u16)ReadByte(indAddr) | ((u16)ReadByte((indAddr + 1) & 0xff) << 8)) + m_regs.Y) & 0xffff;
     m_regs.delayCycles = ((addr & 0xff) < m_regs.Y) ? 1 : 0;
-    return ReadByte(addr);
+    return addr;
 }
 
 //========================================

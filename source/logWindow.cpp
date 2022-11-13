@@ -271,9 +271,9 @@ void LogWindow::Draw()
 				}
 
 				SDL_Rect destRect = { m_logArea.x + settings->textXMargin, y + settings->textYMargin, 512, 512 };
-					SDL_RenderCopy(r, m_memMapTexture, nullptr, &destRect);
+				SDL_RenderCopy(r, m_memMapTexture, nullptr, &destRect);
 
-					MappedLogItem item;
+				MappedLogItem item;
 				item.area = { destRect };
 				item.group = LF_Memory;
 				item.item = 0;
@@ -349,6 +349,12 @@ void LogWindow::Draw()
 		{
 			auto font = gApp->GetFont();
 			auto emu = gApp->GetEmulator();
+
+			MappedLogItem item;
+			item.area = { m_logArea.x, y, m_logArea.w, settings->lineHeight * 4096 };
+			item.group = LF_MemoryDump;
+			item.item = 0;
+			m_items.push_back(item);
 
 			int firstLine = (yMin - y) / settings->lineHeight;
 			int lastLine = (yMax - y) / settings->lineHeight;
@@ -484,30 +490,42 @@ bool LogWindow::FindLogLineAt(int x, int y, int& line)
 	int group, item;
 	if (FindLogItemAt(x, y, group, item))
 	{
-		if (group == LF_Memory)
+		return FindLogLine(group, item, line);
+	}
+	line = -1;
+	return false;
+}
+
+
+bool LogWindow::FindLogLine(int group, int item, int& line)
+{
+	if (group == LF_Memory)
+	{
+		auto file = gApp->GetEditWindow()->GetActiveFile();
+		if (file)
 		{
-			auto file = gApp->GetEditWindow()->GetActiveFile();
-			if (file)
+			auto csi = file->GetCompileInfo();
+			if (csi)
 			{
-				auto csi = file->GetCompileInfo();
-				if (csi)
+				for (auto cli : csi->m_lines)
 				{
-					for (auto cli : csi->m_lines)
+					if (!cli->data.empty() && cli->memAddr <= (u32)item && cli->memAddr+cli->data.size() > (u32)item)
 					{
-						if (!cli->data.empty() && cli->memAddr <= (u32)item && cli->memAddr+cli->data.size() > (u32)item)
-						{
-							line = cli->lineNmbr;
-							return true;
-						}
+						line = cli->lineNmbr;
+						return true;
 					}
 				}
 			}
 		}
-		else if (item != -1)
-		{
-			line = m_logGroups[group].m_logLines[item]->line;
-			return line != -1;
-		}
+	}
+	else if (group == LF_MemoryDump)
+	{
+		return false;
+	}
+	else if (item != -1)
+	{
+		line = m_logGroups[group].m_logLines[item]->line;
+		return line != -1;
 	}
 	return false;
 }
@@ -532,6 +550,7 @@ bool LogWindow::FindGroupItemAt(int x, int y, int& group)
 
 bool LogWindow::FindLogItemAt(int x, int y, int& group, int& item)
 {
+	auto settings = gApp->GetSettings();
 	for (auto& i : m_items)
 	{
 		if (Contains(i.area, x, y))
@@ -540,6 +559,21 @@ bool LogWindow::FindLogItemAt(int x, int y, int& group, int& item)
 			if (group == LF_Memory)
 			{
 				item = ((y - i.area.y) / 2) * 256 + ((x - i.area.x) / 2);
+			}
+			else if (group == LF_MemoryDump)
+			{
+				int charWidth = gApp->GetWhiteSpaceWidth();
+				int row = (y - i.area.y) / settings->lineHeight;
+				int charCol = (x - i.area.x) / charWidth;
+				if (charCol > 6)
+				{
+					int col = (charCol - 6) / 3;
+					item = row * 16 + col;
+				}
+				else
+				{
+					item = -1;
+				}
 			}
 			else
 			{
@@ -596,7 +630,7 @@ void LogWindow::SelectCursor(int x, int y)
 
 void LogWindow::OnMouseDown(SDL_Event* event)
 {
-	int group, line;
+	int group, line, item;
 	if (FindGroupItemAt(event->button.x, event->button.y, group))
 	{
 		if (event->button.button == 3)
@@ -610,9 +644,33 @@ void LogWindow::OnMouseDown(SDL_Event* event)
 		}
 		ClampTargetScroll();
 	}
+	else if (FindLogItemAt(event->button.x, event->button.y, group, item))
+	{
+		switch (group)
+		{
+			case LF_CompilerWarning:
+			case LF_InstructionHelp:
+			case LF_LabelHelp:
+			case LF_Memory:
+			case LF_Registers:
+			case LF_Emulator:
+				if (FindLogLine(group, item, line))
+				{
+					gApp->GetEditWindow()->GotoLineCol(line, 0, MARK_None, true);
+				}
+				return;
+			case LF_MemoryDump:
+				{
+					if (item != -1)
+						gApp->ToggleMemoryBreakpoint(item);
+				}
+				return;
+		}
+	
+	}
+
 	else if (FindLogLineAt(event->button.x, event->button.y, line))
 	{
-		gApp->GetEditWindow()->GotoLineCol(line, 0, MARK_None, true);
 	}
 }
 
