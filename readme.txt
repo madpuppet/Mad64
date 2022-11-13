@@ -116,9 +116,12 @@ rom.SETNAM, rom.LOAD               -  basic rom function addresses
 
 Beginning work on emulator
 - can emulate a subset of 6502
+- can emulate text mode graphics
 - register view in log window
 - F10 to single step
 - resets emulation after every compile
+- horizontal scrollbar for edit window
+- dump memory view in log window
 
 2022.7
 
