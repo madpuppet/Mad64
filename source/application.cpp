@@ -187,7 +187,7 @@ void Application::Update()
         }
     }
 
-    m_flashScreenRed = max(0, m_flashScreenRed - TIMEDELTA*5.0f);
+    m_flashScreenRed = max(0.0f, m_flashScreenRed - TIMEDELTA*5.0f);
 }
 
 void Application::Draw()
