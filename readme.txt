@@ -90,6 +90,7 @@ CTRL-F10       Run continuously at normal speed
 4095       - decimal
 $0FFF      - hex number
 %01010001  - binary number
+&03123200  - base 4 (useful for multicolor graphics)
 
 * = $1000  - set memory ptr
 
@@ -102,6 +103,7 @@ bne loop+  - branch to next instance of loop
 dc.b 1,2   - declare some 8 bit values. Also accepts ".byte"
 dc.w 1,2   - declare some 16 bit values (little endian).  also accepts ".word"
 dc.l 1,2   - declare some 32 bit values (little endian).  also accepts ".long"
+dc.s 1     - declare 24 bit values used for sprite (big endian). also accepts ".sprite"
 dc.t "hi"  - declare some text. also accepts ".text"
 
 ;====== ASSEMBLER DIRECTIVES

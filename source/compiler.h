@@ -27,6 +27,7 @@ enum CompilerLineType
     LT_Variable,
     LT_DataBytes,
     LT_DataWords,
+    LT_DataSprites,
     LT_DataText,
     LT_ImportedData,
     LT_GenerateBytes,

@@ -174,7 +174,7 @@ bool DblCharInStr(const char *src, const char* str)
     return false;
 }
 
-#define SINGLE_CHAR_TOKENS "[]()<>=$%*/#+@-~;:!,"
+#define SINGLE_CHAR_TOKENS "[]()<>=&|$%*/#+@-~;:!,"
 #define DOUBLE_CHAR_TOKENS "<<>><=>===!=&&||"
 
 bool ScanToken(const char * &src, string &out)

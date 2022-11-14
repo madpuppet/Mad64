@@ -350,6 +350,21 @@ bool BinaryToNumber(string& token, int& value)
     return true;
 }
 
+bool Base4ToNumber(string& token, int& value)
+{
+    value = 0;
+    for (int i = 0; i < (int)token.size(); i++)
+    {
+        char ch = toupper(token[i]);
+        if (ch != '0' && ch != '1' && ch != '2' && ch != '3')
+            return false;
+
+        value = value * 4;
+        value += (ch - '0');
+    }
+    return true;
+}
+
 Compiler::Compiler() : m_compileRequested(0,1), Thread("Compiler")
 {
     m_compilationActive = false;
@@ -804,6 +819,31 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
         }
         currentMemAddr += (int)li->dataExpr.size();
     }
+    else if (StrEqual(token, "dc.s") || StrEqual(token, ".sprite"))
+    {
+        li->type = LT_DataSprites;
+        li->memAddr = currentMemAddr;
+        li->dataEvaluated = false;
+
+        while (!fifo.IsEmpty())
+        {
+            auto expr = new CompilerExpression();
+            PopExpressionValue(fifo, li, expr, 0);
+            li->dataExpr.push_back(expr);
+
+            if (fifo.Peek() == ",")
+            {
+                fifo.Pop();
+                if (fifo.IsEmpty())
+                    ERR("Expected more data on line");
+            }
+            else if (!fifo.IsEmpty())
+            {
+                ERR("Unexpected token '%s' in data bytes", fifo.Peek().c_str());
+            }
+        }
+        currentMemAddr += (int)li->dataExpr.size()*3;
+    }
     else if (StrEqual(token, "dc.w") || StrEqual(token, ".word") || StrEqual(token, "word"))
     {
         li->type = LT_DataWords;
@@ -1064,6 +1104,24 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!EvaluateExpression(li, li->dataExpr[i], value))
                     return false;
 
+                li->data.push_back((u8)value & 0xff);
+            }
+            li->dataEvaluated = true;
+        }
+    }
+    else if (li->type == LT_DataSprites)
+    {
+        if (!li->dataEvaluated)
+        {
+            li->data.clear();
+            for (int i = 0; i < li->dataExpr.size(); i++)
+            {
+                double value;
+                if (!EvaluateExpression(li, li->dataExpr[i], value))
+                    return false;
+
+                li->data.push_back((u8)((u32)value >> 16));
+                li->data.push_back((u8)((u32)value >> 8));
                 li->data.push_back((u8)value & 0xff);
             }
             li->dataEvaluated = true;
@@ -1638,6 +1696,14 @@ void Compiler::PopExpressionValue(TokenFifo& fifo, CompilerLineInfo* li, Compile
                 ERR("Unable to parse binary value");
             expr->m_tokens.push_back(new CompilerExpressionToken(value));
         }
+        else if (token == "&")
+        {
+            // binary number
+            int value;
+            if (!Base4ToNumber(fifo.Pop(), value))
+                ERR("Unable to parse base4 value");
+            expr->m_tokens.push_back(new CompilerExpressionToken(value));
+        }
         else if (token == "@")
         {
             // local label
@@ -1956,7 +2022,7 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
             if (token.empty() || token[0] == ' ' || token[0] == '\t')
                 continue;
 
-            if (token == "$" || token == "%")
+            if (token == "$" || token == "%" || token == "&")
             {
                 tokenIdx++;
                 continue;
