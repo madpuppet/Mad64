@@ -42,6 +42,8 @@ public:
     float GetTimeDelta() { return m_timeDelta; }
     void ApplyBreakpoints();
     void ToggleMemoryBreakpoint(u16 addr);
+    void ClearAllMemoryBreakpoints();
+    bool IsMemoryBreakpointInRange(u16 addrStart, u16 length);
 
     void SetCursor(CursorType ct);
 

@@ -1,50 +1,94 @@
-* = $50
-temp:
-    dc.b 0
-lookup:
-    dc.b 0,0
-
 .basicStartup
+
+sprite0Ptr = $7f8
+sprite1Ptr = $7f9
+sprite2Ptr = $7fa
+sprite3Ptr = $7fb
+sprite4Ptr = $7fc
+sprite5Ptr = $7fd
+sprite6Ptr = $7fe
+sprite7Ptr = $7ff
+ptr = $50
+xpos = $51
 
 start:
     sei
-
-startLoop:
-    ldx #0
-    stx vic.borderColor
-    stx vic.backgroundColor0
+    lda #0
+    sta xpos
 loop:
-    lda temp
-    and #$44
-    sta $0400,x
-    sta $0400+960,x
-    sta $d800,x
-    sta $d800+960,x
-    inx
-    cpx #40
-    bne loop
+    lda #24
+    clc
+    adc xpos
+    sta vic.sprite0X
+    sta vic.sprite1X
+    lda #50
+    sta vic.sprite0Y
+    sta vic.sprite1Y
+    lda #0
+    sta vic.sprite0Color
+    lda #1
+    sta vic.sprite1Color
+    lda #3
+    sta vic.spriteEnable
+    lda #36
+    sta sprite0Ptr
+    lda #37
+    sta sprite1Ptr
+    lda #3
+    sta vic.spriteXSize
+    sta vic.spriteYSize
+    inc xpos
 
-    ldx #0
-sides:
-    lda line,x
-    sta lookup
-    lda line+1,x
-    sta lookup+1
+wait:
+    lda vic.control1
+    bmi wait
+    lda vic.rasterCounter
+    bne wait
 
-    lda #116
-    ldy #0
-    sta (lookup),y
-    ldy #39
-    sta (lookup),y
-    inx
-    inx
-    cpx #50
-    bne sides
-
-    inc temp
-    jmp startLoop
-    
-line:
-.generate.w 0,25,$0400+I*40
+    jmp loop
     
     
+*=$900
+    dc.b %11111111,%11111111,%11111111    
+    dc.b %10000000,%00000000,%00000001    
+    dc.b %10000001,%11111111,%10000001    
+    dc.b %10000001,%00000000,%10000001    
+    dc.b %10000001,%00000000,%10000001    
+    dc.b %10000001,%00000000,%10000001    
+    dc.b %10000001,%00000000,%10000001    
+    dc.b %10000001,%00000000,%10000001    
+    dc.b %10000001,%00000000,%10000001    
+    dc.b %10000000,%10000000,%10000001    
+    dc.b %10000001,%01000000,%10000001    
+    dc.b %10000001,%10100000,%10000001    
+    dc.b %10000001,%01010000,%10000001    
+    dc.b %10000001,%00101000,%10000001    
+    dc.b %10000001,%00010100,%10000001    
+    dc.b %10000001,%00001010,%10000001    
+    dc.b %10000001,%00000101,%10000001    
+    dc.b %10000001,%00000010,%10000001    
+    dc.b %10000001,%11111111,%00000001    
+    dc.b %10000000,%00000000,%00000001    
+    dc.b %11111111,%11111111,%11111111,0    
+    
+    dc.b %11111111,%11111111,%11111111    
+    dc.b %11111111,%11111111,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%00000000,%11111111    
+    dc.b %11111111,%10000000,%11111111    
+    dc.b %11111111,%11000000,%11111111    
+    dc.b %11111111,%11100000,%11111111    
+    dc.b %11111111,%01110000,%11111111    
+    dc.b %11111111,%00111000,%11111111    
+    dc.b %11111111,%00011100,%11111111    
+    dc.b %11111111,%00001110,%11111111    
+    dc.b %11111111,%00000111,%11111111    
+    dc.b %11111111,%00000011,%11111111    
+    dc.b %11111111,%00000001,%11111111    
+    dc.b %11111111,%11111111,%11111111    
+    dc.b %11111111,%11111111,%11111111,0    

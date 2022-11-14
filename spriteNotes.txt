@@ -1,0 +1,8 @@
+sprite notes
+
+sprites start drawing when Y value == rasterline ---  they will continue for 21 lines
+sprites start drawing horizontally when cycle = X block --  will continue for 3 cycles
+
+all other values are read on the cycle
+
+sprite pos 50,50 is top left

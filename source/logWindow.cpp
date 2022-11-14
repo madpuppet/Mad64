@@ -349,6 +349,7 @@ void LogWindow::Draw()
 		{
 			auto font = gApp->GetFont();
 			auto emu = gApp->GetEmulator();
+			int charWidth = gApp->GetWhiteSpaceWidth();
 
 			MappedLogItem item;
 			item.area = { m_logArea.x, y, m_logArea.w, settings->lineHeight * 4096 };
@@ -367,13 +368,27 @@ void LogWindow::Draw()
 				{
 					int lineY = y + l * settings->lineHeight;
 					u16 addr = l*16;
+					if (gApp->IsMemoryBreakpointInRange(addr, 16))
+					{
+						// draw red under breakpoints
+						for (int b = 0; b < 16; b++)
+						{
+							if (gApp->IsMemoryBreakpointInRange(addr+b, 1))
+							{
+								SDL_Rect area = { x + (6+b*3)*charWidth, lineY + settings->textYMargin, 2*charWidth, settings->lineHeight - settings->textYMargin*2 };
+								SDL_SetRenderDrawColor(r, 255, 0, 0, 255);
+								SDL_RenderFillRect(r, &area);
+							}
+						}
+					}
+
 					string text = FormatString("%04x  %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x ",
 						addr, emu->GetByte(addr), emu->GetByte(addr+1), emu->GetByte(addr+2), emu->GetByte(addr+3),
 						emu->GetByte(addr+4), emu->GetByte(addr+5), emu->GetByte(addr+6), emu->GetByte(addr+7),
 						emu->GetByte(addr+8), emu->GetByte(addr+9), emu->GetByte(addr+10), emu->GetByte(addr+11),
 						emu->GetByte(addr+12), emu->GetByte(addr+13), emu->GetByte(addr+14), emu->GetByte(addr+15));
 
-					auto ge = GraphicElement::CreateFromText(font, text.c_str(), col, x, lineY);
+					auto ge = GraphicElement::CreateFromText(font, text.c_str(), col, x, lineY + settings->textYMargin);
 					ge->Render(r);
 					delete ge;
 				}
@@ -568,7 +583,15 @@ bool LogWindow::FindLogItemAt(int x, int y, int& group, int& item)
 				if (charCol > 6)
 				{
 					int col = (charCol - 6) / 3;
-					item = row * 16 + col;
+					int colX = (col*3+6+1) * charWidth + i.area.x;
+					if (x > colX)
+					{
+						item = row * 16 + col;
+					}
+					else
+					{
+						item = -1;
+					}
 				}
 				else
 				{
@@ -618,10 +641,11 @@ void LogWindow::SelectCursor(int x, int y)
 	}
 	else if (Contains(m_logArea, x, y))
 	{
-		int line;
-		if (gApp->GetLogWindow()->FindLogLineAt(x, y, line))
+		int group, item, line;
+		if (FindLogItemAt(x, y, group, item))
 		{
-			gApp->SetCursor(Cursor_Hand);
+			if ((group == LF_MemoryDump && item != -1) || FindLogLine(group, item, line))
+				gApp->SetCursor(Cursor_Hand);
 			return;
 		}
 	}
@@ -662,7 +686,12 @@ void LogWindow::OnMouseDown(SDL_Event* event)
 			case LF_MemoryDump:
 				{
 					if (item != -1)
+					{
+						if (event->button.button == 3)
+							gApp->ClearAllMemoryBreakpoints();
+
 						gApp->ToggleMemoryBreakpoint(item);
+					}
 				}
 				return;
 		}
