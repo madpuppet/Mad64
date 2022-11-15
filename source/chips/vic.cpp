@@ -136,6 +136,8 @@ void Vic::Reset()
             *ptr++ = (c ? 0xff400000 : 0xff000040);
         }
     }
+
+    ResetSpriteFrame();
 }
 
 void Vic::CacheLine()
@@ -153,50 +155,221 @@ void Vic::CacheLine()
     }
 }
 
-void Vic::Step()
+void Vic::RasterizeSprite(int i, u32 pixels[8])
 {
-    u32* videoOut = (u32*)(m_textureMem + (m_rasterLineCycle + m_rasterLine * m_scCurrent->cyclesPerLine) * 8 * 4);
-    if (!m_bHBlank && !m_bVBlank)
+    auto& sprCache = m_spriteCache[i];
+    if (sprCache.multicolor)
     {
-        if (m_bVBorder || m_bHBorder)
+        u32 col[3];
+        col[0] = s_palette[*(&m_regs.spriteColor0 + i)];
+        col[1] = s_palette[m_regs.spriteMulticolor0];
+        col[2] = s_palette[m_regs.spriteMulticolor1];
+        if (sprCache.sizeX)
         {
-            u32 col = s_palette[m_regs.borderColor&15];
-            *videoOut++ = col;
-            *videoOut++ = col;
-            *videoOut++ = col;
-            *videoOut++ = col;
-            *videoOut++ = col;
-            *videoOut++ = col;
-            *videoOut++ = col;
-            *videoOut++ = col;
+            for (int i = 0; i < 8; i += 2)
+            {
+                u32 idx = (sprCache.shiftedData >> 30) & 3;
+                if (idx > 0)
+                {
+                    pixels[i] = col[idx - 1];
+                    pixels[i + 1] = col[idx - 1];
+                }
+                sprCache.shiftedData <<= 2;
+            }
         }
         else
         {
-            if (m_bBGHoriz && m_bBGVert)
+            for (int i = 0; i < 4; i += 2)
             {
-                if (m_regs.control1 & BMM)
+                u32 idx = (sprCache.shiftedData >> 30) & 3;
+                if (idx > 0)
                 {
-                    // bitmap mode
+                    pixels[i] = col[idx - 1];
+                    pixels[i + 1] = col[idx - 1];
+                    pixels[i + 2] = col[idx - 1];
+                    pixels[i + 3] = col[idx - 1];
+                }
+                sprCache.shiftedData <<= 2;
+            }
+        }
+    }
+    else
+    {
+        u32 col = s_palette[*(&m_regs.spriteColor0 + i)];
+        if (sprCache.sizeX)
+        {
+            for (int i = 0; i < 8; i += 2)
+            {
+                if (sprCache.shiftedData & 0x80000000)
+                {
+                    pixels[i] = col;
+                    pixels[i + 1] = col;
+                }
+                sprCache.shiftedData <<= 1;
+            }
+        }
+        else
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                if (sprCache.shiftedData & 0x80000000)
+                {
+                    pixels[i] = col;
+                }
+                sprCache.shiftedData <<= 1;
+            }
+        }
+    }
+    sprCache.cycleCount++;
+}
+
+void Vic::Step()
+{
+    u32* videoOut = (u32*)(m_textureMem + (m_rasterLineCycle + m_rasterLine * m_scCurrent->cyclesPerLine) * 8 * 4);
+
+    // init our pixels out to bg color
+    u32 pixels[8];
+
+    // prime with background color
+    u32 col = s_palette[m_regs.backgroundColor0 & 15];
+    for (int i = 0; i < 8; i++)
+        pixels[i] = col;
+
+    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
+
+    // sprite data for this cycle
+    for (int i = 0; i < 8; i++)
+    {
+        int bit = 1 << i;
+        auto& sprCache = m_spriteCache[i];
+
+        // at the start of each rasterline we'll start sprites/grab data/etc
+        if (m_rasterLineCycle == 0)
+        {
+            // inc raster line if we are already started
+            if (sprCache.startraster)
+            {
+                if (sprCache.sizeY && !sprCache.extraLineLatch)
+                {
+                    sprCache.extraLineLatch = true;
                 }
                 else
                 {
-                    // fetch char byte
-                    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
-                    u16 ch = m_cachedChars[m_charCol];
-                    u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
-                    u8 data = ReadVicByte(charAddr);
-                    u32 foregroundCol = s_palette[(ch >> 8) & 0xf];
-                    u32 backgroundCol = s_palette[m_regs.backgroundColor0 & 0xf];
-
-                    // blit each pixel
-                    for (int i = 0; i < 8; i++)
-                    {
-                        u32 col = (data & (1 << (7-i))) ? foregroundCol : backgroundCol;
-                        *videoOut++ = col;
-                    }
+                    sprCache.rasterLine++;
+                    sprCache.extraLineLatch = false;
+                }
+                if (sprCache.rasterLine == 21)
+                {
+                    sprCache.startraster = false;
                 }
             }
+
+            // lock in our sprite raster lines once we the sprite Y matches the rasterline
+            if (!sprCache.startraster && (m_regs.spriteEnable & bit))
+            {
+                int spriteY = *(&m_regs.sprite0Y + 2 * i);
+                if (m_rasterLine == spriteY+1)
+                {
+                    // ready to start rendering sprite
+                    sprCache.y = *(&m_regs.sprite0Y + 2);
+                    sprCache.startraster = true;
+                    sprCache.rasterLine = 0;
+                }
+            }
+
+            // if we have started rasterizing, then grab some sprite info at the start of each line
+            if (sprCache.startraster)
+            {
+                sprCache.x = *(&m_regs.sprite0X + 2 * i) + ((m_regs.spriteXMSB & bit) ? 0x100 : 0);
+                sprCache.sizeY = (m_regs.spriteYEnlarge & bit) ? true : false;
+                sprCache.sizeX = (m_regs.spriteXEnlarge & bit) ? true : false;
+                sprCache.pri = (m_regs.spritePriority & bit) ? true : false;
+                sprCache.multicolor = (m_regs.spriteMulticolor & bit) ? true : false;
+                sprCache.startcycle = false;
+                sprCache.firstCycle = sprCache.x / 8 + m_scCurrent->leftBorderStartCycle;
+            }
         }
+
+        if (sprCache.startraster && !sprCache.startcycle && m_rasterLineCycle == sprCache.firstCycle)
+        {
+            sprCache.startcycle = true;
+            sprCache.cycle = 0;
+            sprCache.cycleCount = sprCache.sizeX ? 6 : 3;
+
+            // grab sprite data
+            u16 videoAddr = (((u16)(m_regs.memoryPointers & VideoMatrix)) << 6);
+            u16 spriteFramePtr = (videoAddr + 0x3f8);
+            u8 spriteFrame = ReadVicByte(spriteFramePtr);
+            u16 spriteAddr = spriteFrame * 64 + sprCache.rasterLine * 3;
+            sprCache.data = ((u32)ReadVicByte(spriteAddr) << 16) + ((u32)ReadVicByte(spriteAddr + 1) << 8) + (u32)ReadVicByte(spriteAddr + 2);
+            sprCache.shiftedData = sprCache.data << (8 - (sprCache.x & 7));
+        }
+    }
+
+    // rasterize sprites that are priority behind foreground
+    for (int i = 0; i < 8; i++)
+    {
+        auto& sprCache = m_spriteCache[i];
+        if (sprCache.startcycle && sprCache.cycle < sprCache.cycleCount && sprCache.pri)
+        {
+            RasterizeSprite(i, pixels);
+        }
+    }
+
+
+    // rasterize foreground - being either text or bitmap
+    if (m_bBGVert && m_bBGHoriz)
+    {
+        u8 bgPal = m_regs.backgroundColor0 & 0xf;
+        u8 dataOut[8];
+        for (int i = 0; i < 8; i++)
+            dataOut[i] = bgPal;
+
+        if (m_regs.control1 & BMM)
+        {
+            // bitmap mode
+        }
+        else
+        {
+            // text mode
+            // fetch char byte
+            u16 ch = m_cachedChars[m_charCol];
+            u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
+            u8 data = ReadVicByte(charAddr);
+            u32 foregroundCol = s_palette[(ch >> 8) & 0xf];
+
+            // blit each pixel
+            for (int i = 0; i < 8; i++)
+            {
+                if (data & (1 << (7 - i)))
+                    pixels[i] = foregroundCol;
+            }
+        }
+    }
+
+    // rasterize sprites that are priority in front of foreground
+    for (int i = 0; i < 8; i++)
+    {
+        auto& sprCache = m_spriteCache[i];
+        if (sprCache.startcycle && sprCache.cycle < sprCache.cycleCount && !sprCache.pri)
+        {
+            RasterizeSprite(i, pixels);
+        }
+    }
+
+    // if we're in border, we overwrite the output with the border color
+    if (m_bVBorder || m_bHBorder)
+    {
+        u32 col = s_palette[m_regs.borderColor & 15];
+        for (int i = 0; i < 8; i++)
+            pixels[i] = col;
+    }
+
+    if (!m_bHBlank && !m_bVBlank)
+    {
+        // finally write pixels to the video texture
+        for (int i = 0; i < 8; i++)
+            videoOut[i] = pixels[i];
     }
 
     // next cycle...
@@ -226,7 +399,7 @@ void Vic::Step()
         m_charLine++;
         m_rasterLine++;
         m_rasterLineCycle = 0;
-        m_textureDirty.h = min(m_textureDirty.h + 1, m_scCurrent->screenHeight-m_textureDirty.y);
+        m_textureDirty.h = min(m_textureDirty.h + 1, m_scCurrent->screenHeight - m_textureDirty.y);
 
         if (m_rasterLine == m_scCurrent->topBorderStartLine)
         {
@@ -267,7 +440,7 @@ void Vic::Step()
     }
 
     // update vic registers
-    m_regs.control1 = (m_regs.control1 & 0x7f) | ((m_rasterLine>>1) & 0x80);
+    m_regs.control1 = (m_regs.control1 & 0x7f) | ((m_rasterLine >> 1) & 0x80);
     m_regs.rasterCounter = m_rasterLine & 0xff;
 }
 

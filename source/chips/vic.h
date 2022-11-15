@@ -98,6 +98,37 @@ public:
         u8 spriteColor6;
         u8 spriteColor7;
     };
+
+    struct SpriteCache
+    {
+        u32 data;
+        u32 shiftedData;
+        u16 baseAddr;
+        u8 x;
+        u8 y;
+        u8 color;
+        u8 firstCycle;
+        u8 cycle;
+        u8 cycleCount;
+        u8 rasterLine;
+        bool startraster;           // started to render the sprite (have hit first rasterline)
+        bool startcycle;            // started to render sprite for this rasterline
+        bool sizeX;                 // locked in sizeX for this rasterline
+        bool sizeY;                 // locked in sizeY for this rasterline
+        bool pri;                   // locked in background priority for this rasterline
+        bool extraLineLatch;        // if clear & sizeY, then we don't increment raster line... just set this latch instead
+        bool multicolor;            // multicolor mode
+    };
+    SpriteCache m_spriteCache[8];
+    void ResetSpriteFrame()
+    {
+        for (int i=0; i<8; i++)
+        {
+            m_spriteCache[i].startraster = false;
+            m_spriteCache[i].startcycle = false;
+        }
+    }
+
     Registers& Regs() { return m_regs; }
     int CurrentRasterLine() { return m_rasterLine; }
     int CurrentRasterRow() { return m_rasterLineCycle; }
@@ -121,6 +152,8 @@ public:
     }
 
 private:
+    void RasterizeSprite(int i, u32 pixels[8]);
+
     ScreenConfig m_scPal;
     ScreenConfig m_scNtsc;
     ScreenConfig *m_scCurrent;

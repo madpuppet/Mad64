@@ -173,6 +173,8 @@ void Application::Update()
 
     if (m_runEmulation)
     {
+        m_timeDelta = SDL_min(m_timeDelta, 1 / 30.0f);
+
         int cycles = (int)(m_emulator->CyclesPerSecond() * m_timeDelta);
         for (int i = 0; i < cycles; i++)
         {
