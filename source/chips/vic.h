@@ -101,21 +101,21 @@ public:
 
     struct SpriteCache
     {
+        u8 pixels[24 + 24 + 8];     // all pixels expanded, based on multicolor/size settings
         u32 data;
-        u32 shiftedData;
         u16 baseAddr;
-        u8 x;
+        u16 x;
         u8 y;
         u8 color;
         u8 firstCycle;
         u8 cycle;
         u8 cycleCount;
         u8 rasterLine;
+        u8 pri;                     // 1 if background should be above sprite
         bool startraster;           // started to render the sprite (have hit first rasterline)
         bool startcycle;            // started to render sprite for this rasterline
         bool sizeX;                 // locked in sizeX for this rasterline
         bool sizeY;                 // locked in sizeY for this rasterline
-        bool pri;                   // locked in background priority for this rasterline
         bool extraLineLatch;        // if clear & sizeY, then we don't increment raster line... just set this latch instead
         bool multicolor;            // multicolor mode
     };
@@ -152,7 +152,7 @@ public:
     }
 
 private:
-    void RasterizeSprite(int i, u32 pixels[8]);
+    void RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8]);
 
     ScreenConfig m_scPal;
     ScreenConfig m_scNtsc;
