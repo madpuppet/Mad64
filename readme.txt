@@ -26,23 +26,19 @@ cmake --build build --config release
 cd build
 ./Mad64
 
-** MacOS (tested on MacOs 12) **
-Install Cmake from : https://cmake.org/download/
-Install Git from : https://sourceforge.net/projects/git-osx-installer/
-Install SDL2 from : https://github.com/libsdl-org/SDL/releases
-- download the dmg file, open it, and drag SDL2.framework to /Library/Frameworks in Finder.
-
-git clone https://github.com/madpuppet/Mad64
-cd Mad64
-PATH="/Applications/CMake.app/Contents/bin":"$PATH"
-
-
+** MacOS **
+??? I don't have a mac to test the build process.
+You'll certainly need to install   CMAKE, GIT, SDL2, SDL2_TTF
+You can install those through Brew or go to their websites.
+You may need XCode as well.
+CMake should be able to build the project using XCode framework
 
 
 ;====== FILE MANIPULATION
 
 CTRL-L         Load a text file
 CTRL-S         Save current text file
+CTRL-SHIFT-S   Save As
 CTRL-Q         Quit current text file
 CTRL-N         New file (will ask for a name of file, but doesn't create it on disk until you save it)
 F1             Open Settings File - saving settings file will auto-apply changed settings in most cases
@@ -160,6 +156,8 @@ Beginning work on emulator
 - resets emulation after every compile
 - horizontal scrollbar for edit window
 - dump memory view in log window
+- added memory breakpoint support by clicking on a byte in the logwindow Dump memory
+- added sprite support to emulator
 
 2022.7
 

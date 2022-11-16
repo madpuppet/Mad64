@@ -80,6 +80,7 @@ protected:
     void LoadFile();
     void LoadFile(const char* path);
     void SaveFile();
+    void SaveFileAs();
     void CreateNewFile();
     void CloseFile();
 

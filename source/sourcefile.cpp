@@ -54,6 +54,12 @@ SourceFile::~SourceFile()
         delete l;
 }
 
+void SourceFile::SetPath(const string& name)
+{
+    m_path = name;
+    m_name = basename(name.c_str());
+}
+
 bool SourceFile::Load()
 {
     size_t size;

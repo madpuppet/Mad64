@@ -361,6 +361,22 @@ void Application::SaveFile()
     }
 }
 
+void Application::SaveFileAs()
+{
+    auto activeFile = m_editWindow->GetActiveFile();
+    if (activeFile)
+    {
+        string filepath = activeFile->GetPath();
+        const char* patterns[3] = { "*.asm", "*.bas", "*.*" };
+        const char* filename = tinyfd_saveFileDialog("Save As", filepath.c_str(), 3, patterns, "");
+        if (filename)
+        {
+            activeFile->SetPath(filename);
+            activeFile->Save();
+        }
+    }
+}
+
 void Application::CloseFile()
 {
     auto activeFile = m_editWindow->GetActiveFile();
@@ -473,7 +489,14 @@ void Application::OnKeyDown(SDL_Event* e)
         {
             if (!e->key.repeat)
             {
-                SaveFile();
+                if (e->key.keysym.mod & KMOD_SHIFT)
+                {
+                    SaveFileAs();
+                }
+                else
+                {
+                    SaveFile();
+                }
             }
             return;
         }

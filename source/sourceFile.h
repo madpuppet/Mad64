@@ -49,6 +49,7 @@ public:
     bool Save();
     string &GetName() { return m_name; }
     string &GetPath() { return m_path; }
+    void SetPath(const string& name);
     vector<SourceLine*> &GetLines() { return m_lines; }
 
     void UpdateDirty(int amount) { m_dirtyCount += amount; m_sourceVersion++; }
