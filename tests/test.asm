@@ -18,12 +18,17 @@ start:
     sta vic.sprite0Y
     lda #0
     sta vic.backgroundColor0
+    lda #3
     sta vic.borderColor
     lda #10
     sta vic.spriteMulticolor0
     lda #11
     sta vic.spriteMulticolor1
-
+    lda #36
+    sta sprite0Ptr
+    lda #$ff
+    sta vic.spriteEnable
+    
     ldx #1
 @lp:
     txa
@@ -43,25 +48,21 @@ start:
     bne @lp-
 
     ldx #1
-    lda #36
+    lda #38
 @lp:
     sta sprite0Ptr,x
     inx
-    cpx #4
+    cpx #8
     bne @lp-
 
-    lda #$ff
-    sta vic.spriteEnable
-    lda #$f0
+    lda #$fe
     sta vic.spriteMulticolor
-    lda #36
-    sta sprite0Ptr
-    lda #$51
-    sta vic.spriteYSize
-    lda #$63
-    sta vic.spriteXSize
-    lda #1
-    sta vic.spritePriority
+//  lda #$51
+//  sta vic.spriteYSize
+//  lda #$63
+//  sta vic.spriteXSize
+/// lda #1
+//  sta vic.spritePriority
 
     ; wait for top of screen
 loop:
@@ -84,15 +85,12 @@ loop2:
     sta vic.sprite0X
     sta vic.sprite0Color
     lda sinewaveHigh,x
-    sta vic.spriteXMSB
+;    sta vic.spriteXMSB
     inc anim
     iny
     cpy #100
-    bne loop2
+;    bne loop2
 
-@lp:
-    lda vic.control1
-    bpl @lp-
 
     ldx #1
 @lp:
@@ -162,27 +160,27 @@ loop2:
     dc.s &002222222200
     dc.b 0
 
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111    
-    dc.s %111111111111111111111111    
-    dc.s %111111111111111111111111   
-    dc.s %111111111111111111111111    
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111
-    dc.s %111111111111111111111111    
-    dc.s %111111111111111111111111    
-    dc.s %111111111111111111111111   
-    dc.s %111111111111111111111111    
-    dc.s %111111111111111111111111
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
+    dc.s &333333333333
+    dc.s &111111111111
     dc.b 0
 
 *=$1000

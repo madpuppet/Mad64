@@ -43,6 +43,7 @@ public:
 
 	// copy regs in a thread safe way
 	u16 GetCurrentPC() { return m_cpu->Regs().PC; }
+	int GetCurrentRasterline() { return m_vic->CurrentRasterLine(); }
 	Cpu6502* GetCpu() { return m_cpu; }
 	Vic* GetVic() { return m_vic; }
 

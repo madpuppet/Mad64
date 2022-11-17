@@ -182,6 +182,7 @@ void Application::Update()
             if (m_emulator->WasBreakpointHit())
             {
                 m_emulator->ClearBreakpointHit();
+                m_editWindow->GotoEmuPC();
                 m_runEmulation = false;
                 m_flashScreenRed = 1.0f;
                 break;
@@ -384,7 +385,10 @@ void Application::CloseFile()
     {
         m_editWindow->OnFileClosed(activeFile);
         m_sourceFiles.erase(std::remove(m_sourceFiles.begin(), m_sourceFiles.end(), activeFile));
-        m_settings->loadedFilePaths.erase(std::remove(m_settings->loadedFilePaths.begin(), m_settings->loadedFilePaths.end(), string(activeFile->GetPath())));
+
+        auto fileIt = std::find(m_settings->loadedFilePaths.begin(), m_settings->loadedFilePaths.end(), string(activeFile->GetPath()));
+        if (fileIt != m_settings->loadedFilePaths.end())
+            m_settings->loadedFilePaths.erase(fileIt);
         delete activeFile;
     }
 }
@@ -432,24 +436,27 @@ void Application::ToggleMemoryBreakpoint(u16 addr)
 
 void Application::ApplyBreakpoints()
 {
-    m_emulator->ClearAllBreakpoints();
     auto file = m_editWindow->GetActiveFile();
     auto csi = file->GetCompileInfo();
     if (csi)
     {
         auto lines = file->GetLines();
         auto clines = csi->m_lines;
-        for (size_t i = 0; i < lines.size(); i++)
+        if (clines.size() == lines.size())
         {
-            auto l = lines[i];
-            auto cl = clines[i];
-            u8 brk = l->GetBreakpoint();
-            if (brk && cl->data.size() > 0)
-                m_emulator->AddBreakpoint((u16)cl->memAddr, (u16)cl->data.size(), brk);
-        }
-        for (auto addr : m_memoryBreakpoints)
-        {
-            m_emulator->AddBreakpoint(addr, 1, BRK_Read | BRK_Write);
+            m_emulator->ClearAllBreakpoints();
+            for (size_t i = 0; i < lines.size(); i++)
+            {
+                auto l = lines[i];
+                auto cl = clines[i];
+                u8 brk = l->GetBreakpoint();
+                if (brk && cl->data.size() > 0)
+                    m_emulator->AddBreakpoint((u16)cl->memAddr, (u16)cl->data.size(), brk);
+            }
+            for (auto addr : m_memoryBreakpoints)
+            {
+                m_emulator->AddBreakpoint(addr, 1, BRK_Read | BRK_Write);
+            }
         }
     }
 }
@@ -547,26 +554,27 @@ void Application::OnKeyDown(SDL_Event* e)
         }
         return;
     case SDLK_F10:
-        if (e->key.keysym.mod & KMOD_CTRL && m_editWindow->IsActiveAsmFile())
+        if (e->key.keysym.mod & KMOD_CTRL)
         {
-            m_runEmulation = !m_runEmulation;
+            // frame step
+            while (m_emulator->GetCurrentRasterline() == 0)
+                m_emulator->Step();
+            while (m_emulator->GetCurrentRasterline() != 0)
+                m_emulator->Step();
+            m_editWindow->GotoEmuPC();
         }
         else if (e->key.keysym.mod & KMOD_SHIFT)
         {
-            // frame step
-            for (int i = 0; i < 312 * 63; i++)
-            {
+            // rasterline step
+            int line = m_emulator->GetCurrentRasterline();
+            while (line == m_emulator->GetCurrentRasterline())
                 m_emulator->Step();
-            }
             m_editWindow->GotoEmuPC();
         }
         else if (e->key.keysym.mod & KMOD_ALT)
         {
             // rasterline step
-            for (int i = 0; i < 63; i++)
-            {
-                m_emulator->Step();
-            }
+            m_emulator->Step();
             m_editWindow->GotoEmuPC();
         }
         else
@@ -591,28 +599,52 @@ void Application::OnKeyDown(SDL_Event* e)
         return;
     case SDLK_F5:
         {
-            auto file = m_editWindow->GetActiveFile();
-            if (file && HasExtension(file->GetName().c_str(), ".asm"))
+            if (m_editWindow->IsActiveAsmFile())
             {
-                m_settings->Save();
-                file->Save();
-
-                size_t lastindex = file->GetPath().find_last_of(".");
-                string prgname = file->GetPath().substr(0, lastindex) + ".prg";
-
-#if defined(_WIN32)
-                STARTUPINFOA info = { sizeof(info) };
-                PROCESS_INFORMATION processInfo;
-                string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
-                string cmdLine = "-autostartprgdiskimage " + prgname;
-                if (CreateProcessA(path.c_str(), (char *)cmdLine.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+                if ((e->key.keysym.mod & KMOD_CTRL) && (e->key.keysym.mod & KMOD_SHIFT))
                 {
-                    CloseHandle(processInfo.hProcess);
-                    CloseHandle(processInfo.hThread);
-                }
+                    // CTRL-SHIFT F5 - launch in vice
+#if defined(_WIN32)
+                    auto file = m_editWindow->GetActiveFile();
+                    if (file && HasExtension(file->GetName().c_str(), ".asm"))
+                    {
+                        m_settings->Save();
+                        file->Save();
+
+                        size_t lastindex = file->GetPath().find_last_of(".");
+                        string prgname = file->GetPath().substr(0, lastindex) + ".prg";
+
+                        STARTUPINFOA info = { sizeof(info) };
+                        PROCESS_INFORMATION processInfo;
+                        string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
+                        string cmdLine = "-autostartprgdiskimage " + prgname;
+                        if (CreateProcessA(path.c_str(), (char*)cmdLine.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+                        {
+                            CloseHandle(processInfo.hProcess);
+                            CloseHandle(processInfo.hThread);
+                        }
+                    }
 #endif
+                }
+                else if (e->key.keysym.mod & KMOD_CTRL)
+                {
+                    auto file = m_editWindow->GetActiveFile();
+                    auto compiledFile = file->GetCompileInfo();
+                    // CTRL F5 - restart emulator
+                    // reset emulator
+                    auto startLabel = gApp->GetCompiler()->FindMatchingLabel(compiledFile, "start");
+                    if (startLabel)
+                    {
+                        ApplyBreakpoints();
+                        m_emulator->Reset(compiledFile->m_ramDataMap, compiledFile->m_ramMask, (u16)startLabel->m_value);
+                    }
+                }
+                else
+                {
+                    // F5 - toggle emulator
+                    m_runEmulation = !m_runEmulation;
+                }
             }
-            return;
         }
         break;
     }

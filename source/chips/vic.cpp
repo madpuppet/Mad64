@@ -269,6 +269,8 @@ void Vic::Step()
                             int outidx = b * 2 + (sprCache.x & 7);
                             sprCache.pixels[outidx] = val;
                             sprCache.pixels[outidx + 1] = val;
+                            sprCache.pixels[outidx + 2] = val;
+                            sprCache.pixels[outidx + 3] = val;
                         }
                     }
                     else
@@ -295,6 +297,7 @@ void Vic::Step()
                             int val = bits >> (22 - b);
                             int outidx = b + (sprCache.x & 7);
                             sprCache.pixels[outidx] = val;
+                            sprCache.pixels[outidx+1] = val;
                         }
                     }
                     else
