@@ -160,15 +160,23 @@ void Vic::RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8])
     auto& sprCache = m_spriteCache[i];
     u8 col[4];
     col[0] = m_regs.backgroundColor0;
-    col[1] = *(&m_regs.spriteColor0 + i);
-    col[2] = m_regs.spriteMulticolor0;
-    col[3] = m_regs.spriteMulticolor1;
+    if (sprCache.multicolor)
+    {
+        col[3] = m_regs.spriteMulticolor1;
+        col[2] = *(&m_regs.spriteColor0 + i);
+        col[1] = m_regs.spriteMulticolor0;
+    }
+    else
+    {
+        col[3] = col[2] = col[1] = *(&m_regs.spriteColor0 + i);
+    }
+
     for (int i = 0; i < 8; i++)
     {
         int pix = sprCache.pixels[sprCache.cycle * 8 + i];
         if (pix)
         {
-            pixels[i] = col[pix];
+            pixels[i] = col[pix&3];
             pixelsPri[i] = sprCache.pri;
         }
     }

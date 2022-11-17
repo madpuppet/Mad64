@@ -72,12 +72,15 @@ CTRL-R         Replace text.  If a word is selected, then that word is copied as
 RIGHT CLICK    on the search or replace box to clear and select the box
 
 ;====== EMULATION
-               
-CTRL-F5        Compile and Load PRG file in Vice (use settings file to set up path to VICE)
-F10            Single cycle step
-SHIFT-F10      Single frame step
-ALT-F10        Single rasterline step
-CTRL-F10       Run continuously at normal speed
+
+F5             Toggle emulation auto-run on/off
+CTRL-F5        Reset and Start emulation auto-run
+CTRL-SHIFT-F5  Load PRG file in Vice (use settings file to set up path to VICE)
+
+F10            Step to next 6502 instruction
+SHIFT-F10      Step to start of next vic rasterline
+CTRL-F10       Step to start of next vic frame
+ALT-F10        Step one clock cycle
 
 ;====== ASSEMBLER SYNTAX
 

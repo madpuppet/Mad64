@@ -60,7 +60,7 @@ start:
     sta vic.spriteYSize
     lda #$63
     sta vic.spriteXSize
-    lda #1
+    lda #55
     sta vic.spritePriority
 
     ; wait for top of screen
@@ -111,8 +111,6 @@ loop2:
     inx
     cpx #8
     bne @lp-
-
-
     jmp loop
 
 *=$900
