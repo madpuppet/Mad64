@@ -152,7 +152,7 @@ public:
     }
 
 private:
-    void RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8]);
+    void RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8], u8 pixelsDat[8]);
 
     ScreenConfig m_scPal;
     ScreenConfig m_scNtsc;

@@ -155,7 +155,7 @@ void Vic::CacheLine()
     }
 }
 
-void Vic::RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8])
+void Vic::RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8], u8 pixelsDat[8])
 {
     auto& sprCache = m_spriteCache[i];
     u8 col[4];
@@ -178,6 +178,7 @@ void Vic::RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8])
         {
             pixels[i] = col[pix&3];
             pixelsPri[i] = sprCache.pri;
+            pixelsDat[i] = 1;
         }
     }
     sprCache.cycle++;
@@ -189,18 +190,21 @@ void Vic::Step()
 
     // init our pixels out to bg color
     u8 screenPixels[8];
-    u8 screenPixelsPri[8];      // true if screen has data
+    u8 screenPixelsDat[8];      // true if screen has data
     u8 spritePixels[8];
+    u8 spritePixelsDat[8];      // true if sprite has data
     u8 spritePixelsPri[8];      // true if sprite is behind screen
 
     // prime with background color
     int bgCol = m_regs.backgroundColor0 & 15;
     for (int i = 0; i < 8; i++)
     {
-        screenPixelsPri[i] = 0;
-        spritePixelsPri[i] = 1;
         screenPixels[i] = bgCol;
+        screenPixelsDat[i] = 0;     // 1 if collidable data
+
         spritePixels[i] = bgCol;
+        spritePixelsPri[i] = 1;     // 1 if background should take priority
+        spritePixelsDat[i] = 0;     // 1 if collidable data
     }
 
     u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
@@ -337,7 +341,7 @@ void Vic::Step()
         auto& sprCache = m_spriteCache[i];
         if (sprCache.startcycle && sprCache.cycle < sprCache.cycleCount)
         {
-            RasterizeSprite(i, spritePixels, spritePixelsPri);
+            RasterizeSprite(i, spritePixels, spritePixelsPri, spritePixelsDat);
         }
     }
 
@@ -355,15 +359,49 @@ void Vic::Step()
             u16 ch = m_cachedChars[m_charCol];
             u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
             u8 data = ReadVicByte(charAddr);
-            u32 foregroundCol = (ch >> 8) & 0xf;
-
-            // blit each pixel
-            for (int i = 0; i < 8; i++)
+            u8 foregroundCol = (ch >> 8) & 0xf;
+            if (m_regs.control2 & MCM)
             {
-                if (data & (1 << (7 - i)))
+                if (foregroundCol & 0x8)
                 {
-                    screenPixels[i] = foregroundCol;
-                    screenPixelsPri[i] = 1;
+                    u8 col[4] = { (u8)(m_regs.backgroundColor0 & 0xf), (u8)(m_regs.backgroundColor1 & 0xf), (u8)(m_regs.backgroundColor2 & 0xf), (u8)(foregroundCol & 0x7) };
+
+                    // blit each pixel
+                    for (int i = 0; i < 8; i += 2)
+                    {
+                        int c = (data >> (6-i)) & 3;
+                        screenPixels[i] = col[c] & 0xf;
+                        screenPixels[i+1] = col[c] & 0xf;
+                        if (c > 1)
+                        {
+                            screenPixelsDat[i] = 1;
+                            screenPixelsDat[i+1] = 1;
+                        }
+                    }
+                }
+                else
+                {
+                    u8 fcol = foregroundCol & 0x7;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        if (data & (1 << (7 - i)))
+                        {
+                            screenPixels[i] = fcol;
+                            screenPixelsDat[i] = 1;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // blit each pixel
+                for (int i = 0; i < 8; i++)
+                {
+                    if (data & (1 << (7 - i)))
+                    {
+                        screenPixels[i] = foregroundCol;
+                        screenPixelsDat[i] = 1;
+                    }
                 }
             }
         }
@@ -373,7 +411,7 @@ void Vic::Step()
     u8 pixels[8];
     for (int i = 0; i < 8; i++)
     {
-        pixels[i] = (screenPixelsPri[i] & spritePixelsPri[i]) ? screenPixels[i] : spritePixels[i];
+        pixels[i] = ((screenPixelsDat[i] & spritePixelsPri[i]) | ~spritePixelsDat[i]) ? screenPixels[i] : spritePixels[i];
     }
 
 

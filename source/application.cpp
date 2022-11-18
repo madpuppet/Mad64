@@ -637,6 +637,7 @@ void Application::OnKeyDown(SDL_Event* e)
                     {
                         ApplyBreakpoints();
                         m_emulator->Reset(compiledFile->m_ramDataMap, compiledFile->m_ramMask, (u16)startLabel->m_value);
+                        m_runEmulation = true;
                     }
                 }
                 else
