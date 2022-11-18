@@ -70,9 +70,9 @@ CommandHelp gHELP_CMD[] = {
 
 const char* gHELP_VIC_CONTROL1[] = 
 {
-    "BIT 0..2    YSCL      Y Scroll 0..7",
-    "BIT 3       RSEL      On = 25 rows",
-    "BIT 4       BLNK      On = Blank the screen",
+    "BIT 0..2    YSCL      Y Scroll -3..4",
+    "BIT 3       RSEL      Off = 24 row mode (3 lines less on top, 4 less on bottom)",
+    "BIT 4       BLNK      Off = Blank the screen",
     "BIT 5       BMM       On = Bitmap Mode",
     "BIT 6       ECM       On = Extended Color Mode",
     "BIT 7       RC8       High bit of raster position",0
@@ -80,14 +80,14 @@ const char* gHELP_VIC_CONTROL1[] =
 const char* gHELP_VIC_CONTROL2[] =
 {
     "BIT 0..2    XSCL      X Scroll 0..7",
-    "BIT 3       CSEL      On = 41 cols",
+    "BIT 3       CSEL      Off = 38 cols (1 on left & 1 on right missing)",
     "BIT 4       MCM       On = Enable Multicolor Mode",
     "BIT 5       RST       ???",0
 };
 const char* gHELP_VIC_SCRMEM[] =
 {
     "BIT 1..3    CBL       Char Block (0..7) * 2048",
-    "BIT 4..7    SCR       Screen Loc (0.15) * 1024"
+    "BIT 4..7    SCR       Screen Loc (0.15) * 1024", 0
 };
 const char* gHELP_VIC_IRQREQ[] =
 {

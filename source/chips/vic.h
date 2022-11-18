@@ -153,6 +153,12 @@ public:
 
 private:
     void RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8], u8 pixelsDat[8]);
+    void RasterizeScreen_NormalTextMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
+    void RasterizeScreen_MulticolorTextMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
+    void RasterizeScreen_ExtendedColorTextMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
+    void RasterizeScreen_NormalBitmapMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
+    void RasterizeScreen_MulticolorBitmapMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
+    void RasterizeScreen_InvalidMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
 
     ScreenConfig m_scPal;
     ScreenConfig m_scNtsc;

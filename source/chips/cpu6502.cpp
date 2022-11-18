@@ -853,8 +853,8 @@ void Cpu6502::Decode_JMP_Ind()
 
 void Cpu6502::Decode_JSR_Abs()
 {
-    WriteByte(0x100 + m_regs.SP--, (u8)(m_regs.PC>>8));
-    WriteByte(0x100 + m_regs.SP--, (u8)m_regs.PC);
+    WriteByte(0x100 + m_regs.SP--, (u8)((m_regs.PC-1)>>8));
+    WriteByte(0x100 + m_regs.SP--, (u8)(m_regs.PC-1));
     m_regs.PC = Decode_Abs_Addr();
 }
 

@@ -60,7 +60,7 @@ start:
     sta vic.spriteYSize
     lda #$63
     sta vic.spriteXSize
-    lda #55
+    lda #0
     sta vic.spritePriority
 
     ; wait for top of screen
@@ -185,8 +185,8 @@ loop2:
 
 *=$1000
 sinewave:
-.generate.b 0,255,sin(I/256*PI*2)*60+240
+.generate.b 0,255,sin(I/256*PI*16)*10+240
 
 sinewaveHigh:
-.generate.b 0,255,((sin(I/256*PI*2)*40+250)/256)
+.generate.b 0,255,((sin(I/256*PI*16)*10+240)/256)
 

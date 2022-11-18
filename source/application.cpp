@@ -59,8 +59,9 @@ Application::Application()
             m_font = TTF_OpenFont("font.otf", 16);
             m_settings->fontSize = 16;
         }
-
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
+
+        Log("Create Renderer");
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
 
         //Get window surface
@@ -69,12 +70,16 @@ Application::Application()
         SDL_UpdateWindowSurface(m_window);
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
+        Log("Create Modules");
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
         m_emulator = new EmulatorC64();
+
+        Log("Set open logs");
         m_logWindow->SetOpenLogs(m_settings->openLogs);
 
+        Log("Reload files");
         for (auto& p : m_settings->loadedFilePaths)
         {
             LoadFile(p.c_str());
