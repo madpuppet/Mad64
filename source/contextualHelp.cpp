@@ -73,7 +73,7 @@ const char* gHELP_VIC_CONTROL1[] =
 {
     "BIT 0..2    YSCL      Y Scroll -3..4",
     "BIT 3       RSEL      Off = 24 row mode (3 lines less on top, 4 less on bottom)",
-    "BIT 4       BLNK      Off = Blank the screen",
+    "BIT 4       DEN       On = Display Enable",
     "BIT 5       BMM       On = Bitmap Mode",
     "BIT 6       ECM       On = Extended Color Mode",
     "BIT 7       RC8       High bit of raster position",0

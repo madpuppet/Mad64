@@ -117,14 +117,15 @@ void Vic::Reset()
     m_rasterLineCycle = 0;
     m_charRow = 0;
     m_backgroundCycle = 0;
-    m_bVBorder = true;
-    m_bHBorder = true;
-    m_bHBlank = true;
     m_bVBlank = true;
-    m_bBGVert = false;
-    m_bBGHoriz = false;
+    m_bHBlank = true;
+    m_bVBorder = false;
+    m_bHBorder = false;
+    m_bVBackground = false;
+    m_bHBackground = false;
 
     memcpy(&m_regs, gC64_vicIIRegisters, sizeof(m_regs));
+    m_regs.control1 = 0x1b;
 
     //test pattern
     u32* ptr = (u32*)m_textureMem;
@@ -314,14 +315,15 @@ void Vic::RasterizeSprite(int i)
         col[3] = col[2] = col[1] = (*(&m_regs.spriteColor0 + i)) & 0xf;
     }
 
-    for (int i = 0; i < 8; i++)
+    int spriteBit = 1 << i;
+    for (int b = 0; b < 8; b++)
     {
-        int pix = sprCache.pixels[sprCache.cycle * 8 + i];
+        int pix = sprCache.pixels[sprCache.cycle * 8 + b];
         if (pix)
         {
-            m_rc.spritePixels[i] = col[pix&3];
-            m_rc.spritePixelsPri[i] = sprCache.pri;
-            m_rc.spritePixelsDat[i] = 1;
+            m_rc.spritePixels[b] = col[pix&3];
+            m_rc.spritePixelsPri[b] = sprCache.pri;
+            m_rc.spritePixelsDat[b] = spriteBit;
         }
     }
     sprCache.cycle++;
@@ -454,7 +456,7 @@ void Vic::RasterizeScreen_MulticolorBitmapMode()
     // blit each pixel
     for (int i = 0; i < 8; i+=2)
     {
-        int dat = data & (3 << (6 - i));
+        int dat = (data >> (6 - i)) & 3;
         m_rc.screenPixels[i] = col[dat];
         m_rc.screenPixels[i+1] = col[dat];
         if (dat > 1)
@@ -473,26 +475,10 @@ void Vic::RasterizeScreen_InvalidMode()
     }
 }
 
-void Vic::Step()
+void Vic::RasterizeScreen()
 {
-    u32* videoOut = (u32*)(m_textureMem + (m_rasterLineCycle + m_rasterLine * m_scCurrent->cyclesPerLine) * 8 * 4);
-
-    // prime with background color
-    int bgCol = m_regs.backgroundColor0 & 15;
-    for (int i = 0; i < 8; i++)
-    {
-        m_rc.screenPixels[i] = bgCol;
-        m_rc.screenPixelsDat[i] = 0;     // 1 if collidable data
-
-        m_rc.spritePixels[i] = bgCol;
-        m_rc.spritePixelsPri[i] = 1;     // 1 if background should take priority
-        m_rc.spritePixelsDat[i] = 0;     // 1 if collidable data
-    }
-
-    RasterizeSprites();
-
     // rasterize foreground - being either text or bitmap
-    if (m_bBGVert && m_bBGHoriz)
+    if (m_bHBackground && m_bVBackground)
     {
         // build mode  ECM | BMM | MCM
         int mode = ((m_regs.control1 & ECM) ? 4 : 0) | ((m_regs.control1 & BMM) ? 2 : 0) | ((m_regs.control2 & MCM) ? 1 : 0);
@@ -531,14 +517,36 @@ void Vic::Step()
                 break;
         }
     }
+}
+
+void Vic::Step()
+{
+    u32* videoOut = (u32*)(m_textureMem + (m_rasterLineCycle + m_rasterLine * m_scCurrent->cyclesPerLine) * 8 * 4);
+
+    // prime with background color
+    int bgCol = m_regs.backgroundColor0 & 15;
+    for (int i = 0; i < 8; i++)
+    {
+        m_rc.screenPixels[i] = bgCol;
+        m_rc.screenPixelsDat[i] = 0;     // 1 if collidable data
+
+        m_rc.spritePixels[i] = bgCol;
+        m_rc.spritePixelsPri[i] = 1;     // 1 if background should take priority
+        m_rc.spritePixelsDat[i] = 0;     // 1 if collidable data
+    }
+
+    RasterizeSprites();
+    RasterizeScreen();
+
+    // increase dirty height to include current line
+    m_textureDirty.h = m_rasterLine - m_textureDirty.y + 1;
 
     // mix background and sprites
     u8 pixels[8];
     for (int i = 0; i < 8; i++)
     {
-        pixels[i] = ((m_rc.screenPixelsDat[i] & m_rc.spritePixelsPri[i]) | (~m_rc.spritePixelsDat[i]&1)) ? m_rc.screenPixels[i] : m_rc.spritePixels[i];
+        pixels[i] = ((m_rc.screenPixelsDat[i] & m_rc.spritePixelsPri[i]) | (!m_rc.spritePixelsDat[i])) ? m_rc.screenPixels[i] : m_rc.spritePixels[i];
     }
-
 
     // if we're in border, we overwrite the output with the border color
     if (m_bVBorder || m_bHBorder)
@@ -550,7 +558,7 @@ void Vic::Step()
         }
     }
 
-    if (!m_bHBlank && !m_bVBlank)
+    if (!m_bVBlank && !m_bHBlank)
     {
         // finally write pixels to the video texture
         for (int i = 0; i < 8; i++)
@@ -560,76 +568,84 @@ void Vic::Step()
     // next cycle...
     m_rasterLineCycle++;
     m_charCol++;
-
-    if (!m_textureDirty.h)
-        m_textureDirty.h = 1;
-
-    // HBlank on/off
-    if (m_rasterLineCycle == m_scCurrent->leftBorderStartCycle)
-        m_bHBlank = false;
-    else if (m_rasterLineCycle == m_scCurrent->hblankStartCycles)
-        m_bHBlank = true;
-    else if (m_rasterLineCycle == m_scCurrent->backgroundStartCycle)
+    if (m_rasterLineCycle == m_scCurrent->cyclesPerLine)
     {
-        m_bHBorder = !m_bHBorder;
-        m_bBGHoriz = true;
+        // new line
         m_charCol = 0;
-    }
-    else if (m_rasterLineCycle == m_scCurrent->rightBorderStartCycle)
-    {
-        m_bBGHoriz = false;
-        m_bHBorder = !m_bHBorder;
-    }
-    else if (m_rasterLineCycle == m_scCurrent->cyclesPerLine)
-    {
         m_charLine++;
-        m_rasterLine++;
         m_rasterLineCycle = 0;
-        m_textureDirty.h = min(m_textureDirty.h + 1, m_scCurrent->screenHeight - m_textureDirty.y);
+        m_rasterLine++;
 
-        if (m_rasterLine == m_scCurrent->topBorderStartLine)
+        if (m_charLine == 8)
         {
-            m_bVBlank = false;
-        }
-        else if (m_rasterLine == m_scCurrent->bottomBorderVBlankLine)
-        {
-            m_bVBlank = true;
-        }
-
-        int bgYOffset = (m_regs.control1 & YSCROLL) - 3;
-        if (m_rasterLine == m_scCurrent->backgroundStartLine)
-        {
-            m_bVBorder = false;
-        }
-
-        if (!m_bBGVert && m_rasterLine == m_scCurrent->backgroundStartLine + bgYOffset)
-        {
-            m_bBGVert = true;
-            m_charRow = 0;
             m_charLine = 0;
-            CacheLine();
-        }
-        else if (m_bBGVert && ((m_rasterLine - (m_scCurrent->backgroundStartLine + bgYOffset)) & 7) == 0)
-        {
             m_charRow++;
-            CacheLine();
-            m_charLine = 0;
-            if (m_charRow == 25)
-                m_bBGVert = false;
         }
 
-        if (m_rasterLine == m_scCurrent->bottomBorderStartLine)
-        {
-            m_bVBorder = !m_bVBorder;
-        }
+        // hit bottom of screen, reset to top, start a new texture dirty tracking
         if (m_rasterLine == m_scCurrent->screenHeight)
         {
             m_textureDirtyExtra = m_textureDirty;
             m_textureDirty.y = 0;
             m_textureDirty.h = 0;
             m_rasterLine = 0;
+            m_charRow = 0;
         }
     }
+
+    // vblank control
+    if (m_rasterLine == m_scCurrent->topBorderStartLine)
+        m_bVBlank = false;
+    else if (m_rasterLine == m_scCurrent->bottomBorderVBlankLine)
+        m_bVBlank = true;
+    if (m_rasterLineCycle == m_scCurrent->leftBorderStartCycle)
+        m_bHBlank = false;
+    else if (m_rasterLineCycle == m_scCurrent->hblankStartCycles)
+        m_bHBlank = true;
+
+    // horiz border control
+    if (m_rasterLineCycle == m_scCurrent->leftBorderStartCycle)
+        m_bHBorder = true;
+    else if (m_rasterLineCycle == m_scCurrent->backgroundStartCycle)
+        m_bHBorder = false;
+    else if (m_rasterLineCycle == m_scCurrent->rightBorderStartCycle)
+        m_bHBorder = true;
+    else if (m_rasterLineCycle == m_scCurrent->hblankStartCycles)
+        m_bHBorder = false;
+
+    // vert border control
+    if (m_rasterLine == m_scCurrent->topBorderStartLine)
+        m_bVBorder = true;
+    else if (m_rasterLine == m_scCurrent->backgroundStartLine && (m_regs.control1 & DEN))
+        m_bVBorder = false;
+    else if (m_rasterLine == m_scCurrent->bottomBorderStartLine)
+        m_bVBorder = true;
+    else if (m_rasterLine == m_scCurrent->bottomBorderVBlankLine)
+        m_bVBorder = false;
+
+    // background control
+    int bgYOffset = (m_regs.control1 & YSCROLL) - 3;
+    int bgXOffset = (m_regs.control2 & XSCROLL);
+    if (!m_bVBackground && (m_rasterLine == (m_scCurrent->backgroundStartLine + bgYOffset)) && (m_regs.control1 & DEN))
+    {
+        m_bVBackground = true;
+        m_charRow = 0;
+        m_charLine = 0;
+    }
+    if (m_bVBackground && !m_bHBackground && m_rasterLineCycle == m_scCurrent->backgroundStartCycle)
+    {
+        m_bHBackground = true;
+        m_charCol = 0;
+    }
+
+    if (m_bHBackground && m_charCol == 40)
+        m_bHBackground = false;
+
+    if (m_bVBackground && m_charRow == 25)
+        m_bVBackground = false;
+
+    if (m_bVBackground && m_bHBackground && m_charLine == 0)
+        CacheLine();
 
     // update vic registers
     m_regs.control1 = (m_regs.control1 & 0x7f) | ((m_rasterLine >> 1) & 0x80);

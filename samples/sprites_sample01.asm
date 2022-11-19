@@ -18,6 +18,7 @@ start:
     sta vic.sprite0Y
     lda #0
     sta vic.backgroundColor0
+    lda #1
     sta vic.borderColor
     lda #10
     sta vic.spriteMulticolor0

@@ -25,7 +25,7 @@ public:
 
     void Render(int x, int y, int zoom);
 
-    enum Control1
+    enum Control1Enum
     {
         YSCROLL = 7,
         RSEL = 8,
@@ -34,15 +34,14 @@ public:
         ECM = 64,
         RST8 = 128
     };
-    enum Control2
+    enum Control2Enum
     {
         XSCROLL = 7,
         CSEL = 8,
         MCM = 16,
         RES = 32
     };
- 
-    enum MemoryPointers
+     enum MemoryPointers
     {
         CharacterBank = 0xe,
         VideoMatrix = 0xf0
@@ -180,15 +179,16 @@ private:
     int m_rasterLine;
     int m_rasterLineCycle;
     int m_backgroundCycle;
-    int m_charRow;      // which Row of character (0..25)
-    int m_charLine;     // which line inside a single row (0..7)
-    int m_charCol;      // which character this cycle (0..40)
-    bool m_bHBlank;
-    bool m_bVBlank;
-    bool m_bHBorder;
-    bool m_bVBorder;
-    bool m_bBGVert;     // in vertical background area
-    bool m_bBGHoriz;    // in horizontal background area
+    int m_charRow;           // which Row of character (0..25)
+    int m_charLine;          // which line inside a single row (0..7)
+    int m_charCol;           // which character this cycle (0..40)
+
+    bool m_bVBlank;          // vertical blanking gap
+    bool m_bHBlank;          // horizontal blanking gap
+    bool m_bVBorder;         // vertical border enable
+    bool m_bHBorder;         // horizontal border enable
+    bool m_bVBackground;     // in vertical background area
+    bool m_bHBackground;     // in horizontal background area
 
     // data fetched for this 8 line block
     u8 m_bBMM;

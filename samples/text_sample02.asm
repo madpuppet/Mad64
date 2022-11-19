@@ -21,12 +21,12 @@ start:
     jsr waitTOF
     lda #0
     sta vic.borderColor
-    lda #vic.BLNK+vic.RSEL+0
+    lda #vic.DEN+vic.RSEL+0
     sta vic.control1
     
     lda #99
     jsr waitRL
-    lda #vic.BLNK+vic.RSEL+7
+    lda #vic.DEN+vic.RSEL+7
     sta vic.control1
     lda #1
     sta vic.borderColor

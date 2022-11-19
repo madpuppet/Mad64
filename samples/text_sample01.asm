@@ -17,9 +17,9 @@ start:
     stx anim
     stx offset
     stx offsetSpeed
-    lda #$50
+    lda #vic.BMM
     sta vic.control1
-    lda #16
+    lda #vic.MCM
     sta vic.control2
 
     lda #0
@@ -28,7 +28,7 @@ start:
     sta vic.backgroundColor1
     lda #2
     sta vic.backgroundColor2
-    lda #7
+    lda #3
     sta vic.backgroundColor3
 
 loop:
@@ -53,18 +53,20 @@ loop:
     jsr plotPoint
 
     ; switch to bitmap mode
-    lda #$30
+    lda #vic.BMM+vic.DEN
     sta vic.control1
+    lda #vic.MCM
+    sta vic.control2
     lda #$18
     sta vic.memoryPointer
 
 @lp:
     lda vic.rasterCounter
-    cmp #$90
+    cmp #140
     bne @lp-
 
     ; switch to text mode
-    lda #$00
+    lda #0
     sta vic.control1
     lda #$14
     sta vic.memoryPointer
@@ -147,12 +149,12 @@ pointYhigh:
 clr:
     ldx #0
 @lp:
-    lda #$20
+    lda #$33
     sta $0400,x
     sta $0400+250,x
     sta $0400+500,x
     sta $0400+750,x
-    lda #1
+    lda #$33
     sta $d800,x
     sta $d800+250,x
     sta $d800+500,x

@@ -40,7 +40,7 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("vic.sprite1Color", 0xd028), CompilerLabel("vic.sprite2Color", 0xd029), CompilerLabel("vic.sprite3Color", 0xd02a), CompilerLabel("vic.sprite4Color", 0xd02b),
     CompilerLabel("vic.sprite5Color", 0xd02c), CompilerLabel("vic.sprite6Color", 0xd02d), CompilerLabel("vic.sprite7Color", 0xd02e), CompilerLabel("vic.colorMemory", 0xd800),
 
-    CompilerLabel("vic.YSCR", 0x07), CompilerLabel("vic.RSEL", 0x08), CompilerLabel("vic.BLNK", 0x10), CompilerLabel("vic.BMM", 0x20), CompilerLabel("vic.ECM", 0x40), CompilerLabel("vic.RST8", 0x80),
+    CompilerLabel("vic.YSCR", 0x07), CompilerLabel("vic.RSEL", 0x08), CompilerLabel("vic.DEN", 0x10), CompilerLabel("vic.BMM", 0x20), CompilerLabel("vic.ECM", 0x40), CompilerLabel("vic.RST8", 0x80),
     CompilerLabel("vic.XSCR", 0x07), CompilerLabel("vic.CSEL", 0x08), CompilerLabel("vic.MCM", 0x10), CompilerLabel("vic.RES", 0x20),
 
     CompilerLabel("cia1.dataPortA", 0xdc00), CompilerLabel("cia1.dataPortB", 0xdc01), CompilerLabel("cia1.dataDirectionA", 0xdc02), CompilerLabel("cia1.dataDirectionB", 0xdc03),
