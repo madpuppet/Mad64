@@ -155,187 +155,22 @@ void Vic::CacheLine()
     }
 }
 
-void Vic::RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8], u8 pixelsDat[8])
+void Vic::ResetSpriteFrame()
 {
-    auto& sprCache = m_spriteCache[i];
-    u8 col[4];
-    col[0] = m_regs.backgroundColor0;
-    if (sprCache.multicolor)
-    {
-        col[3] = m_regs.spriteMulticolor1;
-        col[2] = *(&m_regs.spriteColor0 + i);
-        col[1] = m_regs.spriteMulticolor0;
-    }
-    else
-    {
-        col[3] = col[2] = col[1] = (*(&m_regs.spriteColor0 + i)) & 0xf;
-    }
-
     for (int i = 0; i < 8; i++)
     {
-        int pix = sprCache.pixels[sprCache.cycle * 8 + i];
-        if (pix)
-        {
-            pixels[i] = col[pix&3];
-            pixelsPri[i] = sprCache.pri;
-            pixelsDat[i] = 1;
-        }
-    }
-    sprCache.cycle++;
-}
-
-void Vic::RasterizeScreen_NormalTextMode(u8 screenPixels[8], u8 screenPixelsDat[8])
-{
-    // text mode
-    // fetch char byte
-    u16 ch = m_cachedChars[m_charCol];
-    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
-    u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
-    u8 data = ReadVicByte(charAddr);
-    u8 foregroundCol = (ch >> 8) & 0xf;
-
-    // blit each pixel
-    for (int i = 0; i < 8; i++)
-    {
-        if (data & (1 << (7 - i)))
-        {
-            screenPixels[i] = foregroundCol;
-            screenPixelsDat[i] = 1;
-        }
+        m_rc.spriteCache[i].startraster = false;
+        m_rc.spriteCache[i].startcycle = false;
     }
 }
 
-void Vic::RasterizeScreen_MulticolorTextMode(u8 screenPixels[8], u8 screenPixelsDat[8])
+void Vic::RasterizeSprites()
 {
-    // text mode
-    // fetch char byte
-    u16 ch = m_cachedChars[m_charCol];
-    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
-    u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
-    u8 data = ReadVicByte(charAddr);
-    u8 foregroundCol = (ch >> 8) & 0xf;
-
-    // multicolor mode only applies if text colour bit 3 is set
-    if (foregroundCol & 0x8)
-    {
-        u8 col[4] = { (u8)(m_regs.backgroundColor0 & 0xf), (u8)(m_regs.backgroundColor1 & 0xf), (u8)(m_regs.backgroundColor2 & 0xf), (u8)(foregroundCol & 0x7) };
-
-        // blit each pixel
-        for (int i = 0; i < 8; i += 2)
-        {
-            int c = (data >> (6 - i)) & 3;
-            screenPixels[i] = col[c] & 0xf;
-            screenPixels[i + 1] = col[c] & 0xf;
-            if (c > 1)
-            {
-                screenPixelsDat[i] = 1;
-                screenPixelsDat[i + 1] = 1;
-            }
-        }
-    }
-    else
-    {
-        u8 fcol = foregroundCol & 0x7;
-        for (int i = 0; i < 8; i++)
-        {
-            if (data & (1 << (7 - i)))
-            {
-                screenPixels[i] = fcol;
-                screenPixelsDat[i] = 1;
-            }
-        }
-    }
-}
-
-void Vic::RasterizeScreen_ExtendedColorTextMode(u8 screenPixels[8], u8 screenPixelsDat[8])
-{
-    // text mode
-    // fetch char byte
-    u16 ch = m_cachedChars[m_charCol];
-    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
-    u16 charAddr = charMapAddr + ((ch & 0x3f) * 8) + m_charLine;
-    u8 data = ReadVicByte(charAddr);
-    u8 extendedColor = (ch >> 6) & 3;
-    u8 bgColor = (&m_regs.backgroundColor0)[extendedColor];
-    u8 foregroundCol = (ch >> 8) & 0xf;
-
-    // blit each pixel
-    for (int i = 0; i < 8; i++)
-    {
-        if (data & (1 << (7 - i)))
-        {
-            screenPixels[i] = foregroundCol;
-            screenPixelsDat[i] = 1;
-        }
-        else
-        {
-            screenPixels[i] = bgColor;
-            screenPixelsDat[i] = 0;
-        }
-    }
-}
-
-void Vic::RasterizeScreen_NormalBitmapMode(u8 screenPixels[8], u8 screenPixelsDat[8])
-{
-    // text mode
-    // fetch char byte
-    u16 ch = m_cachedChars[m_charCol];
-    u16 bitmapAddr = ((u16)(m_regs.memoryPointers & 0x08) << 10) + (m_charRow * 40 + m_charCol) * 8 + m_charLine;
-    u8 data = ReadVicByte(bitmapAddr);
-    u8 fgCol = (ch >> 4) & 0xf;
-    u8 bgCol = ch & 0xf;
-
-    // blit each pixel
-    for (int i = 0; i < 8; i++)
-    {
-        if (data & (1 << (7 - i)))
-        {
-            screenPixels[i] = fgCol;
-            screenPixelsDat[i] = 1;
-        }
-        else
-        {
-            screenPixels[i] = bgCol;
-        }
-    }
-}
-void Vic::RasterizeScreen_MulticolorBitmapMode(u8 screenPixels[8], u8 screenPixelsDat[8])
-{
-}
-void Vic::RasterizeScreen_InvalidMode(u8 screenPixels[8], u8 screenPixelsDat[8])
-{
-}
-
-void Vic::Step()
-{
-    u32* videoOut = (u32*)(m_textureMem + (m_rasterLineCycle + m_rasterLine * m_scCurrent->cyclesPerLine) * 8 * 4);
-
-    // init our pixels out to bg color
-    u8 screenPixels[8];
-    u8 screenPixelsDat[8];      // true if screen has data
-    u8 spritePixels[8];
-    u8 spritePixelsDat[8];      // true if sprite has data
-    u8 spritePixelsPri[8];      // true if sprite is behind screen
-
-    // prime with background color
-    int bgCol = m_regs.backgroundColor0 & 15;
-    for (int i = 0; i < 8; i++)
-    {
-        screenPixels[i] = bgCol;
-        screenPixelsDat[i] = 0;     // 1 if collidable data
-
-        spritePixels[i] = bgCol;
-        spritePixelsPri[i] = 1;     // 1 if background should take priority
-        spritePixelsDat[i] = 0;     // 1 if collidable data
-    }
-
-    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
-
     // sprite data for this cycle
     for (int i = 0; i < 8; i++)
     {
         int bit = 1 << i;
-        auto& sprCache = m_spriteCache[i];
+        auto& sprCache = m_rc.spriteCache[i];
 
         // at the start of each rasterline we'll start sprites/grab data/etc
         if (m_rasterLineCycle == 0)
@@ -362,7 +197,7 @@ void Vic::Step()
             if (!sprCache.startraster && (m_regs.spriteEnable & bit))
             {
                 int spriteY = *(&m_regs.sprite0Y + 2 * i);
-                if (m_rasterLine == spriteY+1)
+                if (m_rasterLine == spriteY + 1)
                 {
                     // ready to start rendering sprite
                     sprCache.y = *(&m_regs.sprite0Y + 2);
@@ -431,7 +266,7 @@ void Vic::Step()
                             int val = bits >> (22 - b);
                             int outidx = b + (sprCache.x & 7);
                             sprCache.pixels[outidx] = val;
-                            sprCache.pixels[outidx+1] = val;
+                            sprCache.pixels[outidx + 1] = val;
                         }
                     }
                     else
@@ -455,17 +290,206 @@ void Vic::Step()
             sprCache.cycle = 0;
             sprCache.cycleCount = sprCache.sizeX ? 7 : 4;
         }
-    }
 
-    // rasterize sprites that are priority behind foreground
-    for (int i = 7; i >= 0; --i)
-    {
-        auto& sprCache = m_spriteCache[i];
         if (sprCache.startcycle && sprCache.cycle < sprCache.cycleCount)
         {
-            RasterizeSprite(i, spritePixels, spritePixelsPri, spritePixelsDat);
+            RasterizeSprite(i);
         }
     }
+}
+
+void Vic::RasterizeSprite(int i)
+{
+    auto& sprCache = m_rc.spriteCache[i];
+    u8 col[4];
+    col[0] = m_regs.backgroundColor0;
+    if (sprCache.multicolor)
+    {
+        col[3] = m_regs.spriteMulticolor1;
+        col[2] = *(&m_regs.spriteColor0 + i);
+        col[1] = m_regs.spriteMulticolor0;
+    }
+    else
+    {
+        col[3] = col[2] = col[1] = (*(&m_regs.spriteColor0 + i)) & 0xf;
+    }
+
+    for (int i = 0; i < 8; i++)
+    {
+        int pix = sprCache.pixels[sprCache.cycle * 8 + i];
+        if (pix)
+        {
+            m_rc.spritePixels[i] = col[pix&3];
+            m_rc.spritePixelsPri[i] = sprCache.pri;
+            m_rc.spritePixelsDat[i] = 1;
+        }
+    }
+    sprCache.cycle++;
+}
+
+void Vic::RasterizeScreen_NormalTextMode()
+{
+    // text mode
+    // fetch char byte
+    u16 ch = m_cachedChars[m_charCol];
+    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
+    u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
+    u8 data = ReadVicByte(charAddr);
+    u8 foregroundCol = (ch >> 8) & 0xf;
+
+    // blit each pixel
+    for (int i = 0; i < 8; i++)
+    {
+        if (data & (1 << (7 - i)))
+        {
+            m_rc.screenPixels[i] = foregroundCol;
+            m_rc.screenPixelsDat[i] = 1;
+        }
+    }
+}
+
+void Vic::RasterizeScreen_MulticolorTextMode()
+{
+    // text mode
+    // fetch char byte
+    u16 ch = m_cachedChars[m_charCol];
+    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
+    u16 charAddr = charMapAddr + ((ch & 0xff) * 8) + m_charLine;
+    u8 data = ReadVicByte(charAddr);
+    u8 foregroundCol = (ch >> 8) & 0xf;
+
+    // multicolor mode only applies if text colour bit 3 is set
+    if (foregroundCol & 0x8)
+    {
+        u8 col[4] = { (u8)(m_regs.backgroundColor0 & 0xf), (u8)(m_regs.backgroundColor1 & 0xf), (u8)(m_regs.backgroundColor2 & 0xf), (u8)(foregroundCol & 0x7) };
+
+        // blit each pixel
+        for (int i = 0; i < 8; i += 2)
+        {
+            int c = (data >> (6 - i)) & 3;
+            m_rc.screenPixels[i] = col[c] & 0xf;
+            m_rc.screenPixels[i + 1] = col[c] & 0xf;
+            if (c > 1)
+            {
+                m_rc.screenPixelsDat[i] = 1;
+                m_rc.screenPixelsDat[i + 1] = 1;
+            }
+        }
+    }
+    else
+    {
+        u8 fcol = foregroundCol & 0x7;
+        for (int i = 0; i < 8; i++)
+        {
+            if (data & (1 << (7 - i)))
+            {
+                m_rc.screenPixels[i] = fcol;
+                m_rc.screenPixelsDat[i] = 1;
+            }
+        }
+    }
+}
+
+void Vic::RasterizeScreen_ExtendedColorTextMode()
+{
+    // text mode
+    // fetch char byte
+    u16 ch = m_cachedChars[m_charCol];
+    u16 charMapAddr = (u16)(m_regs.memoryPointers & CharacterBank) << 10;
+    u16 charAddr = charMapAddr + ((ch & 0x3f) * 8) + m_charLine;
+    u8 data = ReadVicByte(charAddr);
+    u8 extendedColor = (ch >> 6) & 3;
+    u8 bgColor = (&m_regs.backgroundColor0)[extendedColor];
+    u8 foregroundCol = (ch >> 8) & 0xf;
+
+    // blit each pixel
+    for (int i = 0; i < 8; i++)
+    {
+        if (data & (1 << (7 - i)))
+        {
+            m_rc.screenPixels[i] = foregroundCol;
+            m_rc.screenPixelsDat[i] = 1;
+        }
+        else
+        {
+            m_rc.screenPixels[i] = bgColor;
+            m_rc.screenPixelsDat[i] = 0;
+        }
+    }
+}
+
+void Vic::RasterizeScreen_NormalBitmapMode()
+{
+    // text mode
+    // fetch char byte
+    u16 ch = m_cachedChars[m_charCol];
+    u16 bitmapAddr = ((u16)(m_regs.memoryPointers & 0x08) << 10) + (m_charRow * 40 + m_charCol) * 8 + m_charLine;
+    u8 data = ReadVicByte(bitmapAddr);
+    u8 fgCol = (ch >> 4) & 0xf;
+    u8 bgCol = ch & 0xf;
+
+    // blit each pixel
+    for (int i = 0; i < 8; i++)
+    {
+        if (data & (1 << (7 - i)))
+        {
+            m_rc.screenPixels[i] = fgCol;
+            m_rc.screenPixelsDat[i] = 1;
+        }
+        else
+        {
+            m_rc.screenPixels[i] = bgCol;
+        }
+    }
+}
+void Vic::RasterizeScreen_MulticolorBitmapMode()
+{
+    // text mode
+    // fetch char byte
+    u16 ch = m_cachedChars[m_charCol];
+    u16 bitmapAddr = ((u16)(m_regs.memoryPointers & 0x08) << 10) + (m_charRow * 40 + m_charCol) * 8 + m_charLine;
+    u8 data = ReadVicByte(bitmapAddr);
+    u8 col[4] = { m_regs.backgroundColor0, (u8)((ch >> 4) & 0xf), (u8)(ch & 0xf), (u8)((ch >> 8) & 0xf) };
+
+    // blit each pixel
+    for (int i = 0; i < 8; i+=2)
+    {
+        int dat = data & (3 << (6 - i));
+        m_rc.screenPixels[i] = col[dat];
+        m_rc.screenPixels[i+1] = col[dat];
+        if (dat > 1)
+        {
+            m_rc.screenPixelsDat[i] = 1;
+            m_rc.screenPixelsDat[i+1] = 1;
+        }
+    }
+}
+void Vic::RasterizeScreen_InvalidMode()
+{
+    for (int i = 0; i < 8; i += 2)
+    {
+        m_rc.screenPixels[i] = 0;
+        m_rc.screenPixelsDat[i] = 1;
+    }
+}
+
+void Vic::Step()
+{
+    u32* videoOut = (u32*)(m_textureMem + (m_rasterLineCycle + m_rasterLine * m_scCurrent->cyclesPerLine) * 8 * 4);
+
+    // prime with background color
+    int bgCol = m_regs.backgroundColor0 & 15;
+    for (int i = 0; i < 8; i++)
+    {
+        m_rc.screenPixels[i] = bgCol;
+        m_rc.screenPixelsDat[i] = 0;     // 1 if collidable data
+
+        m_rc.spritePixels[i] = bgCol;
+        m_rc.spritePixelsPri[i] = 1;     // 1 if background should take priority
+        m_rc.spritePixelsDat[i] = 0;     // 1 if collidable data
+    }
+
+    RasterizeSprites();
 
     // rasterize foreground - being either text or bitmap
     if (m_bBGVert && m_bBGHoriz)
@@ -475,35 +499,35 @@ void Vic::Step()
         switch (mode)
         {
             case 0:     //  ECM:0   BMM:0   MCM:0     normal text mode
-                RasterizeScreen_NormalTextMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_NormalTextMode();
                 break;
 
             case 1:     //  ECM:0   BMM:0   MCM:1     multicolor text mode
-                RasterizeScreen_MulticolorTextMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_MulticolorTextMode();
                 break;
 
             case 2:     //  ECM:0   BMM:1   MCM:0     normal bitmap mode
-                RasterizeScreen_NormalBitmapMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_NormalBitmapMode();
                 break;
 
             case 3:     //  ECM:0   BMM:1   MCM:1     multicolor bitmap mode
-                RasterizeScreen_MulticolorBitmapMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_MulticolorBitmapMode();
                 break;
 
             case 4:     //  ECM:1   BMM:0   MCM:0     extended color text mode
-                RasterizeScreen_ExtendedColorTextMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_ExtendedColorTextMode();
                 break;
 
             case 5:     //  ECM:1   BMM:0   MCM:0     INVALID text mode
-                RasterizeScreen_InvalidMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_InvalidMode();
                 break;
 
             case 6:     //  ECM:1   BMM:1   MCM:0     INVALID bitmap mode
-                RasterizeScreen_InvalidMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_InvalidMode();
                 break;
 
             case 7:     //  ECM:1   BMM:1   MCM:1     INVALID bitmap mode
-                RasterizeScreen_InvalidMode(screenPixels, screenPixelsDat);
+                RasterizeScreen_InvalidMode();
                 break;
         }
     }
@@ -512,7 +536,7 @@ void Vic::Step()
     u8 pixels[8];
     for (int i = 0; i < 8; i++)
     {
-        pixels[i] = ((screenPixelsDat[i] & spritePixelsPri[i]) | (~spritePixelsDat[i]&1)) ? screenPixels[i] : spritePixels[i];
+        pixels[i] = ((m_rc.screenPixelsDat[i] & m_rc.spritePixelsPri[i]) | (~m_rc.spritePixelsDat[i]&1)) ? m_rc.screenPixels[i] : m_rc.spritePixels[i];
     }
 
 
@@ -540,6 +564,7 @@ void Vic::Step()
     if (!m_textureDirty.h)
         m_textureDirty.h = 1;
 
+    // HBlank on/off
     if (m_rasterLineCycle == m_scCurrent->leftBorderStartCycle)
         m_bHBlank = false;
     else if (m_rasterLineCycle == m_scCurrent->hblankStartCycles)
@@ -571,26 +596,32 @@ void Vic::Step()
             m_bVBlank = true;
         }
 
+        int bgYOffset = (m_regs.control1 & YSCROLL) - 3;
         if (m_rasterLine == m_scCurrent->backgroundStartLine)
         {
-            m_bVBorder = !m_bVBorder;
+            m_bVBorder = false;
+        }
+
+        if (!m_bBGVert && m_rasterLine == m_scCurrent->backgroundStartLine + bgYOffset)
+        {
             m_bBGVert = true;
             m_charRow = 0;
             m_charLine = 0;
             CacheLine();
         }
-        else if (m_rasterLine == m_scCurrent->bottomBorderStartLine)
-        {
-            m_bVBorder = !m_bVBorder;
-            m_bBGVert = false;
-        }
-        else if (m_bBGVert && (m_charLine == 8))
+        else if (m_bBGVert && ((m_rasterLine - (m_scCurrent->backgroundStartLine + bgYOffset)) & 7) == 0)
         {
             m_charRow++;
             CacheLine();
             m_charLine = 0;
+            if (m_charRow == 25)
+                m_bBGVert = false;
         }
 
+        if (m_rasterLine == m_scCurrent->bottomBorderStartLine)
+        {
+            m_bVBorder = !m_bVBorder;
+        }
         if (m_rasterLine == m_scCurrent->screenHeight)
         {
             m_textureDirtyExtra = m_textureDirty;

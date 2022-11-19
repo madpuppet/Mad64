@@ -77,8 +77,8 @@ protected:
     // GENERAL METHODS
     void Update();
     void Draw();
-    void LoadFile();
-    void LoadFile(const char* path);
+    bool LoadFile();
+    bool LoadFile(const char* path);
     void SaveFile();
     void SaveFileAs();
     void CreateNewFile();

@@ -80,9 +80,17 @@ Application::Application()
         m_logWindow->SetOpenLogs(m_settings->openLogs);
 
         Log("Reload files");
-        for (auto& p : m_settings->loadedFilePaths)
+        int loadIdx = 0;
+        while (loadIdx < m_settings->loadedFilePaths.size())
         {
-            LoadFile(p.c_str());
+            if (!LoadFile(m_settings->loadedFilePaths[loadIdx].c_str()))
+            {
+                m_settings->loadedFilePaths.erase(m_settings->loadedFilePaths.begin() + loadIdx);
+            }
+            else
+            {
+                loadIdx++;
+            }
         }
         m_editWindow->SetActiveFileIdx(m_settings->activeLoadedFilePath);
 
@@ -284,7 +292,7 @@ void Application::HandleEvent(SDL_Event *e)
     }
 }
 
-void Application::LoadFile()
+bool Application::LoadFile()
 {
     const char* path = gApp->GetSettings()->activeFilePath.c_str();
     const char* patterns[3] = { "*.asm", "*.bas", "*.txt"};
@@ -292,8 +300,9 @@ void Application::LoadFile()
     if (file)
     {
         Log("Load File: %s", file);
-        LoadFile(file);
+        return LoadFile(file);
     }
+    return false;
 }
 
 SourceFile *Application::FindFile(const char* path)
@@ -309,13 +318,13 @@ SourceFile *Application::FindFile(const char* path)
     return nullptr;
 }
 
-void Application::LoadFile(const char* path)
+bool Application::LoadFile(const char* path)
 {
     auto file = FindFile(path);
     if (file)
     {
         m_editWindow->SetActiveFile(file);
-        return;
+        return true;
     }
 
     auto source = new SourceFile(path);
@@ -351,11 +360,13 @@ void Application::LoadFile(const char* path)
             m_logWindow->ClearAllLogs();
         }
         m_editWindow->CalcRects();
+        return true;
     }
     else
     {
         delete source;
     }
+    return false;
 }
 
 void Application::SaveFile()

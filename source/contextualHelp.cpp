@@ -7,6 +7,7 @@ CommandHelp gHELP_CMD[] = {
     { "dc.w", "dc.w <expr> [, <expr>]", "Insert some 16 bit values at the current memory address", 0 },
     { "dc.t", "dc.t <screenCodeText>", "Insert a string of screen code characters at the current memory address", 0 },
     { ".generate.b", ".generate.b <start>, <end>, <expr>", "Generate bytes from 'start' to 'end' inclusive", "'I' variable is set to the current index" },
+    { ".generate.s", ".generate.s <start>, <end>, <expr>", "Generate 3byte values in big endian from 'start' to 'end' inclusive", "'I' variable is set to the current index" },
     { ".generate.w", ".generate.w <start>, <end>, < expr>", "Generate words from 'start' to 'end' inclusive", "'I' variable is set to the current index" },
     { ".basicStartup", ".basicStartup [ (<addr>) ]", "Insert basic startup code to call into the assembly assembly", 0 },
     { "ADC", "ADC  Add Memory to Accumulator with Carry", "A + M + C -> A, C             N Z C I D V", "                              + + + - - +" },

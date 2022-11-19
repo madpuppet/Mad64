@@ -32,6 +32,7 @@ enum CompilerLineType
     LT_ImportedData,
     LT_GenerateBytes,
     LT_GenerateWords,
+    LT_GenerateSprites,
     LT_Instruction,
     LT_BasicStartup
 };

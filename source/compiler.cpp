@@ -40,6 +40,9 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("vic.sprite1Color", 0xd028), CompilerLabel("vic.sprite2Color", 0xd029), CompilerLabel("vic.sprite3Color", 0xd02a), CompilerLabel("vic.sprite4Color", 0xd02b),
     CompilerLabel("vic.sprite5Color", 0xd02c), CompilerLabel("vic.sprite6Color", 0xd02d), CompilerLabel("vic.sprite7Color", 0xd02e), CompilerLabel("vic.colorMemory", 0xd800),
 
+    CompilerLabel("vic.YSCR", 0x07), CompilerLabel("vic.RSEL", 0x08), CompilerLabel("vic.BLNK", 0x10), CompilerLabel("vic.BMM", 0x20), CompilerLabel("vic.ECM", 0x40), CompilerLabel("vic.RST8", 0x80),
+    CompilerLabel("vic.XSCR", 0x07), CompilerLabel("vic.CSEL", 0x08), CompilerLabel("vic.MCM", 0x10), CompilerLabel("vic.RES", 0x20),
+
     CompilerLabel("cia1.dataPortA", 0xdc00), CompilerLabel("cia1.dataPortB", 0xdc01), CompilerLabel("cia1.dataDirectionA", 0xdc02), CompilerLabel("cia1.dataDirectionB", 0xdc03),
     CompilerLabel("cia1.timerALow", 0xdc04), CompilerLabel("cia1.timerAHigh", 0xdc05), CompilerLabel("cia1.timerBLow", 0xdc06), CompilerLabel("cia1.timerBHigh", 0xdc07),
     CompilerLabel("cia1.clockTenths", 0xdc08), CompilerLabel("cia1.clockSeconds", 0xdc09), CompilerLabel("cia1.clockMinutes", 0xdc0a), CompilerLabel("cia1.clockHours", 0xdc0b),
@@ -623,6 +626,49 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
 
         double startVal;
         if (!EvaluateExpression(li, li->dataExpr[0], startVal))
+            ERR("Generate.w START param is not evaluable on first pass");
+        li->cmdParams.push_back(startVal);
+
+        if (fifo.Pop() != ",")
+            ERR("Expected comma before START param");
+
+        li->dataExpr.push_back(new CompilerExpression());
+        PopExpressionValue(fifo, li, li->dataExpr[1], 0);
+        if (li->error)
+            return;
+
+        double endVal;
+        if (!EvaluateExpression(li, li->dataExpr[1], endVal))
+            ERR("Generate.w END param is not be evaluable on first pass");
+        li->cmdParams.push_back(endVal);
+
+        if (fifo.Pop() != ",")
+            ERR("Expected comma before END param");
+
+        li->dataExpr.push_back(new CompilerExpression());
+        PopExpressionValue(fifo, li, li->dataExpr[2], 0);
+        if (li->error)
+            return;
+
+        int length = (int)endVal - (int)startVal + 1;
+        if (length <= 0)
+            ERR("Generate.w has zero length");
+
+        currentMemAddr += length*2;
+    }
+    else if (StrEqual(token, ".generate.s"))
+    {
+        li->type = LT_GenerateSprites;
+        li->memAddr = currentMemAddr;
+        li->dataEvaluated = false;
+
+        li->dataExpr.push_back(new CompilerExpression());
+        PopExpressionValue(fifo, li, li->dataExpr[0], 0);
+        if (li->error)
+            return;
+
+        double startVal;
+        if (!EvaluateExpression(li, li->dataExpr[0], startVal))
             ERR("Generate.b START param is not evaluable on first pass");
         li->cmdParams.push_back(startVal);
 
@@ -636,7 +682,7 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
 
         double endVal;
         if (!EvaluateExpression(li, li->dataExpr[1], endVal))
-            ERR("Generate.b END param is not be evaluable on first pass");
+            ERR("Generate.s END param is not be evaluable on first pass");
         li->cmdParams.push_back(endVal);
 
         if (fifo.Pop() != ",")
@@ -649,9 +695,9 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
 
         int length = (int)endVal - (int)startVal + 1;
         if (length <= 0)
-            ERR("Generate.b has zero length");
+            ERR("Generate.s has zero length");
 
-        currentMemAddr += length*2;
+        currentMemAddr += length * 3;
     }
     else if (StrEqual(token, "*"))
     {
@@ -1220,6 +1266,33 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
             li->dataEvaluated = true;
         }
     }
+    else if (li->type == LT_GenerateSprites)
+    {
+        if (!li->dataEvaluated)
+        {
+            string name = "I";
+            auto it = FindLabel(m_compiledFile, name, LabelResolve_Global, 0);
+            li->data.clear();
+
+            // copy the expression because we need to reset it after every evaluation
+            for (int i = (int)li->cmdParams[0]; i <= (int)li->cmdParams[1]; i++)
+            {
+                it->m_value = (double)i;
+                double value;
+                auto expr = li->dataExpr[2]->Clone();
+                bool success = EvaluateExpression(li, expr, value);
+                delete expr;
+
+                if (!success)
+                    return false;
+
+                li->data.push_back((u8)((u32)value >> 16));
+                li->data.push_back((u8)((u16)value >> 8));
+                li->data.push_back((u8)value & 0xff);
+            }
+            li->dataEvaluated = true;
+        }
+    }
     return true;
 }
 
@@ -1550,6 +1623,7 @@ void CompilerSourceInfo::BuildMemoryMap()
                     break;
                 case LT_GenerateBytes:
                 case LT_GenerateWords:
+                case LT_GenerateSprites:
                     memset(m_ramColorMap + cli->memAddr, (0 << 5) + (1 << 2) + 2, cli->data.size());
                     break;
                 default:
@@ -1927,6 +2001,7 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
             case LT_BasicStartup:
             case LT_GenerateBytes:
             case LT_GenerateWords:
+            case LT_GenerateSprites:
             case LT_ImportedData:
             case LT_DataBytes:
             case LT_DataWords:

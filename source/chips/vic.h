@@ -119,15 +119,6 @@ public:
         bool extraLineLatch;        // if clear & sizeY, then we don't increment raster line... just set this latch instead
         bool multicolor;            // multicolor mode
     };
-    SpriteCache m_spriteCache[8];
-    void ResetSpriteFrame()
-    {
-        for (int i=0; i<8; i++)
-        {
-            m_spriteCache[i].startraster = false;
-            m_spriteCache[i].startcycle = false;
-        }
-    }
 
     Registers& Regs() { return m_regs; }
     int CurrentRasterLine() { return m_rasterLine; }
@@ -152,13 +143,27 @@ public:
     }
 
 private:
-    void RasterizeSprite(int i, u8 pixels[8], u8 pixelsPri[8], u8 pixelsDat[8]);
-    void RasterizeScreen_NormalTextMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
-    void RasterizeScreen_MulticolorTextMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
-    void RasterizeScreen_ExtendedColorTextMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
-    void RasterizeScreen_NormalBitmapMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
-    void RasterizeScreen_MulticolorBitmapMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
-    void RasterizeScreen_InvalidMode(u8 screenPixels[8], u8 screenPixelsDat[8]);
+    struct RasterizeCache
+    {
+        SpriteCache spriteCache[8];       // cached sprite info for rasterizing
+        u8 spritePixels[8];         // final sprite pixel color for this cycle
+        u8 spritePixelsPri[8];      // final priority for each sprite pixel (1 == show background if it has data)
+        u8 spritePixelsDat[8];      // final sprite pixel data or no data mask
+        u8 screenPixels[8];         // background pixel color
+        u8 screenPixelsDat[8];      // background pixel has data  (else its just background color)
+    } m_rc;
+
+    void RasterizeSprites();
+    void RasterizeSprite(int i);
+    void ResetSpriteFrame();
+
+    void RasterizeScreen();
+    void RasterizeScreen_NormalTextMode();
+    void RasterizeScreen_MulticolorTextMode();
+    void RasterizeScreen_ExtendedColorTextMode();
+    void RasterizeScreen_NormalBitmapMode();
+    void RasterizeScreen_MulticolorBitmapMode();
+    void RasterizeScreen_InvalidMode();
 
     ScreenConfig m_scPal;
     ScreenConfig m_scNtsc;

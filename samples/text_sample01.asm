@@ -19,7 +19,7 @@ start:
     stx offsetSpeed
     lda #$50
     sta vic.control1
-    lda #8
+    lda #16
     sta vic.control2
 
     lda #0
@@ -152,6 +152,11 @@ clr:
     sta $0400+250,x
     sta $0400+500,x
     sta $0400+750,x
+    lda #1
+    sta $d800,x
+    sta $d800+250,x
+    sta $d800+500,x
+    sta $d800+750,x
     lda #$0
     sta $2000,x
     sta $2000+250,x
@@ -180,9 +185,9 @@ loopHigh:
     .generate.b 0,255,(floor(12+sin(I/256*PI*2)*11)*40 + floor(15+sin(I/256*PI*4)*10)) / 256
 
 dotsX:
-    .generate.b 0,255, sin(I/256*PI*2)*120+121
+    .generate.b 0,255, cos(I/256*PI*2)*40 + cos(I/256*PI*4)*50 + 121
 dotsY:
-    .generate.b 0,255, sin(I/256*PI*8)*30+50
+    .generate.b 0,255, sin(I/256*PI*2)*30 + cos(I/256*PI*16)*10 + 50
     
 
     

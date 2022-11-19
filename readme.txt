@@ -110,6 +110,7 @@ dc.t "hi"  - declare some text. also accepts ".text"
 .import "file"                          - import a binary file to the current mem addr. path is local to asm file location.
 .generate.b (0,255,sin(I/255.0*PI))     - generate data bytes using iterator 0 to 255 accessible through I variable
 .generate.w (0,255,sin(I/255.0*PI))     - generate data words using iterator 0 to 255 accessible through I variable
+.generate.s (0,255,sin(I/255.0*PI))     - generate data 3 byte values using iterator 0 to 255 accessible through I variable
 .basicStartup                           - generate basic header code to call next line is assembly
 .basicStartup(startLabel)               - generate basic header code to call "startLabel" as entry point to assembly
 
