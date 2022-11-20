@@ -174,7 +174,7 @@ void EditWindow::Draw()
 	SDL_Color inactive = { 64, 84, 100, 255 };
 
 	int windowWidth, windowHeight;
-	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, &windowHeight);
+	SDL_GetRendererOutputSize(gApp->GetRenderer(), &windowWidth, &windowHeight);
 
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &m_titleTabsRect);
@@ -490,7 +490,7 @@ void EditWindow::OnResize()
 	// clamp the divides so they are on screen
 	auto settings = gApp->GetSettings();
 	int windowWidth, windowHeight;
-	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, &windowHeight);
+	SDL_GetRendererOutputSize(gApp->GetRenderer(), &windowWidth, &windowHeight);
 	settings->xPosContextHelp = min(settings->xPosContextHelp, windowWidth - 16);
 	settings->xPosText = min(settings->xPosText, settings->xPosContextHelp-32);
 	settings->xPosDecode = min(settings->xPosDecode, settings->xPosText - 16);
@@ -502,7 +502,7 @@ void EditWindow::OnResize()
 void EditWindow::CalcRects()
 {
 	int windowWidth, windowHeight;
-	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, &windowHeight);
+	SDL_GetRendererOutputSize(gApp->GetRenderer(), &windowWidth, &windowHeight);
 
 	Log("CalcRects: WindowSize %d,%d", windowWidth, windowHeight);
 
@@ -990,8 +990,8 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 	m_mouseX = e->motion.x;
 	m_mouseY = e->motion.y;
 
-	int windowWidth;
-	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, 0);
+	int windowHeight, windowWidth;
+	SDL_GetRendererOutputSize(gApp->GetRenderer(), &windowWidth, &windowHeight);
 
 	auto settings = gApp->GetSettings();
 	if (m_mouseMarking)
