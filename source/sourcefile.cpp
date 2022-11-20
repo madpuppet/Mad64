@@ -260,6 +260,7 @@ SourceLine::SourceLine(const char* start, const char* end)
 SourceLine::SourceLine()
 {
     m_gcText = new GraphicChunk();
+    m_breakpoint = false;
 }
 
 SourceLine::~SourceLine()
