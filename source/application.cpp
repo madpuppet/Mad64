@@ -62,7 +62,12 @@ Application::Application()
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
 
         Log("Create Renderer");
+
+#if defined(__APPLE__)
+        m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_SOFTWARE);
+#else
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
+#endif
 
         //Get window surface
         SDL_Surface *screenSurface = SDL_GetWindowSurface(m_window);

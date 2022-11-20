@@ -34,6 +34,8 @@ add_executable(Mad64
 	source/chips/vic.cpp
 )
 
+if (APPLE)
+
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 
@@ -42,8 +44,15 @@ message(STATUS "Configuring using SDL lib directories ${SDL2_LIBRARIES}")
 
 target_link_libraries(Mad64 SDL2::SDL2)
 target_link_libraries(Mad64 SDL2_ttf)
+target_include_directories(Mad64 PUBLIC "include" , "source")
+
+else()
 
 target_include_directories(Mad64 PUBLIC "include" , "source")
+target_link_directories(Mad64 PUBLIC "lib")
+target_link_libraries(Mad64 SDL2 SDL2_ttf SDL2main)
+
+endif()
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 	make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/samples)
