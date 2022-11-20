@@ -69,8 +69,23 @@ Application::Application()
         m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
 #endif
 
+        if (m_renderer == NULL)
+        {
+            Log("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
+            m_quit = true;
+            exit(0);
+        }
+
         //Get window surface
         SDL_Surface *screenSurface = SDL_GetWindowSurface(m_window);
+
+        if (screenSurface == NULL)
+        {
+            Log("Could not get window surfce! SDL_Error: %s\n", SDL_GetError());
+            m_quit = true;
+            exit(0);
+        }
+
         SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x00, 0x00, 0x60));
         SDL_UpdateWindowSurface(m_window);
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
