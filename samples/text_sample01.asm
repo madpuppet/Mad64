@@ -6,6 +6,7 @@ offsetSpeed = $52
 
 param1 = $60
 param2 = $61
+scroll = $64
 
 tmp1 = $62
 tmp2 = $63
@@ -17,7 +18,7 @@ start:
     stx anim
     stx offset
     stx offsetSpeed
-    lda #vic.BMM
+    lda #vic.BMM+vic.DEN
     sta vic.control1
     lda #vic.MCM
     sta vic.control2
@@ -56,6 +57,11 @@ loop:
     lda #vic.BMM+vic.DEN
     sta vic.control1
     lda #vic.MCM
+    inc scroll
+    lda scroll
+    and #7
+    clc
+    adc #vic.MCM
     sta vic.control2
     lda #$18
     sta vic.memoryPointer
@@ -68,6 +74,7 @@ loop:
     ; switch to text mode
     lda #0
     sta vic.control1
+    sta vic.control2
     lda #$14
     sta vic.memoryPointer
 

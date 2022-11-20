@@ -516,6 +516,41 @@ void Vic::RasterizeScreen()
                 RasterizeScreen_InvalidMode();
                 break;
         }
+
+        // handle bit shift
+        int xshift = m_regs.control2 & XSCROLL;
+        if (xshift != 0)
+        {
+            // backup the old extra pixels
+            u8 tmpPixels[8];
+            u8 tmpPixelsDat[8];
+            for (int i = 0; i < 8; i++)
+            {
+                tmpPixels[i] = m_rc.screenSPixels[i];
+                tmpPixelsDat[i] = m_rc.screenSPixelsDat[i];
+            }
+
+            // shift out the new pixels
+            for (int i = 0; i < xshift; i++)
+            {
+                m_rc.screenSPixels[i] = m_rc.screenPixels[8 - xshift + i];
+                m_rc.screenSPixelsDat[i] = m_rc.screenPixelsDat[8 - xshift + i];
+            }
+
+            // shift screen pixels
+            for (int i = 0; i < 8-xshift; i++)
+            {
+                m_rc.screenPixels[7 - i] = m_rc.screenPixels[7 - i - xshift];
+                m_rc.screenPixelsDat[7 - i] = m_rc.screenPixelsDat[7 - i - xshift];
+            }
+
+            // copy in saved pixels
+            for (int i = 0; i < xshift; i++)
+            {
+                m_rc.screenPixels[i] = tmpPixels[i];
+                m_rc.screenPixelsDat[i] = tmpPixelsDat[i];
+            }
+        }
     }
 }
 
@@ -529,7 +564,6 @@ void Vic::Step()
     {
         m_rc.screenPixels[i] = bgCol;
         m_rc.screenPixelsDat[i] = 0;     // 1 if collidable data
-
         m_rc.spritePixels[i] = bgCol;
         m_rc.spritePixelsPri[i] = 1;     // 1 if background should take priority
         m_rc.spritePixelsDat[i] = 0;     // 1 if collidable data
@@ -552,9 +586,26 @@ void Vic::Step()
     if (m_bVBorder || m_bHBorder)
     {
         u8 col = m_regs.borderColor & 15;
-        for (int i = 0; i < 8; i++)
+        if ((m_regs.control1 & CSEL) || m_bVBorder || (m_rasterLineCycle != m_scCurrent->backgroundStartCycle && m_rasterLineCycle != m_scCurrent->rightBorderStartCycle - 2))
         {
-            pixels[i] = col;
+            for (int i = 0; i < 8; i++)
+            {
+                pixels[i] = col;
+            }
+        }
+        else if (m_rasterLineCycle == m_scCurrent->backgroundStartCycle)
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                pixels[i] = col;
+            }
+        }
+        else
+        {
+            for (int i = 6; i < 8; i++)
+            {
+                pixels[i] = col;
+            }
         }
     }
 
@@ -604,21 +655,25 @@ void Vic::Step()
         m_bHBlank = true;
 
     // horiz border control
+    int leftBorder = (m_regs.control2 & CSEL) ? m_scCurrent->backgroundStartCycle : m_scCurrent->backgroundStartCycle + 1;
+    int rightBorder = (m_regs.control2 & CSEL) ? m_scCurrent->rightBorderStartCycle : m_scCurrent->rightBorderStartCycle - 2;
     if (m_rasterLineCycle == m_scCurrent->leftBorderStartCycle)
         m_bHBorder = true;
-    else if (m_rasterLineCycle == m_scCurrent->backgroundStartCycle)
+    else if (m_rasterLineCycle == leftBorder)
         m_bHBorder = false;
-    else if (m_rasterLineCycle == m_scCurrent->rightBorderStartCycle)
+    else if (m_rasterLineCycle == rightBorder)
         m_bHBorder = true;
     else if (m_rasterLineCycle == m_scCurrent->hblankStartCycles)
         m_bHBorder = false;
 
     // vert border control
+    int topBorder = (m_regs.control1 & RSEL) ? m_scCurrent->backgroundStartLine : m_scCurrent->backgroundStartLine +3;
+    int bottomBorder = (m_regs.control1 & RSEL) ? m_scCurrent->bottomBorderStartLine : m_scCurrent->bottomBorderStartLine-4;
     if (m_rasterLine == m_scCurrent->topBorderStartLine)
         m_bVBorder = true;
-    else if (m_rasterLine == m_scCurrent->backgroundStartLine && (m_regs.control1 & DEN))
+    else if (m_rasterLine == topBorder && (m_regs.control1 & DEN))
         m_bVBorder = false;
-    else if (m_rasterLine == m_scCurrent->bottomBorderStartLine)
+    else if (m_rasterLine == bottomBorder)
         m_bVBorder = true;
     else if (m_rasterLine == m_scCurrent->bottomBorderVBlankLine)
         m_bVBorder = false;
@@ -636,6 +691,12 @@ void Vic::Step()
     {
         m_bHBackground = true;
         m_charCol = 0;
+
+        for (int i = 0; i < 8; i++)
+        {
+            m_rc.screenSPixels[i] = m_regs.backgroundColor0;
+            m_rc.screenSPixelsDat[i] = 0;     // 1 if collidable data
+        }
     }
 
     if (m_bHBackground && m_charCol == 40)

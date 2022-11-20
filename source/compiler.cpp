@@ -1411,7 +1411,7 @@ void Compiler::Update()
 
             lw->ClearLog(LogWindow::LF_CompilerWarning);
             lw->LogText(LogWindow::LF_CompilerWarning, FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS));
-            FlushErrors();
+            m_compiledFile->FlushErrors();
 
             // reset emulator
             auto startLabel = gApp->GetCompiler()->FindMatchingLabel(m_compiledFile, "start");
@@ -1442,7 +1442,6 @@ void Compiler::DoCompile()
 
     u32 currentMemAddr = 0;
 
-    m_errors.clear();
     m_compiledFile = new CompilerSourceInfo();
     m_compiledFile->m_sourceVersion = m_activeFile->m_sourceVersion;
 
@@ -1485,7 +1484,7 @@ void Compiler::DoCompile()
     m_compiledFile->m_compileTimeMS = PF.Time();
 }
 
-void Compiler::Error(const string& text, int lineNmbr)
+void CompilerSourceInfo::Error(const string& text, int lineNmbr)
 {
     string out = FormatString("%d: %s", lineNmbr+1, text.c_str());
     auto item = new ErrorItem();
@@ -1494,7 +1493,7 @@ void Compiler::Error(const string& text, int lineNmbr)
     m_errors.push_back(item);
 }
 
-void Compiler::FlushErrors()
+void CompilerSourceInfo::FlushErrors()
 {
     std::sort(m_errors.begin(), m_errors.end(), [](ErrorItem* a, ErrorItem* b) { return a->lineNmbr < b->lineNmbr; });
 

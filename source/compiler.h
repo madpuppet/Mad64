@@ -167,6 +167,14 @@ public:
     vector<CompilerLabel*> m_labels;
     vector<CompilerLineInfo*> m_lines;
 
+    // errors logged during compilation
+    struct ErrorItem
+    {
+        string text;
+        int lineNmbr;
+    };
+    vector<ErrorItem*> m_errors;
+
     // track how long it took to compile
     double m_compileTimeMS;
 
@@ -179,6 +187,9 @@ public:
     u8 m_ramDataMap[65536];
     // mask of which bytes are modified (0 or 255)
     u8 m_ramMask[65536];
+
+    void Error(const string& text, int lineNmbr);
+    void FlushErrors();
 };
 
 struct TokenFifo
@@ -247,10 +258,10 @@ struct TokenFifo
     string m_end;
 };
 
-#define ERR(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return; }
-#define ERR_RF(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; return false; }
-#define ERR_NOLINE(...)  { string error = FormatString(__VA_ARGS__); Error(error, 0); return; }
-#define ERR_NORET(...)  { string error = FormatString(__VA_ARGS__); Error(error, li->lineNmbr); li->error = true; }
+#define ERR(...)  { string error = FormatString(__VA_ARGS__); m_compiledFile->Error(error, li->lineNmbr); li->error = true; return; }
+#define ERR_RF(...)  { string error = FormatString(__VA_ARGS__); m_compiledFile->Error(error, li->lineNmbr); li->error = true; return false; }
+#define ERR_NOLINE(...)  { string error = FormatString(__VA_ARGS__); m_compiledFile->Error(error, 0); return; }
+#define ERR_NORET(...)  { string error = FormatString(__VA_ARGS__); m_compiledFile->Error(error, li->lineNmbr); li->error = true; }
 
 #if 0
 class TokenisedLine
@@ -352,15 +363,6 @@ public:
     void AddCommandsContaining(vector<CommandHelp*>& commands, const string& token);
     CommandHelp *FindMatchingCommand(const string& token);
     CompilerLabel* FindMatchingLabel(CompilerSourceInfo* si, const string& token);
-
-    struct ErrorItem
-    {
-        string text;
-        int lineNmbr;
-    };
-    vector<ErrorItem*> m_errors;
-    void Error(const string &text, int lineNmbr);
-    void FlushErrors();
 
     void LogContextualHelp(SourceFile* sf, int line);
 

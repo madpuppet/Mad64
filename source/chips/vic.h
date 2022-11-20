@@ -150,6 +150,8 @@ private:
         u8 spritePixelsDat[8];      // final sprite pixel data or no data mask
         u8 screenPixels[8];         // background pixel color
         u8 screenPixelsDat[8];      // background pixel has data  (else its just background color)
+        u8 screenSPixels[8];        // shifted background pixel color
+        u8 screenSPixelsDat[8];     // shifted background pixel has data  (else its just background color)
     } m_rc;
 
     void RasterizeSprites();
