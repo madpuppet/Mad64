@@ -20,18 +20,19 @@ sudo apt-get install libsdl2-ttf-dev
 sudo apt install git
 git clone https://github.com/madpuppet/Mad64
 cd Mad64
-git pull -- update latest
 cmake -B build
 cmake --build build --config release
-cd build
-./Mad64
+build/Mad64
 
 ** MacOS **
-??? I don't have a mac to test the build process.
-You'll certainly need to install   CMAKE, GIT, SDL2, SDL2_TTF
-You can install those through Brew or go to their websites.
-You may need XCode as well.
-CMake should be able to build the project using XCode framework
+Install Brew
+Using Brew,  install  CMAKE, GIT, SDL2, SDL2_TTF
+git clone https://github.com/madpuppet/Mad64
+cd Mad64
+cmake -B build
+cmake --build build --config release
+build/Mad64
+
 
 
 ;====== FILE MANIPULATION

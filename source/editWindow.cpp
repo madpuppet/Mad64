@@ -503,6 +503,9 @@ void EditWindow::CalcRects()
 {
 	int windowWidth, windowHeight;
 	SDL_GetWindowSize(gApp->GetWindow(), &windowWidth, &windowHeight);
+
+	Log("CalcRects: WindowSize %d,%d", windowWidth, windowHeight);
+
 	auto settings = gApp->GetSettings();
 	int editHeight = windowHeight - settings->lineHeight*2;
 
