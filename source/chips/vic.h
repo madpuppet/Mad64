@@ -127,7 +127,6 @@ public:
 
     // give access to 16k of memory
     void SetReadVicByte(const ReadByteHook& hook) { ReadVicByte = hook; }
-    void SetReadColorByte(const ReadByteHook& hook) { ReadColorByte = hook; }
 
     // give access to 16k of memory
     u8 ReadVicRegByte(u16 addr) 
@@ -139,6 +138,15 @@ public:
     {
         u16 bound_addr = addr % sizeof(Registers);
         ((u8*)&m_regs)[bound_addr] = val;
+    }
+
+    u8 ReadVicColorByte(u16 addr)
+    {
+        return m_colorMem[addr];
+    }
+    void WriteVicColorByte(u16 addr, u8 val)
+    {
+        m_colorMem[addr] = val & 0xf;
     }
 
 private:
@@ -171,8 +179,7 @@ private:
     ScreenConfig *m_scCurrent;
 
     // memory hooks
-    ReadByteHook ReadVicByte;
-    ReadByteHook ReadColorByte;
+    ReadByteHook ReadVicByte;       // read a byte from the current vic 16k memory bank
 
     SDL_Texture* m_texture;
     u8* m_textureMem;
@@ -198,6 +205,9 @@ private:
     u8 m_bMCM;
     u16 m_cachedChars[40];     // text characters for this line [12 bits where high bits are from color memory]
     void CacheLine();
+
+    // vic holds the color memory
+    u8 m_colorMem[1024];
 
     SDL_Rect m_textureDirty;
     SDL_Rect m_textureDirtyExtra;

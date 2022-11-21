@@ -13,13 +13,14 @@ EmulatorC64::EmulatorC64()
 	// hook chips up to communicate with each other in a way that they don't need to know what the chips are
 	m_mem->SetReadVicRegByte(DELEGATE_EX(m_vic, Vic::ReadVicRegByte));
 	m_mem->SetWriteVicRegByte(DELEGATE_EX(m_vic, Vic::WriteVicRegByte));
+	m_mem->SetReadVicColorByte(DELEGATE_EX(m_vic, Vic::ReadVicColorByte));
+	m_mem->SetWriteVicColorByte(DELEGATE_EX(m_vic, Vic::WriteVicColorByte));
 
 	m_cpu->SetMemReadByte(DELEGATE_EX(m_mem, MemC64::ReadByte));
 	m_cpu->SetMemWriteByte(DELEGATE_EX(m_mem, MemC64::WriteByte));
 	m_cpu->SetBreakpointCheck(DELEGATE(EmulatorC64::CheckBreakpoint));
 
 	m_vic->SetReadVicByte(DELEGATE_EX(m_mem, MemC64::ReadVicBankByte));
-	m_vic->SetReadColorByte(DELEGATE_EX(m_mem, MemC64::ReadColorRamByte));
 }
 
 EmulatorC64::~EmulatorC64()

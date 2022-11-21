@@ -109,6 +109,7 @@ void Vic::FlushTexture()
 
 void Vic::Reset()
 {
+    memset(m_colorMem, 14, 1024);
     memset(m_textureMem, 0, m_scCurrent->screenWidth * m_scCurrent->screenHeight * 4);
     m_textureDirty = { 0,0,m_scCurrent->screenWidth, m_scCurrent->screenHeight };
     m_textureDirtyExtra = { 0,0,m_scCurrent->screenWidth, 0 };
@@ -152,7 +153,7 @@ void Vic::CacheLine()
     u16 colorAddr = m_charRow * 40;
     for (int i = 0; i < 40; i++)
     {
-        m_cachedChars[i] = ReadVicByte(videoAddr+i) | (ReadColorByte(colorAddr+i) << 8);
+        m_cachedChars[i] = ReadVicByte(videoAddr+i) | (m_colorMem[colorAddr+i] << 8);
     }
 }
 
@@ -667,7 +668,7 @@ void Vic::Step()
         m_bHBorder = false;
 
     // vert border control
-    int topBorder = (m_regs.control1 & RSEL) ? m_scCurrent->backgroundStartLine : m_scCurrent->backgroundStartLine +3;
+    int topBorder = (m_regs.control1 & RSEL) ? m_scCurrent->backgroundStartLine : m_scCurrent->backgroundStartLine + 4;
     int bottomBorder = (m_regs.control1 & RSEL) ? m_scCurrent->bottomBorderStartLine : m_scCurrent->bottomBorderStartLine-4;
     if (m_rasterLine == m_scCurrent->topBorderStartLine)
         m_bVBorder = true;

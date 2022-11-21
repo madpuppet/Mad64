@@ -16,7 +16,7 @@ start:
 @lp1:
     ldx #250
 @lp2:
-    lda #35
+    lda #108
 target:
     sta $0400
     clc
@@ -46,7 +46,7 @@ loop:
     dec delay
     bne noScroll
     inc temp
-    lda #7
+    lda #10
     sta delay
 noScroll:
 

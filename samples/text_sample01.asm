@@ -14,6 +14,9 @@ tmp2 = $63
 start:
     sei
     jsr clr
+    
+    ; test bank switching - to copy FONT in
+    jsr copyFont
     ldx #0
     stx anim
     stx offset
@@ -56,12 +59,10 @@ loop:
     ; switch to bitmap mode
     lda #vic.BMM+vic.DEN
     sta vic.control1
-    lda #vic.MCM
+    lda #0
     inc scroll
-    lda scroll
-    and #7
-    clc
-    adc #vic.MCM
+    ldx scroll
+    lda scrollWave,x
     sta vic.control2
     lda #$18
     sta vic.memoryPointer
@@ -74,6 +75,7 @@ loop:
     ; switch to text mode
     lda #0
     sta vic.control1
+    lda #vic.MCM
     sta vic.control2
     lda #$14
     sta vic.memoryPointer
@@ -152,16 +154,18 @@ pointYlow:
     .generate.b 0,199,<((I&7)+floor(I/8)*40*8)
 pointYhigh:
     .generate.b 0,199,>((I&7)+floor(I/8)*40*8)
+scrollWave:
+    .generate.b 0,255,(sin(I/256*PI*8)+1)*3.99
 
 clr:
     ldx #0
 @lp:
-    lda #$33
+    lda #$12
     sta $0400,x
     sta $0400+250,x
     sta $0400+500,x
     sta $0400+750,x
-    lda #$33
+    lda #34
     sta $d800,x
     sta $d800+250,x
     sta $d800+500,x
@@ -187,6 +191,32 @@ clr:
     cpx #250
     bne @lp-
     rts    
+    
+copyFont:
+    lda #$d0
+    sta @lp2+ +2
+    lda #$20
+    sta @lp2+ +5
+    lda #3
+    sta 1
+
+    ldx #8
+@lp1:
+    ldy #0
+@lp2:
+    lda $d000,y
+    sta $2000,y
+    iny
+    bne @lp2-
+    
+    inc @lp2- + 2
+    inc @lp2- + 5
+    dex
+    bne @lp1-
+
+    lda #7
+    sta 1
+    rts
         
 loopLow:
     .generate.b 0,255,(floor(12+sin(I/256*PI*2)*11)*40 + floor(15+sin(I/256*PI*4)*10)) % 256
