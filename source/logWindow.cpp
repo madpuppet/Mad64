@@ -182,8 +182,8 @@ void LogWindow::Update()
 		LogText(LF_Registers, FormatString("%03x %03x      %d   %d     %d   %d     %d   %d   %d", 
 			rasterLine, rasterRow,
 			vicRegs.control2 & Vic::XSCROLL, vicRegs.control1 & Vic::YSCROLL,
-			vicRegs.control1 & Vic::CSEL ? 1 : 0, vicRegs.control1 & Vic::RSEL ? 1 : 0,
-			vicRegs.control1 & Vic::ECM ? 1 : 0, vicRegs.control2 & Vic::MCM ? 1 : 0, vicRegs.control1 & Vic::BMM ? 1 : 0));
+			(vicRegs.control2 & Vic::CSEL) ? 1 : 0, (vicRegs.control1 & Vic::RSEL) ? 1 : 0,
+			(vicRegs.control1 & Vic::ECM) ? 1 : 0, (vicRegs.control2 & Vic::MCM) ? 1 : 0, (vicRegs.control1 & Vic::BMM) ? 1 : 0));
 	}
 
 	if (m_autoScroll)

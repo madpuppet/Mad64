@@ -46,7 +46,14 @@ public:
         CharacterBank = 0xe,
         VideoMatrix = 0xf0
     };
-
+     enum Interrupts
+     {
+         IRST = 0x01,
+         IMBC = 0x02,
+         IMMC = 0x04,
+         ILP = 0x08,
+         IRQ = 0x80
+     };
     struct Registers
     {
         u8 sprite0X;
@@ -65,6 +72,7 @@ public:
         u8 sprite6Y;
         u8 sprite7X;
         u8 sprite7Y;
+
         u8 spriteXMSB;
         u8 control1;
         u8 rasterCounter;
@@ -81,6 +89,7 @@ public:
         u8 spriteXEnlarge;
         u8 spriteSpriteCollision;
         u8 spriteDataCollision;
+
         u8 borderColor;
         u8 backgroundColor0;
         u8 backgroundColor1;
@@ -96,6 +105,8 @@ public:
         u8 spriteColor5;
         u8 spriteColor6;
         u8 spriteColor7;
+
+        u8 pad[17];
     };
 
     struct SpriteCache
@@ -128,6 +139,9 @@ public:
     // give access to 16k of memory
     void SetReadVicByte(const ReadByteHook& hook) { ReadVicByte = hook; }
 
+    // set the callback for triggering a cpu interrupt
+    void SetTriggerInterrupt(const InterruptHook& hook) { TriggerInterrupt = hook; }
+
     // give access to 16k of memory
     u8 ReadVicRegByte(u16 addr) 
     {
@@ -136,8 +150,23 @@ public:
     }
     void WriteVicRegByte(u16 addr, u8 val)
     {
-        u16 bound_addr = addr % sizeof(Registers);
+        u16 bound_addr = addr & 63;
         ((u8*)&m_regs)[bound_addr] = val;
+
+        if (bound_addr == (u16)((u64)&(((Registers*)0)->control1)))
+        {
+            m_interruptRasterline = (m_interruptRasterline & 0xff) | (((u16)val & 0x80) << 1);
+        }
+        else if (bound_addr == (u16)((u64) & (((Registers*)0)->rasterCounter)))
+        {
+            m_interruptRasterline = (m_interruptRasterline & 0x100) | val;
+        }
+        else if (bound_addr == (u16)((u64) & (((Registers*)0)->interruptRegister)))
+        {
+            // clear interrupt occurred
+            m_interruptLatch = false;
+            ((u8*)&m_regs)[bound_addr] = val | 0xf0;
+        }
     }
 
     u8 ReadVicColorByte(u16 addr)
@@ -179,7 +208,8 @@ private:
     ScreenConfig *m_scCurrent;
 
     // memory hooks
-    ReadByteHook ReadVicByte;       // read a byte from the current vic 16k memory bank
+    ReadByteHook ReadVicByte;        // read a byte from the current vic 16k memory bank
+    InterruptHook TriggerInterrupt;  // trigger an interrupt
 
     SDL_Texture* m_texture;
     u8* m_textureMem;
@@ -205,6 +235,10 @@ private:
     u8 m_bMCM;
     u16 m_cachedChars[40];     // text characters for this line [12 bits where high bits are from color memory]
     void CacheLine();
+
+    // interrupt rasterline
+    u16 m_interruptRasterline;
+    bool m_interruptLatch;
 
     // vic holds the color memory
     u8 m_colorMem[1024];

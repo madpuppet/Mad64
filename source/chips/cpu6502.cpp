@@ -196,10 +196,9 @@ void Cpu6502::Decode_BRK_Imp()
 void Cpu6502::Decode_RTI_Imp()
 {
     u8 sr = ReadByte(0x100 + ++m_regs.SP);
-    u16 addr = ReadByte(0x100 + ++m_regs.SP);
-    addr = addr | (ReadByte(0x10- + ++m_regs.SP) << 8);
-    m_regs.SR = (m_regs.SR & 0x30) | (sr & 0xcf);
-    m_regs.PC = addr + 1;
+    u16 addr = ReadByte(0x100 + ++m_regs.SP) | (ReadByte(0x100 + ++m_regs.SP) << 8);
+    m_regs.SR = (m_regs.SR & SR_Break) | (sr & ~SR_Break);
+    m_regs.PC = addr;
 }
 
 void Cpu6502::Decode_RTS_Imp()
@@ -1190,6 +1189,9 @@ void Cpu6502::Reset(u16 cpuStart)
     memset(&m_regs, 0, sizeof(m_regs));
     m_regs.PC = cpuStart;
     m_regs.SP = 0xff;
+    m_regs.SR = 0;
+    m_irqInterrupt = 0;
+    m_nmiInterrupt = 0;
 }
 
 bool Cpu6502::IsOpcode(const char* text)
@@ -1242,9 +1244,32 @@ bool Cpu6502::Step()
     {
         if (m_regs.decodeCycle == 0)
         {
-            u8 op = ReadByte(m_regs.PC++);
-            m_regs.op = &m_opcodes[op];
-            m_regs.opcodeCycleCount = m_regs.op->cycles;
+            if (m_nmiInterrupt || m_irqInterrupt)
+            {
+                // not sure how long an interrupt takes...
+                m_regs.delayCycles = 4;
+                WriteByte(0x100 + m_regs.SP--, (u8)((m_regs.PC) >> 8));
+                WriteByte(0x100 + m_regs.SP--, (u8)(m_regs.PC));
+                WriteByte(0x100 + m_regs.SP--, m_regs.SR);
+                m_regs.SR |= SR_Interrupt;
+                if (m_nmiInterrupt)
+                {
+                    m_nmiInterrupt = false;
+                    m_regs.PC = ReadByte(0xfffa) + (ReadByte(0xfffb) << 8);
+                }
+                else if (m_irqInterrupt)
+                {
+                    m_irqInterrupt = false;
+                    m_regs.PC = ReadByte(0xfffe) + (ReadByte(0xffff) << 8);
+                }
+                return false;
+            }
+            else
+            {
+                u8 op = ReadByte(m_regs.PC++);
+                m_regs.op = &m_opcodes[op];
+                m_regs.opcodeCycleCount = m_regs.op->cycles;
+            }
         }
         else if (m_regs.decodeCycle == 1 && m_regs.op->addressMode >= AM_Imm)
         {
@@ -1286,4 +1311,22 @@ void Cpu6502::WriteByte(u16 addr, u8 val)
     BreakpointCheck(BRK_Write, addr, val);
 }
 
+void Cpu6502::TriggerColdStart()
+{
+    Reset(0xfffc);
+}
+void Cpu6502::TriggerInterrupt()
+{
+    if ((m_regs.SR & SR_Interrupt)==0)
+    {
+        m_irqInterrupt = true;
+    }
+}
+void Cpu6502::TriggerNMInterrupt()
+{
+    if ((m_regs.SR & SR_Interrupt)==0)
+    {
+        m_nmiInterrupt = true;
+    }
+}
 

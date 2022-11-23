@@ -151,6 +151,14 @@ rom.SETNAM, rom.LOAD               -  basic rom function addresses
 
 ;====== RELEASE NOTES
 
+2022.9
+
+Add memory banking
+Add bitmap mode
+Add xscroll/yscroll/rsel/csel support
+Add raster interrupt support
+
+
 2022.8
 
 Beginning work on emulator

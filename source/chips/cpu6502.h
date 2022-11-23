@@ -92,6 +92,10 @@ public:
     void SetMemWriteByte(const WriteByteHook& hook) { MemWriteByte = hook; }
     void SetBreakpointCheck(const BreakpointHook& hook) { BreakpointCheck = hook; }
 
+    void TriggerColdStart();
+    void TriggerInterrupt();
+    void TriggerNMInterrupt();
+
 private:
     // HOOKS
     ReadByteHook MemReadByte;
@@ -110,6 +114,10 @@ private:
 
     // array of unique opcode names for quick lookup of string->opcode
     vector<string> m_uniqueOpcodes;
+
+    // interrupt 
+    bool m_irqInterrupt;
+    bool m_nmiInterrupt;
 
     // addressing mode helpers
     u16 Decode_Zero_Addr();

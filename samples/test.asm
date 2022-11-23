@@ -1,18 +1,47 @@
 .basicStartup
 
 start:
-    lda #$1b
-    sta vic.control1
+    sei
 
-    lda #128+32
-    sta $0400
-    sta $0400+39
-    sta $0400+1000-40
-    sta $0400+39+1000-40
+    ; turn off all cia interrupts
+    lda #$7f
+    sta cia1.interruptControl
+    sta cia2.interruptControl
+
+    lda #$0
+    sta vic.rasterCounter
+    lda #vic.DEN+1
+    sta vic.control1
     lda #1
-    sta $d800
-    sta $d800+39
-    sta $d800+1000-40
-    sta $d800+39+1000-40
-    jmp start
+    sta vic.intEnable
     
+    lda #$35
+    sta $1
+    
+    lda #0
+    sta vic.backgroundColor0
+    sta vic.borderColor
+    
+    lda #<interrupt
+    sta $fffe
+    lda #>interrupt
+    sta $ffff
+    cli
+
+    lda #0
+    clc
+loop:
+    sta vic.backgroundColor0
+    sta vic.borderColor
+    bcc loop
+
+interrupt:
+    pha
+    lda vic.rasterCounter
+    adc #2
+    sta vic.rasterCounter
+    sta vic.borderColor
+    sta vic.backgroundColor0
+    asl vic.intRegister
+    pla
+    rti

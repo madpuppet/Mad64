@@ -21,6 +21,7 @@ EmulatorC64::EmulatorC64()
 	m_cpu->SetBreakpointCheck(DELEGATE(EmulatorC64::CheckBreakpoint));
 
 	m_vic->SetReadVicByte(DELEGATE_EX(m_mem, MemC64::ReadVicBankByte));
+	m_vic->SetTriggerInterrupt(DELEGATE_EX(m_cpu, Cpu6502::TriggerInterrupt));
 }
 
 EmulatorC64::~EmulatorC64()

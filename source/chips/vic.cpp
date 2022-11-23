@@ -140,6 +140,9 @@ void Vic::Reset()
     }
 
     ResetSpriteFrame();
+
+    m_interruptRasterline = 0;
+    m_interruptLatch = 0;
 }
 
 void Vic::CacheLine()
@@ -643,6 +646,16 @@ void Vic::Step()
             m_rasterLine = 0;
             m_charRow = 0;
         }
+
+        // raster interrupts
+        if ((m_regs.interruptEnable & IRST) && m_rasterLine == m_interruptRasterline)
+        {
+            m_interruptLatch = true;
+        }
+    }
+    if (m_interruptLatch)
+    {
+        TriggerInterrupt();
     }
 
     // vblank control

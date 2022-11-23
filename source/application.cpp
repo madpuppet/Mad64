@@ -14,7 +14,7 @@ const int SCREEN_HEIGHT = 1080;
 Application *gApp;
 
 #define APP_TITLE "MAD64"
-#define VERSION "2022.07"
+#define VERSION "2022.09"
 
 Application::Application()
 {
