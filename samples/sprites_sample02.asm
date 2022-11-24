@@ -9,7 +9,7 @@ sprite5Ptr = $7fd
 sprite6Ptr = $7fe
 sprite7Ptr = $7ff
 
-FRAME_DELAY = 5       ; reduce this for faster update of sprites
+FRAME_DELAY = 1       ; reduce this for faster update of sprites
 delay = $50
 
 start:
@@ -100,16 +100,22 @@ skip2:
 
 skipUpdate:
 
-    ldx #0
+    ldx #50
 @lp:
     lda vic.rasterCounter
 @lp2:
     cmp vic.rasterCounter
     beq @lp2-
-    jsr checkSpriteCollide
+    lda #0
+    sta vic.borderColor
+;    jsr checkSpriteSpriteCollide
+    jsr checkSpriteDataCollide
     inx
+    cpx #250
     bne @lp-
     
+    lda #5
+    sta vic.borderColor
     jmp loop
 
 *=$900
@@ -136,27 +142,27 @@ skipUpdate:
     dc.s %000000001111110000000000
     dc.b 0
    
-    dc.s %000000000000000000000000
-    dc.s %001111111111111111111100
-    dc.s %001111111111111111111100
-    dc.s %001111110000000011111100
-    dc.s %001111110000000011111100
-    dc.s %001111110000000011111100
-    dc.s %001111111111111111111100    
-    dc.s %001111111111111111111100    
-    dc.s %001010000010101000010100   
-    dc.s %000101000101010000101000    
-    dc.s %001010000010101000010100
-    dc.s %000101000101010000101000
-    dc.s %001010000010101000010100
-    dc.s %000101000101010000101000
-    dc.s %001111111111111111111100
-    dc.s %001111111111111111111100
-    dc.s %001111100000000001111100    
-    dc.s %001111100000000001111100    
-    dc.s %001111111111111111111100   
-    dc.s %001111111111111111111100    
-    dc.s %000000000000000000000000
+    dc.s %001000000000000000000000
+    dc.s %001000000000000000000000
+    dc.s %000100000000000000000000
+    dc.s %000100000000000000000000
+    dc.s %000010000000000000000000
+    dc.s %000010000000000000000000
+    dc.s %000001000000000000000000    
+    dc.s %000001000000000000000000    
+    dc.s %000000100000000000000000   
+    dc.s %000000100000000000000000    
+    dc.s %000000010000000000000000
+    dc.s %000000010000000000000000
+    dc.s %000000001000000000000000
+    dc.s %000000001000000000000000
+    dc.s %000000000100000000000000
+    dc.s %000000000100000000000000
+    dc.s %000000000010000000000000    
+    dc.s %000000000010000000000000    
+    dc.s %000000000001000000000000   
+    dc.s %000000000001000000000000    
+    dc.s %000000000000100000000000
     dc.b 0
 
 xpos:
@@ -190,17 +196,20 @@ waitRaster:
     bne waitRaster
     rts
 
-checkSpriteCollide:
+checkSpriteSpriteCollide:
     lda vic.spriteToSpriteCollision
-    beq noCollide
+    beq noCollide1
     lda #1
     sta vic.borderColor
-    jmp doneCollide
-noCollide:
-    lda #0
-    sta vic.borderColor
-doneCollide:
+noCollide1:
     rts
             
+checkSpriteDataCollide:
+    lda vic.spriteToDataCollision
+    beq noCollide2
+    lda #2
+    sta vic.borderColor
+noCollide2:
+    rts
 
 

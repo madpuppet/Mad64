@@ -577,6 +577,14 @@ void Vic::RasterizeScreen()
                 m_rc.screenPixelsDat[i] = tmpPixelsDat[i];
             }
         }
+
+        // build pixel data
+        m_rc.screenPixelsMask = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            if (m_rc.screenPixelsDat[i])
+                m_rc.screenPixelsMask |= 1 << i;
+        }
     }
 }
 
@@ -597,6 +605,13 @@ void Vic::Step()
 
     RasterizeSprites();
     RasterizeScreen();
+
+    // check sprite->background collision
+    for (int i = 0; i < 8; i++)
+    {
+        if (m_rc.spriteCache[i].collisionMask & m_rc.screenPixelsMask)
+            m_regs.spriteDataCollision |= (1 << i);
+    }
 
     // increase dirty height to include current line
     m_textureDirty.h = m_rasterLine - m_textureDirty.y + 1;
@@ -756,6 +771,10 @@ u8 Vic::ReadVicRegByte(u16 addr)
     if (bound_addr == (u16)((u64) & (((Registers*)0)->spriteSpriteCollision)))
     {
         m_regs.spriteSpriteCollision = 0;
+    }
+    else if (bound_addr == (u16)((u64) & (((Registers*)0)->spriteDataCollision)))
+    {
+        m_regs.spriteDataCollision = 0;
     }
     return val;
 }

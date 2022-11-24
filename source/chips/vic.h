@@ -167,6 +167,7 @@ private:
         u8 screenPixelsDat[8];      // background pixel has data  (else its just background color)
         u8 screenSPixels[8];        // shifted background pixel color
         u8 screenSPixelsDat[8];     // shifted background pixel has data  (else its just background color)
+        u8 screenPixelsMask;        // bits for every background pixel that has data for quick sprite->data collision
     } m_rc;
 
     void RasterizeSprites();
