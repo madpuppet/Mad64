@@ -157,6 +157,7 @@ Add memory banking
 Add bitmap mode
 Add xscroll/yscroll/rsel/csel support
 Add raster interrupt support
+Add sprite-sprite collisions
 
 
 2022.8

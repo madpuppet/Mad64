@@ -112,6 +112,7 @@ public:
     struct SpriteCache
     {
         u8 pixels[24 + 24 + 8];     // all pixels expanded, based on multicolor/size settings
+        u8 collisionMask;           // collision mask for this cycle
         u32 data;
         u16 baseAddr;
         u16 x;
@@ -143,31 +144,8 @@ public:
     void SetTriggerInterrupt(const InterruptHook& hook) { TriggerInterrupt = hook; }
 
     // give access to 16k of memory
-    u8 ReadVicRegByte(u16 addr) 
-    {
-        u16 bound_addr = addr % sizeof(Registers);
-        return ((u8*)&m_regs)[bound_addr];
-    }
-    void WriteVicRegByte(u16 addr, u8 val)
-    {
-        u16 bound_addr = addr & 63;
-        ((u8*)&m_regs)[bound_addr] = val;
-
-        if (bound_addr == (u16)((u64)&(((Registers*)0)->control1)))
-        {
-            m_interruptRasterline = (m_interruptRasterline & 0xff) | (((u16)val & 0x80) << 1);
-        }
-        else if (bound_addr == (u16)((u64) & (((Registers*)0)->rasterCounter)))
-        {
-            m_interruptRasterline = (m_interruptRasterline & 0x100) | val;
-        }
-        else if (bound_addr == (u16)((u64) & (((Registers*)0)->interruptRegister)))
-        {
-            // clear interrupt occurred
-            m_interruptLatch = false;
-            ((u8*)&m_regs)[bound_addr] = val | 0xf0;
-        }
-    }
+    u8 ReadVicRegByte(u16 addr);
+    void WriteVicRegByte(u16 addr, u8 val);
 
     u8 ReadVicColorByte(u16 addr)
     {

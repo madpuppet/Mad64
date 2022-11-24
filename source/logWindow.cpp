@@ -178,12 +178,13 @@ void LogWindow::Update()
 			(cpuRegs.SR & Cpu6502::SR_Negative) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Overflow) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Break) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Decimal) ? 1 : 0,
 			(cpuRegs.SR & Cpu6502::SR_Interrupt) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Zero) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Carry) ? 1 : 0));
 
-		LogText(LF_Registers, "ROW COL     XSC YSC   CSL RSL   ECM MCM BMM");
-		LogText(LF_Registers, FormatString("%03x %03x      %d   %d     %d   %d     %d   %d   %d", 
+		LogText(LF_Registers, "ROW COL     XSC YSC   CSL RSL   ECM MCM BMM   SSC SDC");
+		LogText(LF_Registers, FormatString("%03x %03x      %d   %d     %d   %d     %d   %d   %d   %02x  %02x", 
 			rasterLine, rasterRow,
 			vicRegs.control2 & Vic::XSCROLL, vicRegs.control1 & Vic::YSCROLL,
 			(vicRegs.control2 & Vic::CSEL) ? 1 : 0, (vicRegs.control1 & Vic::RSEL) ? 1 : 0,
-			(vicRegs.control1 & Vic::ECM) ? 1 : 0, (vicRegs.control2 & Vic::MCM) ? 1 : 0, (vicRegs.control1 & Vic::BMM) ? 1 : 0));
+			(vicRegs.control1 & Vic::ECM) ? 1 : 0, (vicRegs.control2 & Vic::MCM) ? 1 : 0, (vicRegs.control1 & Vic::BMM) ? 1 : 0,
+			vicRegs.spriteSpriteCollision, vicRegs.spriteDataCollision ));
 	}
 
 	if (m_autoScroll)

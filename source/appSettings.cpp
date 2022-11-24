@@ -2,7 +2,7 @@
 #include "appSettings.h"
 #include <stdio.h>
 
-bool ReadLine(char * &src, char *end, char* token, char* value)
+bool ReadLine(char * &src, char *end, char* token, char* value, int tokenSize, int valueSize)
 {
     if (src >= end)
         return false;
@@ -23,7 +23,7 @@ bool ReadLine(char * &src, char *end, char* token, char* value)
     }
 
     // scan command token to the '=' sign
-    while (src < end && *src != '=' && tlen < 255)
+    while (src < end && *src != '=' && tlen < (tokenSize-1))
     {
         *token++ = *src++;
         tlen++;
@@ -31,7 +31,7 @@ bool ReadLine(char * &src, char *end, char* token, char* value)
     src++;
 
     // scan in the value token
-    while (src < end && *src != 0xa && *src != 0xd && *src != ';' && vlen < 255)
+    while (src < end && *src != 0xa && *src != 0xd && *src != ';' && vlen < (valueSize - 1))
     {
         *value++ = *src++;
         vlen++;
@@ -127,8 +127,8 @@ bool AppSettings::Load()
         char* end = src + size;
 
         char token[256];
-        char value[256];
-        while (ReadLine(src, end, token, value))
+        char value[4096];
+        while (ReadLine(src, end, token, value, 256, 4096))
         {
             if (token[0] && value[0])
             {

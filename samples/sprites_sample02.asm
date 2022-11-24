@@ -9,8 +9,12 @@ sprite5Ptr = $7fd
 sprite6Ptr = $7fe
 sprite7Ptr = $7ff
 
+FRAME_DELAY = 5       ; reduce this for faster update of sprites
+delay = $50
+
 start:
     sei
+
     jsr clr
     
     lda #105
@@ -18,6 +22,9 @@ start:
     sta $054a
     sta $0622
     sta $0730
+    
+    lda #10
+    sta delay
     
     ldx #0
 @lp:
@@ -62,19 +69,25 @@ loop:
     bne loop
     lda vic.control1
     bmi loop
-    
+    lda #0
+    sta vic.backgroundColor0
+
+    dec delay
+    bne skipUpdate
+    lda #FRAME_DELAY
+    sta delay
+
     ldx #0
 @lp:
     txa
     asl
     tay
-
     cpx #4
     bcc @skip+
     inc xpos,x
     jmp skip2
 @skip:
-    inc ypos,x
+    dec xpos,x
 skip2:
     lda xpos,x
     sta vic.sprite0X,y
@@ -84,6 +97,18 @@ skip2:
     inx
     cpx #8
     bne @lp-    
+
+skipUpdate:
+
+    ldx #0
+@lp:
+    lda vic.rasterCounter
+@lp2:
+    cmp vic.rasterCounter
+    beq @lp2-
+    jsr checkSpriteCollide
+    inx
+    bne @lp-
     
     jmp loop
 
@@ -135,9 +160,9 @@ skip2:
     dc.b 0
 
 xpos:
-    dc.b 50,60,70,90,120,130,200,250
+    dc.b 50,100,150,200,210,150,100,50
 ypos:
-    dc.b 130,80,50,200,77,54,160,190
+    dc.b 50,100,150,200,54,103,156,208
 
 *=$1000
 sinewave:
@@ -160,7 +185,22 @@ clr:
     bne @lp2-    
     rts
 
-    
+waitRaster:
+    cmp vic.rasterCounter
+    bne waitRaster
+    rts
+
+checkSpriteCollide:
+    lda vic.spriteToSpriteCollision
+    beq noCollide
+    lda #1
+    sta vic.borderColor
+    jmp doneCollide
+noCollide:
+    lda #0
+    sta vic.borderColor
+doneCollide:
+    rts
             
 
 

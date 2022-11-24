@@ -313,7 +313,7 @@ void Cpu6502::Decode_CMP(u8 M)
     u16 result = (u16)m_regs.A - M;
     u8 N = result & SR_Negative;
     u8 Z = (result & 0xff) ? 0 : SR_Zero;
-    u8 C = result & 0x8000 ? 1 : 0;
+    u8 C = result & 0x8000 ? 0 : 1;
     m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry)) | N | Z | C;
 }
 
@@ -362,7 +362,7 @@ void Cpu6502::Decode_CPX(u8 M)
     u16 result = (u16)m_regs.X - M;
     u8 N = result & SR_Negative;
     u8 Z = (result & 0xff) ? 0 : SR_Zero;
-    u8 C = result & 0x8000 ? 1 : 0;
+    u8 C = result & 0x8000 ? 0 : 1;
     m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry)) | N | Z | C;
 }
 
@@ -386,7 +386,7 @@ void Cpu6502::Decode_CPY(u8 M)
     u16 result = (u16)m_regs.Y - M;
     u8 N = result & SR_Negative;
     u8 Z = (result & 0xff) ? 0 : SR_Zero;
-    u8 C = result & 0x8000 ? 1 : 0;
+    u8 C = result & 0x8000 ? 0 : 1;
     m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry)) | N | Z | C;
 }
 

@@ -296,9 +296,30 @@ void Vic::RasterizeSprites()
             sprCache.cycleCount = sprCache.sizeX ? 7 : 4;
         }
 
+        sprCache.collisionMask = 0;
         if (sprCache.startcycle && sprCache.cycle < sprCache.cycleCount)
         {
             RasterizeSprite(i);
+        }
+    }
+
+    // check sprite collisions and cycle sprite
+    for (int i = 0; i < 8; i++)
+    {
+        auto& sprCache = m_rc.spriteCache[i];
+        if (sprCache.startcycle)
+        {
+            for (int s = 0; s < 8; s++)
+            {
+                if ((s != i) && ((sprCache.collisionMask & m_rc.spriteCache[s].collisionMask) != 0))
+                {
+                    m_regs.spriteSpriteCollision |= 1 << s;
+                    break;
+                }
+            }
+
+            if (sprCache.cycle < sprCache.cycleCount)
+                sprCache.cycle++;
         }
     }
 }
@@ -320,6 +341,7 @@ void Vic::RasterizeSprite(int i)
     }
 
     int spriteBit = 1 << i;
+    sprCache.collisionMask = 0;
     for (int b = 0; b < 8; b++)
     {
         int pix = sprCache.pixels[sprCache.cycle * 8 + b];
@@ -328,9 +350,9 @@ void Vic::RasterizeSprite(int i)
             m_rc.spritePixels[b] = col[pix&3];
             m_rc.spritePixelsPri[b] = sprCache.pri;
             m_rc.spritePixelsDat[b] = spriteBit;
+            sprCache.collisionMask |= 1 << b;
         }
     }
-    sprCache.cycle++;
 }
 
 void Vic::RasterizeScreen_NormalTextMode()
@@ -727,3 +749,34 @@ void Vic::Step()
     m_regs.rasterCounter = m_rasterLine & 0xff;
 }
 
+u8 Vic::ReadVicRegByte(u16 addr)
+{
+    u16 bound_addr = addr % sizeof(Registers);
+    u8 val = ((u8*)&m_regs)[bound_addr];
+    if (bound_addr == (u16)((u64) & (((Registers*)0)->spriteSpriteCollision)))
+    {
+        m_regs.spriteSpriteCollision = 0;
+    }
+    return val;
+}
+
+void Vic::WriteVicRegByte(u16 addr, u8 val)
+{
+    u16 bound_addr = addr & 63;
+    ((u8*)&m_regs)[bound_addr] = val;
+
+    if (bound_addr == (u16)((u64) & (((Registers*)0)->control1)))
+    {
+        m_interruptRasterline = (m_interruptRasterline & 0xff) | (((u16)val & 0x80) << 1);
+    }
+    else if (bound_addr == (u16)((u64) & (((Registers*)0)->rasterCounter)))
+    {
+        m_interruptRasterline = (m_interruptRasterline & 0x100) | val;
+    }
+    else if (bound_addr == (u16)((u64) & (((Registers*)0)->interruptRegister)))
+    {
+        // clear interrupt occurred
+        m_interruptLatch = false;
+        ((u8*)&m_regs)[bound_addr] = val | 0xf0;
+    }
+}
