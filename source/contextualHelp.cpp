@@ -69,6 +69,16 @@ CommandHelp gHELP_CMD[] = {
     { 0, 0, 0, 0 }
 };
 
+const char* gHELP_CPU_MEMBANK[] =
+{
+    "BIT 0..2    0 == ALL RAM         3 == ALL ROM",
+    "            5 == RAM and I/O     7 == ROM and I/O",
+    "BIT 3       Datasette output signal level",
+    "BIT 4       Datasette button status - 1=no button",
+    "BIT 5       Datasette motor control- 1=on",0
+};
+
+
 const char* gHELP_VIC_CONTROL1[] = 
 {
     "BIT 0..2    YSCL      Y Scroll -3..4",

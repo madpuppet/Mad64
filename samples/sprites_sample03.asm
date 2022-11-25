@@ -1,18 +1,10 @@
-; This sample tests sprite<->sprite and sprite<->background collision by polling the vic registers
-; and cycling the border color when any bit is set
+; Like the previous example,  except this one uses vic interrupts to detect when collisions happen
+; Interrupt routine is triggered on any collision, which increments the border and then clears the bits
+; so further interrupts can happen if we are still in conflict
 
 .basicStartup
 
-sprite0Ptr = $7f8
-sprite1Ptr = $7f9
-sprite2Ptr = $7fa
-sprite3Ptr = $7fb
-sprite4Ptr = $7fc
-sprite5Ptr = $7fd
-sprite6Ptr = $7fe
-sprite7Ptr = $7ff
-
-FRAME_DELAY = 1       ; reduce this for faster update of sprites
+FRAME_DELAY = 20       ; reduce this for faster update of sprites
 delay = $50
 
 start:
@@ -20,6 +12,11 @@ start:
 
     jsr clr
     
+    ; turn off all cia interrupts
+    lda #$7f
+    sta cia1.interruptControl
+    sta cia2.interruptControl
+
     lda #105
     sta $0463
     sta $054a
@@ -45,14 +42,14 @@ start:
     and #1
     clc
     adc #36
-    sta sprite0Ptr,x
+    sta $0400 + vic.sprite0Ptr,x
     inx
     cpx #8
     bne @lp-
 
     lda #0
     sta vic.backgroundColor0
-    lda #2
+    lda #0
     sta vic.borderColor
     lda #$0
     sta vic.spriteMulticolor
@@ -65,6 +62,24 @@ start:
     lda #0
     sta vic.spritePriority
 
+    lda #2
+    sta vic.intRegister
+    sta vic.intEnable
+    lda #vic.DEN+3
+    sta vic.control1
+    lda #0
+    sta vic.rasterCounter
+    
+    lda #<InterruptHandler
+    sta $fffe
+    lda #>InterruptHandler
+    sta $ffff
+    
+    lda #$5
+    sta cpu.bank
+        
+    cli
+
     ; wait for top of screen
 loop:
     lda vic.rasterCounter
@@ -72,11 +87,9 @@ loop:
     bne loop
     lda vic.control1
     bmi loop
-    lda #0
-    sta vic.backgroundColor0
 
     dec delay
-    bne skipUpdate
+    bne loop
     lda #FRAME_DELAY
     sta delay
 
@@ -96,31 +109,24 @@ skip2:
     sta vic.sprite0X,y
     lda ypos,x
     sta vic.sprite0Y,y
-
     inx
     cpx #8
     bne @lp-    
 
-skipUpdate:
-
-    lda #45
-    jsr WaitRaster
-
-    ldx #250
-@lp:
-    jsr NextRaster
-    jsr checkSpriteSpriteCollide
-    jsr checkSpriteDataCollide
-    lda #0
-    sta vic.borderColor
-    inx
-    cpx #250
-    bne @lp-
-    
-    lda #5
-    sta vic.borderColor
     jmp loop
 
+InterruptHandler:
+    inc vic.borderColor
+    pha
+    lda #0
+    sta vic.spriteToSpriteCollision
+    sta vic.spriteToDataCollision
+    lda vic.spriteToSpriteCollision
+    lda vic.spriteToDataCollision
+    asl vic.intRegister
+    pla
+    rti
+    
 *=$900
     dc.s %000000000000000000000000
     dc.s %000000011111111000000000
@@ -193,33 +199,4 @@ clr:
     dex
     bne @lp2-    
     rts
-
-WaitRaster:
-    cmp vic.rasterCounter
-    bne WaitRaster
-    rts
-
-NextRaster:
-    lda vic.rasterCounter
-@lp:
-    cmp vic.rasterCounter
-    beq @lp-
-    rts
-
-checkSpriteSpriteCollide:
-    lda vic.spriteToSpriteCollision
-    beq noCollide1
-    lda #1
-    sta vic.borderColor
-noCollide1:
-    rts
-            
-checkSpriteDataCollide:
-    lda vic.spriteToDataCollision
-    beq noCollide2
-    lda #2
-    sta vic.borderColor
-noCollide2:
-    rts
-
 

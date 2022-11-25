@@ -27,6 +27,11 @@ CompilerLabel s_systemLabels[] =
 {
     CompilerLabel("PI", M_PI), CompilerLabel("I", 0),
 
+    CompilerLabel("cpu.bank", gHELP_CPU_MEMBANK, 1),
+
+    CompilerLabel("vic.sprite0Ptr", 0x3f8), CompilerLabel("vic.sprite1Ptr", 0x3f9), CompilerLabel("vic.sprite2Ptr", 0x3fa), CompilerLabel("vic.sprite3Ptr", 0x3fb),
+    CompilerLabel("vic.sprite4Ptr", 0x3fc), CompilerLabel("vic.sprite5Ptr", 0x3fd), CompilerLabel("vic.sprite6Ptr", 0x3fe), CompilerLabel("vic.sprite7Ptr", 0x3ff),
+
     CompilerLabel("vic.sprite0X", 0xd000),  CompilerLabel("vic.sprite0Y", 0xd001),  CompilerLabel("vic.sprite1X", 0xd002),  CompilerLabel("vic.sprite1Y", 0xd003),
     CompilerLabel("vic.sprite2X", 0xd004),  CompilerLabel("vic.sprite2Y", 0xd005),  CompilerLabel("vic.sprite3X", 0xd006),  CompilerLabel("vic.sprite3Y", 0xd007),
     CompilerLabel("vic.sprite4X", 0xd008),  CompilerLabel("vic.sprite4Y", 0xd009),  CompilerLabel("vic.sprite5X", 0xd00a),  CompilerLabel("vic.sprite5Y", 0xd00b),

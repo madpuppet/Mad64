@@ -10,6 +10,8 @@ struct CommandHelp
 };
 extern CommandHelp gHELP_CMD[];
 
+extern const char* gHELP_CPU_MEMBANK[];
+
 extern const char* gHELP_VIC_CONTROL1[];
 extern const char* gHELP_VIC_CONTROL2[];
 extern const char* gHELP_VIC_SCRMEM[];

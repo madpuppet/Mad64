@@ -25,7 +25,7 @@ public:
 
     void Render(int x, int y, int zoom);
 
-    enum Control1Enum
+    enum Control1
     {
         YSCROLL = 7,
         RSEL = 8,
@@ -34,7 +34,7 @@ public:
         ECM = 64,
         RST8 = 128
     };
-    enum Control2Enum
+    enum Control2
     {
         XSCROLL = 7,
         CSEL = 8,
@@ -48,9 +48,9 @@ public:
     };
      enum Interrupts
      {
-         IRST = 0x01,
-         IMBC = 0x02,
-         IMMC = 0x04,
+         IRST = 0x01,       // raster interrupt
+         IMBC = 0x02,       // sprite to data collision
+         IMMC = 0x04,       // sprite to sprite collision
          ILP = 0x08,
          IRQ = 0x80
      };

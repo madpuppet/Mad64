@@ -115,11 +115,7 @@ u8 MemC64::ReadVicBankByte(u16 addr)
 
 void MemC64::WriteByte(u16 addr, u8 val)
 {
-	if (addr >= 0xa000 && addr < 0xc000)
-	{
-		m_ram[addr] = val;
-	}
-	else if (addr >= 0xd000 && addr < 0xe000)
+	if (addr >= 0xd000 && addr < 0xe000)
 	{
 		if ((m_ram[1] & 7) > 4)
 		{
@@ -160,19 +156,6 @@ void MemC64::WriteByte(u16 addr, u8 val)
 				return;
 			}
 		}
-		else if (m_ram[1] & 2)
-		{
-			// char rom
-			m_ram[addr] = val;
-		}
-		else
-		{
-			m_ram[addr] = val;
-		}
-	}
-	else if (addr >= 0xe000 && addr < 0xffff)
-	{
-		m_ram[addr] = val;
 	}
 	m_ram[addr] = val;
 }

@@ -690,6 +690,12 @@ void Vic::Step()
             m_interruptLatch = true;
         }
     }
+
+    if (((m_regs.interruptEnable & IMMC) && (m_regs.spriteSpriteCollision != 0)) || ((m_regs.interruptEnable & IMBC) && (m_regs.spriteDataCollision != 0)))
+    {
+        m_interruptLatch = true;
+    }
+
     if (m_interruptLatch)
     {
         TriggerInterrupt();

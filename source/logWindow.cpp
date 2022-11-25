@@ -194,7 +194,7 @@ void LogWindow::Update()
 	ClampTargetScroll();
 	m_scroll += (int)((m_targetScroll - (float)m_scroll) * 0.25f);
 
-	m_markerAnim = fmodf(m_markerAnim + 1/60.0f, 1.0f);
+	m_markerAnim = fmodf(m_markerAnim + TIMEDELTA, 1.0f);
 }
 
 void LogWindow::DrawLine(int lineIdx, int y, bool highlight)
@@ -320,7 +320,7 @@ void LogWindow::Draw()
 
 			if (containsRange(yMin, yMax, y, y + h + settings->textYMargin*2))
 			{
-				vic->Render(m_logArea.x + settings->textXMargin, y + settings->textYMargin, m_emulatorZoom);
+				vic->Render(x + settings->textXMargin, y + settings->textYMargin, m_emulatorZoom);
 				MappedLogItem item;
 				item.area = { x + settings->textXMargin, y + settings->textYMargin, m_logArea.w, h };
 				item.group = i;
@@ -332,17 +332,17 @@ void LogWindow::Draw()
 					// draw flashing box at current raster line / raster byte
 					int rasterLine = vic->CurrentRasterLine();
 					int rasterCol = vic->CurrentRasterRow();
-					int sx = 4 * m_emulatorZoom + 4;
-					int sy = 4;
-					int xx = item.area.x + rasterCol * 8 * m_emulatorZoom + 4;
+					int sx = 8 * m_emulatorZoom;
+					int sy = 2;
+					int xx = item.area.x + rasterCol * 8 * m_emulatorZoom;
 					int yy = item.area.y + rasterLine * m_emulatorZoom;
-					int brightness = (int)(sinf(m_markerAnim * 3.1452f * 4) * 120) + 128;
+					int brightness = (int)(sinf(m_markerAnim * 3.1452f * 2) * 120) + 128;
 					SDL_SetRenderDrawColor(r, brightness, brightness, brightness, brightness);
 					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-					SDL_RenderDrawLine(r, xx - sx, yy - sy, xx + sx, yy - sy);
+					SDL_RenderDrawLine(r, xx, yy - sy, xx + sx, yy - sy);
 					SDL_RenderDrawLine(r, xx + sx, yy - sy, xx + sx, yy + sy);
-					SDL_RenderDrawLine(r, xx + sx, yy + sy, xx - sx, yy + sy);
-					SDL_RenderDrawLine(r, xx - sx, yy + sy, xx - sx, yy - sy);
+					SDL_RenderDrawLine(r, xx + sx, yy + sy, xx, yy + sy);
+					SDL_RenderDrawLine(r, xx, yy + sy, xx, yy - sy);
 					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
 				}
 			}
@@ -361,13 +361,13 @@ void LogWindow::Draw()
 			m_items.push_back(item);
 
 			int firstLine = (yMin - y) / settings->lineHeight;
-			int lastLine = (yMax - y) / settings->lineHeight;
+			int lastLine = ((yMax - y) / settings->lineHeight)+1;
 			SDL_Color col = { 250,250,250,255};
 			if (firstLine < 4096 && lastLine >= 0)
 			{
 				firstLine = SDL_clamp(firstLine, 0, 4095);
 				lastLine = SDL_clamp(lastLine, 0, 4095);
-				for (int l = firstLine; l < lastLine; l++)
+				for (int l = firstLine; l <= lastLine; l++)
 				{
 					int lineY = y + l * settings->lineHeight;
 					u16 addr = l*16;
@@ -397,7 +397,7 @@ void LogWindow::Draw()
 				}
 			}
 
-			y += settings->lineHeight * 4096;
+			y += (settings->lineHeight+20) * 4096;
 		}
 		else
 		{
@@ -457,6 +457,14 @@ void LogWindow::Draw()
 
 int LogWindow::CalcLogHeight()
 {
+	if (m_items.size() > 0)
+	{
+		auto& last = m_items.back();
+		return last.area.y + last.area.h - m_logArea.y + m_scroll + 8;
+	}
+	return 0;
+
+#if 0
 	auto settings = gApp->GetSettings();
 	auto vic = gApp->GetEmulator()->GetVic();
 	int y = 0;
@@ -474,7 +482,7 @@ int LogWindow::CalcLogHeight()
 					y += settings->lineHeight + vic->GetScreenHeight() * m_emulatorZoom + settings->textYMargin * 2;
 					break;
 				case LF_MemoryDump:
-					y += settings->lineHeight * 4096;
+					y += settings->lineHeight * (4096+1);
 					break;
 				default:
 					y += settings->lineHeight * (int)lg.m_logLines.size() + settings->lineHeight;
@@ -482,9 +490,8 @@ int LogWindow::CalcLogHeight()
 			}
 		}
 	}
-
-
 	return y;
+#endif
 }
 
 bool LogWindow::CalcVertScrollBar(int& start, int& end)

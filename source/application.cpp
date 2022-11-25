@@ -148,7 +148,8 @@ int Application::MainLoop()
     {
         if (m_settings->lowCPUMode || !m_hasFocus)
         {
-            if (SDL_WaitEventTimeout(&e,10))
+            int timeout = (m_runEmulation || m_editWindow->IsAutoScrolling()) ? 10 : 200;
+            if (SDL_WaitEventTimeout(&e,timeout))
                 HandleEvent(&e);
         }
         else

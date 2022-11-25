@@ -95,6 +95,11 @@ public:
 		return m_activeSourceFileItem && HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm");
 	}
 
+	bool IsAutoScrolling()
+	{
+		return m_autoScroll;
+	}
+
 protected:
 	void ClampTargetVertScroll();
 	void ClampTargetHorizScroll();

@@ -727,8 +727,16 @@ void EditWindow::Update()
 	auto s = gApp->GetSettings();
 	if (m_activeSourceFileItem)
 	{
-		m_activeSourceFileItem->vertScroll += (int)((m_activeSourceFileItem->targetVertScroll - (float)m_activeSourceFileItem->vertScroll) * 0.5f);
-		m_activeSourceFileItem->horizScroll += (int)((m_activeSourceFileItem->targetHorizScroll - (float)m_activeSourceFileItem->horizScroll) * 0.5f);
+		if (s->lowCPUMode)
+		{
+			m_activeSourceFileItem->vertScroll = (int)m_activeSourceFileItem->targetVertScroll;
+			m_activeSourceFileItem->horizScroll = (int)m_activeSourceFileItem->targetHorizScroll;
+		}
+		else
+		{
+			m_activeSourceFileItem->vertScroll += (int)((m_activeSourceFileItem->targetVertScroll - (float)m_activeSourceFileItem->vertScroll) * 0.5f);
+			m_activeSourceFileItem->horizScroll += (int)((m_activeSourceFileItem->targetHorizScroll - (float)m_activeSourceFileItem->horizScroll) * 0.5f);
+		}
 	}
 
 	UpdateStatus();

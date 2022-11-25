@@ -15,7 +15,7 @@ start:
     lda #1
     sta vic.intEnable
     
-    lda #$35
+    lda #$5
     sta $1
     
     lda #0
