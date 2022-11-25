@@ -51,12 +51,12 @@ CompilerLabel s_systemLabels[] =
     CompilerLabel("cia1.dataPortA", gHELP_CIA1_DATAPORTA, 0xdc00), CompilerLabel("cia1.dataPortB", gHELP_CIA1_DATAPORTB, 0xdc01), CompilerLabel("cia1.dataDirectionA", 0xdc02), CompilerLabel("cia1.dataDirectionB", 0xdc03),
     CompilerLabel("cia1.timerALow", 0xdc04), CompilerLabel("cia1.timerAHigh", 0xdc05), CompilerLabel("cia1.timerBLow", 0xdc06), CompilerLabel("cia1.timerBHigh", 0xdc07),
     CompilerLabel("cia1.clockTenths", 0xdc08), CompilerLabel("cia1.clockSeconds", 0xdc09), CompilerLabel("cia1.clockMinutes", 0xdc0a), CompilerLabel("cia1.clockHours", 0xdc0b),
-    CompilerLabel("cia1.serialShift", 0xdc0c), CompilerLabel("cia1.interruptControl", gHELP_CIA1_INTCONTROL, 0xdc0d), CompilerLabel("cia1.controlTimerA", 0xdc0e), CompilerLabel("cia1.controlTimerB", 0xdc0f),
+    CompilerLabel("cia1.serialShift", 0xdc0c), CompilerLabel("cia1.interruptControl", gHELP_CIA1_INTCONTROL, 0xdc0d), CompilerLabel("cia1.controlTimerA", gHELP_CIA1_CONTROLTIMERA, 0xdc0e), CompilerLabel("cia1.controlTimerB", gHELP_CIA1_CONTROLTIMERB, 0xdc0f),
 
-    CompilerLabel("cia2.dataPortA", 0xdd00), CompilerLabel("cia2.dataPortB", 0xdd01), CompilerLabel("cia2.dataDirectionA", 0xdd02), CompilerLabel("cia2.dataDirectionB", 0xdd03),
+    CompilerLabel("cia2.dataPortA", gHELP_CIA1_DATAPORTA, 0xdd00), CompilerLabel("cia2.dataPortB", gHELP_CIA1_DATAPORTB, 0xdd01), CompilerLabel("cia2.dataDirectionA", 0xdd02), CompilerLabel("cia2.dataDirectionB", 0xdd03),
     CompilerLabel("cia2.timerALow", 0xdd04), CompilerLabel("cia2.timerAHigh", 0xdd05), CompilerLabel("cia2.timerBLow", 0xdd06), CompilerLabel("cia2.timerBHigh", 0xdd07),
     CompilerLabel("cia2.clockTenths", 0xdd08), CompilerLabel("cia2.clockSeconds", 0xdd09), CompilerLabel("cia2.clockMinutes", 0xdd0a), CompilerLabel("cia2.clockHours", 0xdd0b),
-    CompilerLabel("cia2.serialShift", 0xdd0c), CompilerLabel("cia2.interruptControl", 0xdd0d), CompilerLabel("cia2.controlTimerA", 0xdd0e), CompilerLabel("cia2.controlTimerB", 0xdd0f),
+    CompilerLabel("cia2.serialShift", 0xdd0c), CompilerLabel("cia2.interruptControl", gHELP_CIA1_INTCONTROL, 0xdd0d), CompilerLabel("cia2.controlTimerA", 0xdd0e), CompilerLabel("cia2.controlTimerB", 0xdd0f),
 
     CompilerLabel("rom.ACPTR", gHELP_ROM_ACPTR, 0xFFA5),    CompilerLabel("rom.CHKIN", gHELP_ROM_CHKIN, 0xFFC6),
     CompilerLabel("rom.CHKOUT", gHELP_ROM_CHKOUT, 0xFFC9),    CompilerLabel("rom.CHRIN", gHELP_ROM_CHRIN, 0xFFCF),

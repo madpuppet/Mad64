@@ -21,6 +21,8 @@ extern const char* gHELP_VIC_INTENA[];
 const char* gHELP_CIA1_DATAPORTA[];
 const char* gHELP_CIA1_DATAPORTB[];
 const char* gHELP_CIA1_INTCONTROL[];
+const char* gHELP_CIA1_CONTROLTIMERA[];
+const char* gHELP_CIA1_CONTROLTIMERB[];
 
 extern const char* gHELP_ROM_ACPTR[];
 extern const char* gHELP_ROM_CHKIN[];

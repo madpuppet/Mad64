@@ -196,3 +196,30 @@ const char* gHELP_CIA1_INTCONTROL[] = {
     "           If all bits 0..4 are cleared, there will be no change to the mask.",0
 };
 
+const char* gHELP_CIA1_CONTROLTIMERA[] = {
+    "Bit 0: 0 = Stop timer; 1 = Start timer",
+    "Bit 1: 1 = Indicates a timer underflow at port B in bit 6.",
+    "Bit 2 : 0 = Through a timer overflow, bit 6 of port B will get high for one cycle",
+    "        1 = Through a timer underflow, bit 6 of port B will be inverted",
+    "Bit 3 : 0 = Timer - restart after underflow(latch will be reloaded), 1 = Timer stops after underflow.",
+    "Bit 4 : 1 = Load latch into the timer once.",
+    "Bit 5 : 0 = Timer counts system cycles, 1 = Timer counts positive slope at CNT - pin",
+    "Bit 6 : Direction of the serial shift register, 0 = SP - pin is input(read), 1 = SP - pin is output(write)",
+    "Bit 7 : Real Time Clock, 0 = 60 Hz, 1 = 50 Hz",0
+};
+
+const char* gHELP_CIA1_CONTROLTIMERB[] = {
+    "Bit 0: 0 = Stop timer; 1 = Start timer",
+    "Bit 1: 1 = Indicates a timer underflow at port B in bit 7.",
+    "Bit 2 : 0 = Through a timer overflow, bit 7 of port B will get high for one cycle, 1 = Through a timer underflow, bit 7 of port B will be inverted",
+    "Bit 3 : 0 = Timer - restart after underflow(latch will be reloaded), 1 = Timer stops after underflow.",
+    "Bit 4 : 1 = Load latch into the timer once.",
+    "Bit 5..6 :",
+    "  % 00 = Timer counts System cycle",
+    "  % 01 = Timer counts positive slope on CNT - pin",
+    "  % 10 = Timer counts underflow of timer A",
+    "  % 11 = Timer counts underflow of timer A if the CNT - pin is high",
+    "Bit 7 : 0 = Writing into the TOD register sets the clock time,"
+    "        1 = Writing into the TOD register sets the alarm time.",0
+};
+

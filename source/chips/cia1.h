@@ -109,9 +109,50 @@ public:
         //   % 11 = Timer counts underflow of timer A if the CNT - pin is high
         // Bit 7 : 0 = Writing into the TOD register sets the clock time, 1 = Writing into the TOD register sets the alarm time.
         u8 controlTimerB;
+    } m_regs;
+
+    u8 ReadReg(u16 addr);
+    void WriteReg(u16 addr, u8 val);
+
+    enum InputMode
+    {
+        Mode_Processor,
+        Mode_Count,
+        Mode_TimerA,
+        Mode_TimerA_Count
     };
+    enum RunMode
+    {
+        Mode_Restart,
+        Mode_OneTime
+    };
+
+    enum class TimerAMode
+    {
+        Off,
+        Cycle
+    };
+
+    enum class TimerBMode
+    {
+        Off,
+        Cycle,
+        CNT,
+        TimerA,
+        CNTAndTimerA
+    };
+
+    TimerAMode m_timerAMode;
+    TimerBMode m_timerBMode;
+
+    u16 m_timerAStart;
+    u16 m_timerBStart;
+    u16 m_timerAVal;
+    u16 m_timerBVal;
 
     void Reset();
     void Step();
+    void StepTimerA();
+    void StepTimerB();
 };
 

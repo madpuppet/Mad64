@@ -58,12 +58,12 @@ u8 MemC64::ReadByte(u16 addr)
 			else if (addr >= 0xdc00 && addr < 0xdd00)
 			{
 				// cia 1
-				return 0;
+				return ReadCia1Byte(addr);
 			}
 			else if (addr >= 0xdd00 && addr < 0xde00)
 			{
 				// cia 2
-				return 0;
+				return ReadCia2Byte(addr);
 			}
 			else if (addr >= 0xde00 && addr < 0xdf00)
 			{
@@ -138,11 +138,13 @@ void MemC64::WriteByte(u16 addr, u8 val)
 			else if (addr >= 0xdc00 && addr < 0xdd00)
 			{
 				// cia 1
+				WriteCia1Byte(addr, val);
 				return;
 			}
 			else if (addr >= 0xdd00 && addr < 0xde00)
 			{
 				// cia 2
+				WriteCia2Byte(addr, val);
 				return;
 			}
 			else if (addr >= 0xde00 && addr < 0xdf00)

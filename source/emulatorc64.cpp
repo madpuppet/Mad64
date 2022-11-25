@@ -15,6 +15,8 @@ EmulatorC64::EmulatorC64()
 	m_mem->SetWriteVicRegByte(DELEGATE_EX(m_vic, Vic::WriteVicRegByte));
 	m_mem->SetReadVicColorByte(DELEGATE_EX(m_vic, Vic::ReadVicColorByte));
 	m_mem->SetWriteVicColorByte(DELEGATE_EX(m_vic, Vic::WriteVicColorByte));
+	m_mem->SetReadCia1Byte(DELEGATE_EX(m_cia1, Cia1::ReadReg));
+	m_mem->SetWriteCia1Byte(DELEGATE_EX(m_cia1, Cia1::WriteReg));
 
 	m_cpu->SetMemReadByte(DELEGATE_EX(m_mem, MemC64::ReadByte));
 	m_cpu->SetMemWriteByte(DELEGATE_EX(m_mem, MemC64::WriteByte));

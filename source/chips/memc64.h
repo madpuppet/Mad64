@@ -17,6 +17,11 @@ public:
     void SetWriteVicRegByte(const WriteByteHook& hook) { WriteVicRegByte = hook; }
     void SetReadVicColorByte(const ReadByteHook& hook) { ReadVicColorByte = hook; }
     void SetWriteVicColorByte(const WriteByteHook& hook) { WriteVicColorByte = hook; }
+    void SetReadCia1Byte(const ReadByteHook& hook) { ReadCia1Byte = hook; }
+    void SetWriteCia1Byte(const WriteByteHook& hook) { WriteCia1Byte = hook; }
+    void SetReadCia2Byte(const ReadByteHook& hook) { ReadCia2Byte = hook; }
+    void SetWriteCia2Byte(const WriteByteHook& hook) { WriteCia2Byte = hook; }
+
 
 private:
     ReadByteHook ReadVicRegByte;
@@ -24,6 +29,12 @@ private:
 
     ReadByteHook ReadVicColorByte;
     WriteByteHook WriteVicColorByte;
+
+    ReadByteHook ReadCia1Byte;
+    WriteByteHook WriteCia1Byte;
+
+    ReadByteHook ReadCia2Byte;
+    WriteByteHook WriteCia2Byte;
 
     u8 m_ram[65536];
 };
