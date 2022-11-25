@@ -259,13 +259,42 @@ void Cpu6502::Decode_BVS_Rel()
 
 void Cpu6502::Decode_ADC(u8 M)
 {
-    u16 result = (u16)m_regs.A + M + (m_regs.SR & 1);
-    u8 N = result & SR_Negative;
-    u8 Z = (result & 0xff) ? 0 : SR_Zero;
-    u8 V = ((m_regs.A ^ result) & (m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
-    u8 C = result & 0x100 ? 1 : 0;
-    m_regs.A = (u8)result;
-    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+    if (m_regs.SR & SR_Decimal)
+    {
+        u8 low1 = m_regs.A & 0xf;
+        u8 high1 = (m_regs.A >> 4) & 0xf;
+        u8 low2 = M & 0xf;
+        u8 high2 = (M >> 4) & 0xf;
+        u8 outLow = low1 + low2 + (m_regs.SR & 1);
+        u8 outHi = high1 + high2;
+        if (outLow >= 10)
+        {
+            outLow = outLow - 10;
+            outHi++;
+        }
+        u8 C = 0;
+        if (outHi >= 10)
+        {
+            outHi -= 10;
+            C = SR_Carry;
+        }
+        u8 result = outLow | (outHi << 4);
+        u8 N = 0;
+        u8 Z = result ? 0 : SR_Zero;
+        u8 V = 0;
+        m_regs.A = result;
+        m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+    }
+    else
+    {
+        u16 result = (u16)m_regs.A + M + (m_regs.SR & 1);
+        u8 N = result & SR_Negative;
+        u8 Z = (result & 0xff) ? 0 : SR_Zero;
+        u8 C = result & 0x100 ? 1 : 0;
+        u8 V = ((m_regs.A ^ result) & (m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
+        m_regs.A = (u8)result;
+        m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+    }
 }
 
 void Cpu6502::Decode_ADC_Imm()
@@ -407,13 +436,42 @@ void Cpu6502::Decode_CPY_Abs()
 
 void Cpu6502::Decode_SBC(u8 M)
 {
-    u16 result = (u16)m_regs.A - M - (m_regs.SR & SR_Carry);
-    u8 N = result & SR_Negative;
-    u8 Z = (result & 0xff) ? 0 : SR_Zero;
-    u8 V = ((m_regs.A ^ result) & (m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
-    u8 C = result & 0x100 ? 1 : 0;
-    m_regs.A = (u8)result;
-    m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+    if (m_regs.SR & SR_Decimal)
+    {
+        u8 low1 = m_regs.A & 0xf;
+        u8 high1 = (m_regs.A >> 4) & 0xf;
+        u8 low2 = M & 0xf;
+        u8 high2 = (M >> 4) & 0xf;
+        int outLow = low1 - low2 - (1 ^ (m_regs.SR & SR_Carry));
+        int outHi = high1 - high2;
+        if (outLow < 0)
+        {
+            outLow = outLow + 10;
+            outHi--;
+        }
+        u8 C = SR_Carry;
+        if (outHi < 0)
+        {
+            outHi += 10;
+            C = 0;
+        }
+        u8 result = outLow | (outHi << 4);
+        u8 N = 0;
+        u8 Z = result ? 0 : SR_Zero;
+        u8 V = 0;
+        m_regs.A = result;
+        m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+    }
+    else
+    {
+        u16 result = (u16)m_regs.A - M - (1^(m_regs.SR & SR_Carry));
+        u8 N = result & SR_Negative;
+        u8 Z = (result & 0xff) ? 0 : SR_Zero;
+        u8 V = ((m_regs.A ^ result) & (m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
+        u8 C = result & 0x100 ? 1 : 0;
+        m_regs.A = (u8)result;
+        m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
+    }
 }
 
 void Cpu6502::Decode_SBC_Imm()

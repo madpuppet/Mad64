@@ -4,7 +4,7 @@
 
 .basicStartup
 
-FRAME_DELAY = 20       ; reduce this for faster update of sprites
+FRAME_DELAY = 2       ; reduce this for faster update of sprites
 delay = $50
 
 start:
@@ -16,6 +16,8 @@ start:
     lda #$7f
     sta cia1.interruptControl
     sta cia2.interruptControl
+    lda cia1.interruptControl
+    lda cia2.interruptControl
 
     lda #105
     sta $0463
@@ -62,12 +64,12 @@ start:
     lda #0
     sta vic.spritePriority
 
-    lda #2
+    lda #7
     sta vic.intRegister
     sta vic.intEnable
     lda #vic.DEN+3
     sta vic.control1
-    lda #0
+    lda #100
     sta vic.rasterCounter
     
     lda #<InterruptHandler
@@ -83,13 +85,13 @@ start:
     ; wait for top of screen
 loop:
     lda vic.rasterCounter
-    cmp #0
-    bne loop
+    cmp #50
+    bcs loop
     lda vic.control1
     bmi loop
 
     dec delay
-    bne loop
+    bne endloop
     lda #FRAME_DELAY
     sta delay
 
@@ -113,17 +115,31 @@ skip2:
     cpx #8
     bne @lp-    
 
+
+endloop:
+    lda vic.rasterCounter
+    cmp #50
+    bcc endloop
     jmp loop
 
 InterruptHandler:
-    inc vic.borderColor
     pha
-    lda #0
-    sta vic.spriteToSpriteCollision
-    sta vic.spriteToDataCollision
     lda vic.spriteToSpriteCollision
+    beq notSSC
+    inc vic.borderColor
+    jmp doneIH
+notSSC:
     lda vic.spriteToDataCollision
+    beq notSDC
+    lda #3
+    inc vic.borderColor
+    jmp doneIH
+notSDC:
+    lda #11
+    inc vic.borderColor
+doneIH:
     asl vic.intRegister
+    
     pla
     rti
     

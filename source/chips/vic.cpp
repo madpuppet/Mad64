@@ -128,14 +128,13 @@ void Vic::Reset()
     memcpy(&m_regs, gC64_vicIIRegisters, sizeof(m_regs));
     m_regs.control1 = 0x1b;
 
-    //test pattern
     u32* ptr = (u32*)m_textureMem;
     for (int y = 0; y < m_scCurrent->screenHeight; y++)
     {
         for (int x = 0; x < m_scCurrent->screenWidth; x++)
         {
-            int c = (x + y) & 1;
-            *ptr++ = (c ? 0xff400000 : 0xff000040);
+            int c = (((x + y) & 7) <= 3) || (((x - y) & 7) <= 3);
+            *ptr++ = (c ? 0xff300030 : 0xff103010);
         }
     }
 

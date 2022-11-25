@@ -156,3 +156,43 @@ const char* gHELP_ROM_UNLSN[] = { "Send an UNLISTEN command",0 };
 const char* gHELP_ROM_UNTLK[] = { "Send an UNTALK command",0 };
 const char* gHELP_ROM_VECTOR[] = { "Manage RAM vectors",0 };
 
+
+const char* gHELP_CIA1_DATAPORTA[] = {
+    "Monitoring / control of the 8 data lines of Port A.",
+    "  Read / Write : Bit 0..7 keyboard matrix columns",
+    "  Read : Joystick Port 2 : Bit 0..3 Direction(Left / Right / Up / Down), Bit 4 Fire button. 0 = activated.",
+    "  Read : Lightpen: Bit 4 (as fire button), connected also with “ / LP”(Pin 9) of the VIC",
+    "  Read : Paddles: Bit 2..3 Fire buttons, Bit 6..7 Switch control port 1 (% 01 = Paddles A) or 2 (% 10 = Paddles B)", 0
+};
+
+const char* gHELP_CIA1_DATAPORTB[] = {
+    "Monitoring / control of the 8 data lines of Port B.",
+    "  Read / Write : Bit 0..7 keyboard matrix rows",
+    "  Read : Joystick Port 1 : Bit 0..3 Direction(Left / Right / Up / Down), Bit 4 Fire button. 0 = activated.",
+    "  Read : Bit 6 : Timer A : Toggle / Impulse output(see register 14 bit 2)",
+    "  Read : Bit 7 : Timer B : Toggle / Impulse output(see register 15 bit 2)",0
+};
+
+const char* gHELP_CIA1_INTCONTROL[] = {
+    "CIA1 is connected to the IRQ - Line.",
+    "  Read: (Bit0..4 = INT DATA, Origin of the interrupt)",
+    "  Bit 0 : 1 = Underflow Timer A",
+    "  Bit 1 : 1 = Underflow Timer B",
+    "  Bit 2 : 1 = Time of day and alarm time is equal",
+    "  Bit 3 : 1 = SDR full or empty, so full byte was transferred, depending of operating mode serial bus",
+    "  Bit 4 : 1 = IRQ Signal occured at FLAG - pin(cassette port Data input, serial bus SRQ IN)",
+    "  Bit 5..6 : always 0",
+    "  Bit 7 : 1 = IRQ An interrupt occured, so at least one bit of INT MASK and INT DATA is set in both registers.",
+    "Flags will be cleared after reading the register!",
+    "Write : (Bit 0..4 = INT MASK, Interrupt mask)",
+    "  Bit 0 : 1 = Interrupt release through timer A underflow",
+    "  Bit 1 : 1 = Interrupt release through timer B underflow",
+    "  Bit 2 : 1 = Interrupt release if clock = alarmtime",
+    "  Bit 3 : 1 = Interrupt release if a complete byte has been received / sent.",
+    "  Bit 4 : 1 = Interrupt release if a positive slope occurs at the FLAG - Pin.",
+    "  Bit 5..6 : unused",
+    "  Bit 7 : Source bit. 0 = set bits 0..4 are clearing the according mask bit. ",
+    "           1 = set bits 0..4 are setting the according mask bit.",
+    "           If all bits 0..4 are cleared, there will be no change to the mask.",0
+};
+

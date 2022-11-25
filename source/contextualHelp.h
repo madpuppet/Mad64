@@ -18,6 +18,10 @@ extern const char* gHELP_VIC_SCRMEM[];
 extern const char* gHELP_VIC_IRQREQ[];
 extern const char* gHELP_VIC_INTENA[];
 
+const char* gHELP_CIA1_DATAPORTA[];
+const char* gHELP_CIA1_DATAPORTB[];
+const char* gHELP_CIA1_INTCONTROL[];
+
 extern const char* gHELP_ROM_ACPTR[];
 extern const char* gHELP_ROM_CHKIN[];
 extern const char* gHELP_ROM_CHKOUT[];
