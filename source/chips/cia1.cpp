@@ -12,32 +12,19 @@ void Cia1::Reset()
     m_regs.controlTimerA = 0x01;
     m_regs.controlTimerB = 0x08;
 
-    m_timerAMode = TimerAMode::Cycle;
-    m_timerBMode = TimerBMode::Off;
-    m_timerAStart = m_timerAVal = 0xffff;
-    m_timerBStart = m_timerBVal = 0xffff;
-}
+    m_interruptEnabledMask = (u8)Interrupts::TimerA;
 
-void Cia1::StepTimerA()
-{
-    m_timerAVal--;
-    if (m_timerAVal == 0xffff)
-    {
-        // underflow - trigger interrupt
+    m_timerARunning = true;
+    m_timerAOneShot = false;
+    m_timerACNT = false;
+    m_serialShiftIsWrite = false;
+    m_realTimeClock50hz = true;
 
-
-        // update timer b
-        if (m_timerBMode == TimerBMode::TimerA || m_timerBMode == TimerBMode::CNTAndTimerA)
-        {
-            StepTimerB();
-        }
-
-        // reset timer a
-        m_timerAVal = m_timerAStart;
-    }
-
-    m_regs.timerALow = m_timerAVal & 0xff;
-    m_regs.timerAHigh = (m_timerAVal >> 8) & 0xff;
+    m_timerALatch = m_timerAVal = 0x7ff;
+    m_timerBRunning = false;
+    m_timerBOneShot = false;
+    m_timerBMode = TimerBMode::Cycle;
+    m_timerBLatch = m_timerBVal = 0x7ff;
 }
 
 void Cia1::StepTimerB()
@@ -45,11 +32,16 @@ void Cia1::StepTimerB()
     m_timerBVal--;
     if (m_timerBVal == 0xffff)
     {
+        m_regs.interruptControl |= 2;
+
         // underflow - trigger interrupt
 
 
-        // reset timer
-        m_timerBVal = m_timerBStart;
+        // reset
+        if (m_timerBOneShot)
+            m_timerBRunning = false;
+        else
+            m_timerBVal = m_timerBLatch;
     }
 
     m_regs.timerBLow = m_timerBVal & 0xff;
@@ -58,101 +50,112 @@ void Cia1::StepTimerB()
 
 void Cia1::Step()
 {
-    switch (m_timerAMode)
+    // step timer A
+    if (m_timerARunning)
     {
-        case TimerAMode::Off:
-            break;
+        if (m_timerACNT)
+        {
+            // decrement if CNT is positive slope somehow..  Not Supported
+            // I think this is custom user port stuff
+            // also do timer B CNT & CNTAndTimerA modes
+        }
+        else
+        {
+            m_timerAVal--;
+        }
 
-        case TimerAMode::Cycle:
+        // underflow?
+        if (m_timerAVal == 0xffff)
+        {
+            m_regs.interruptControl |= 1;
+
+            // trigger interrupt
+
+            // check for timer B update
+            if (m_timerBRunning && (m_timerBMode >= TimerBMode::TimerA))
             {
-
-                m_regs.timerALow--;
-                if (m_regs.timerALow == 0xff)
-                {
-                    m_regs.timerAHigh--;
-                    if (m_regs.timerAHigh == 0xff && m_timerBMode == TimerBMode::TimerA)
-                    {
-                        m_regs.timerBLow--;
-                        if (m_regs.timerBLow == 0xff)
-                            m_regs.timerBHigh--;
-                    }
-                }
+                StepTimerB();
             }
-            break;
+
+            // reset
+            if (m_timerAOneShot)
+                m_timerARunning = false;
+            else
+                m_timerAVal = m_timerALatch;
+        }
+
+        m_regs.timerALow = m_timerAVal & 0xff;
+        m_regs.timerAHigh = (m_timerAVal >> 8) & 0xff;
     }
 
-    switch (m_timerBMode)
+    if (m_timerBRunning && (m_timerBMode == TimerBMode::Cycle))
     {
-        case TimerBMode::Off:
-            break;
-
-        case TimerBMode::Cycle:
-            {
-                m_regs.timerBLow++;
-                if (m_regs.timerBLow == 0)
-                    m_regs.timerBHigh++;
-            }
-            break;
-
-        case TimerBMode::CNT:
-            break;
-
-        case TimerBMode::TimerA:
-            break;
-
-        case TimerBMode::CNTAndTimerA:
-            break;
+        StepTimerB();
     }
+
+    if (m_regs.interruptControl & m_interruptEnabledMask)
+        TriggerInterrupt();
 }
 
 u8 Cia1::ReadReg(u16 addr)
 {
     addr = addr & 15;
-    return ((u8*)&m_regs)[addr];
+    u8 val = ((u8*)&m_regs)[addr];
+    if (addr == (u16)((u64) & (((Registers*)0)->interruptControl)))
+    {
+        m_regs.interruptControl = 0;
+    }
+    return val;
 }
 
 void Cia1::WriteReg(u16 addr, u8 val)
 {
     addr = addr & 15;
-    ((u8*)&m_regs)[addr] = val;
-
     if (addr == (u16)((u64) & (((Registers*)0)->controlTimerA)))
     {
-        if (val & 1)
-        {
-            m_timerAMode = TimerAMode::Cycle;
-        }
-        else
-        {
-            m_timerAMode = TimerAMode::Off;
-        }
+        // todo: I believe there is a 3 cycle delay to start a timer running...
+        m_timerARunning = (val & 1) ? true : false;
+        m_timerAOneShot = (val & 8) ? true : false;
+        if (val & 16)
+            m_timerAVal = m_timerALatch;
+        m_timerACNT = (val & 32) ? true : false;
+        m_serialShiftIsWrite = (val & 64) ? true : false;
+        m_realTimeClock50hz = (val & 128) ? true : false;
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->controlTimerB)))
     {
-        if (val & 1)
-        {
-            m_timerBMode = (TimerBMode)(((val >> 5) & 3) + 1);
-        }
-        else
-        {
-            m_timerBMode = TimerBMode::Off;
-        }
+        m_timerBRunning = (val & 1) ? true : false;
+        m_timerBOneShot = (val & 8) ? true : false;
+        if (val & 16)
+            m_timerBVal = m_timerBLatch;
+        m_timerBMode = (TimerBMode)((val >> 5) & 3);
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->timerALow)))
     {
-        m_timerAStart = (m_timerAStart & 0xff00) | val;
+        m_timerALatch = (m_timerALatch & 0xff00) | val;
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->timerAHigh)))
     {
-        m_timerAStart = (m_timerAStart & 0xff) | ((u16)val<<8);
+        m_timerALatch = (m_timerALatch & 0xff) | ((u16)val<<8);
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->timerBLow)))
     {
-        m_timerBStart = (m_timerBStart & 0xff00) | val;
+        m_timerBLatch = (m_timerBLatch & 0xff00) | val;
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->timerBHigh)))
     {
-        m_timerBStart = (m_timerBStart & 0xff) | ((u16)val << 8);
+        m_timerBLatch = (m_timerBLatch & 0xff) | ((u16)val << 8);
+    }
+    else if (addr == (u16)((u64) & (((Registers*)0)->interruptControl)))
+    {
+        if (val & 0x80)
+        {
+            m_interruptEnabledMask |= (val & 0x1f);
+        }
+        else
+        {
+            m_interruptEnabledMask &= ~(val & 0x1f);
+        }
     }
 }
 

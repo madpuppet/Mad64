@@ -12,8 +12,11 @@ start:
     lda #1
     sta cia1.timerBHigh
 
+    ; start & latch timer A
     lda #%00010001
     sta cia1.controlTimerA
+    
+    ; start & latch timer B in TimerA underflow mode    
     lda #%01010001
     sta cia1.controlTimerB
 
@@ -50,10 +53,12 @@ interrupt:
     lda cia1.interruptControl
     lsr
     bcc notTimerA
+    ; TIMER A interrupt has gone off - inc background color
     inc vic.backgroundColor0
 notTimerA:
     lsr
     bcc notTimerB
+    ; TIMER B interrupt has gone off - inc border color
     inc vic.borderColor
 notTimerB:
     pla

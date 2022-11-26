@@ -114,45 +114,46 @@ public:
     u8 ReadReg(u16 addr);
     void WriteReg(u16 addr, u8 val);
 
-    enum InputMode
-    {
-        Mode_Processor,
-        Mode_Count,
-        Mode_TimerA,
-        Mode_TimerA_Count
-    };
-    enum RunMode
-    {
-        Mode_Restart,
-        Mode_OneTime
-    };
+    void Reset();
+    void Step();
 
-    enum class TimerAMode
-    {
-        Off,
-        Cycle
-    };
+    // set the callback for triggering a cpu interrupt
+    void SetTriggerInterrupt(const InterruptHook& hook) { TriggerInterrupt = hook; }
+
+protected:
+    InterruptHook TriggerInterrupt;
+
+    bool m_timerARunning;
+    bool m_timerAOneShot;
+    bool m_timerACNT;
+    bool m_serialShiftIsWrite;
+    bool m_realTimeClock50hz;
+    u16 m_timerALatch;              // latch is what value timer resets to on reset
+    u16 m_timerAVal;
 
     enum class TimerBMode
     {
-        Off,
         Cycle,
         CNT,
         TimerA,
         CNTAndTimerA
     };
-
-    TimerAMode m_timerAMode;
     TimerBMode m_timerBMode;
+    bool m_timerBRunning;
+    bool m_timerBOneShot;
 
-    u16 m_timerAStart;
-    u16 m_timerBStart;
-    u16 m_timerAVal;
+    enum class Interrupts
+    {
+        TimerA = 1,
+        TimerB = 2,
+        Alarm = 4,
+        ByteTransferred = 8,
+        FlagPort = 16
+    };
+    u8 m_interruptEnabledMask;
+
+    u16 m_timerBLatch;              // latch is what value timer resets to on reset
     u16 m_timerBVal;
-
-    void Reset();
-    void Step();
-    void StepTimerA();
     void StepTimerB();
 };
 
