@@ -21,7 +21,7 @@ public:
     void SetWriteCia1Byte(const WriteByteHook& hook) { WriteCia1Byte = hook; }
     void SetReadCia2Byte(const ReadByteHook& hook) { ReadCia2Byte = hook; }
     void SetWriteCia2Byte(const WriteByteHook& hook) { WriteCia2Byte = hook; }
-
+    void SetVicBank(u8 bank) { m_vicBank = bank; }
 
 private:
     ReadByteHook ReadVicRegByte;
@@ -36,5 +36,6 @@ private:
     ReadByteHook ReadCia2Byte;
     WriteByteHook WriteCia2Byte;
 
+    u8 m_vicBank;
     u8 m_ram[65536];
 };

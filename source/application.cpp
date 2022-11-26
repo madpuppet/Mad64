@@ -193,7 +193,7 @@ void Application::Update()
     m_compiler->Update();
     m_emulator->Update();
 
-    if (m_runEmulation)
+    if (m_runEmulation && m_editWindow->IsActiveAsmFile())
     {
         m_timeDelta = SDL_min(m_timeDelta, 1 / 30.0f);
 
@@ -1269,4 +1269,9 @@ void Application::Cmd_InsertNewLine()
 
         m_editWindow->ClearMarking();
     }
+}
+
+void Application::ResetAndStopEmulator()
+{
+    m_emulator->GetVic()->Reset();
 }

@@ -17,6 +17,8 @@ EmulatorC64::EmulatorC64()
 	m_mem->SetWriteVicColorByte(DELEGATE_EX(m_vic, Vic::WriteVicColorByte));
 	m_mem->SetReadCia1Byte(DELEGATE_EX(m_cia1, Cia1::ReadReg));
 	m_mem->SetWriteCia1Byte(DELEGATE_EX(m_cia1, Cia1::WriteReg));
+	m_mem->SetReadCia2Byte(DELEGATE_EX(m_cia2, Cia2::ReadReg));
+	m_mem->SetWriteCia2Byte(DELEGATE_EX(m_cia2, Cia2::WriteReg));
 
 	m_cpu->SetMemReadByte(DELEGATE_EX(m_mem, MemC64::ReadByte));
 	m_cpu->SetMemWriteByte(DELEGATE_EX(m_mem, MemC64::WriteByte));
@@ -26,6 +28,8 @@ EmulatorC64::EmulatorC64()
 	m_vic->SetTriggerInterrupt(DELEGATE_EX(m_cpu, Cpu6502::TriggerInterrupt));
 
 	m_cia1->SetTriggerInterrupt(DELEGATE_EX(m_cpu, Cpu6502::TriggerInterrupt));
+	m_cia2->SetTriggerInterrupt(DELEGATE_EX(m_cpu, Cpu6502::TriggerNMInterrupt));
+	m_cia2->SetVicBank(DELEGATE_EX(m_mem, MemC64::SetVicBank));
 }
 
 EmulatorC64::~EmulatorC64()

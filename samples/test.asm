@@ -2,20 +2,27 @@
 
 start:
     sei
+
+    jsr clrMem
+    
+    lda #3
+    sta cia2.dataPortA
+    
     lda #0
     sta cia1.timerALow
     lda #5
     sta cia1.timerAHigh
 
-    lda #10
-    sta cia1.timerBLow
-    lda #1
-    sta cia1.timerBHigh
+    lda #0
+    sta cia2.timerALow
+    lda #5
+    sta cia2.timerAHigh
 
     lda #%00010001
     sta cia1.controlTimerA
-    lda #%01010001
-    sta cia1.controlTimerB
+
+    lda #%00010001
+    sta cia2.controlTimerA
 
     ; disable all the interrupts
     lda #$7f
@@ -27,9 +34,13 @@ start:
     sta vic.intEnable
     sta vic.intRegister
 
-    ; enable the timerA IRQ
+    ; enable cia1 timerA IRQ
     lda #$81
     sta cia1.interruptControl
+
+    ; enable cia2 timerA IRQ
+    lda #$81
+    sta cia2.interruptControl
 
     ; set banking to RAM + I/O
     lda #5
@@ -40,6 +51,12 @@ start:
     sta $fffe
     lda #>interrupt
     sta $ffff
+
+    ; point IRQ to our interrupt handler
+    lda #<nmiinterrupt
+    sta $fffa
+    lda #>nmiinterrupt
+    sta $fffb
     cli
 
 lp:
@@ -48,17 +65,33 @@ lp:
 interrupt:
     pha
     lda cia1.interruptControl
-    lsr
-    bcc notTimerA
-    inc vic.backgroundColor0
-notTimerA:
-    lsr
-    bcc notTimerB
     inc vic.borderColor
-notTimerB:
     pla
     rti
 
+nmiinterrupt:
+    pha
+    lda cia2.interruptControl
+    inc vic.backgroundColor0
+    pla
+    rti
 
+clrMem:
+    lda #0
+    sta $1
+
+    ldy #00
+@loop:
+    lda #$ff
+@target:
+    sta $1000,y
+    iny
+    bne @target-
+    inc @target-+2
+    lda @target-+2
+    bne @loop-
     
+    lda #5
+    sta $1
+    rts
     

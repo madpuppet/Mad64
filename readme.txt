@@ -158,7 +158,7 @@ Add bitmap mode
 Add xscroll/yscroll/rsel/csel support
 Add raster interrupt support
 Add sprite-sprite collisions
-
+Add cia1 timer interrupts
 
 2022.8
 

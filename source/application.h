@@ -65,7 +65,7 @@ public:
     void ReplaceIndent(string& chars, int newIndent);
     SourceFile* FindFile(const char* path);
     void ReloadFont();
-
+    void ResetAndStopEmulator();
 
 protected:
     vector<SourceFile*> m_sourceFiles;

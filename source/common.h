@@ -113,6 +113,7 @@ typedef DMFastDelegate::FastDelegate1<u16, u8> ReadByteHook;
 typedef DMFastDelegate::FastDelegate2<u16, u8> WriteByteHook;
 typedef DMFastDelegate::FastDelegate3<u8, u16, u8> BreakpointHook;
 typedef DMFastDelegate::FastDelegate0<> InterruptHook;
+typedef DMFastDelegate::FastDelegate1<u8> SetByteHook;
 
 enum BreakpointType
 {

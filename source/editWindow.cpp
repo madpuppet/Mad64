@@ -627,19 +627,25 @@ void EditWindow::SetActiveFileIdx(int idx)
 {
 	if (idx >= 0 && idx < m_fileTabs.size())
 	{
-		m_activeSourceFileItem = m_fileTabs[idx];
-		ClampActiveLine();
+		if (m_activeSourceFileItem != m_fileTabs[idx])
+		{
+			m_activeSourceFileItem = m_fileTabs[idx];
+			ClampActiveLine();
 
-		if (HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm"))
-		{
-			gApp->GetCompiler()->Compile(m_activeSourceFileItem->file);
-			gApp->GetCompiler()->LogContextualHelp(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine);
+			if (HasExtension(m_activeSourceFileItem->file->GetPath().c_str(), ".asm"))
+			{
+				gApp->GetCompiler()->Compile(m_activeSourceFileItem->file);
+				gApp->GetCompiler()->LogContextualHelp(m_activeSourceFileItem->file, m_activeSourceFileItem->activeLine);
+			}
+			else
+			{
+				gApp->GetLogWindow()->ClearAllLogs();
+			}
+			CalcRects();
+
+			if (!IsActiveAsmFile())
+				gApp->ResetAndStopEmulator();
 		}
-		else
-		{
-			gApp->GetLogWindow()->ClearAllLogs();
-		}
-		CalcRects();
 	}
 }
 

@@ -20,6 +20,7 @@ void MemC64::Reset(u8* mem, u8* memMask)
 
 	m_ram[0] = 7;
 	m_ram[1] = 7;
+	m_vicBank = 0;
 }
 
 u8 MemC64::ReadByte(u16 addr)
@@ -63,7 +64,7 @@ u8 MemC64::ReadByte(u16 addr)
 			else if (addr >= 0xdd00 && addr < 0xde00)
 			{
 				// cia 2
-				return 0;// ReadCia2Byte(addr);
+				return ReadCia2Byte(addr);
 			}
 			else if (addr >= 0xde00 && addr < 0xdf00)
 			{
@@ -102,10 +103,10 @@ u8 MemC64::ReadByte(u16 addr)
 
 u8 MemC64::ReadVicBankByte(u16 addr)
 {
-	addr &= 0x3fff;
-	if (addr >= 0x1000 && addr < 0x2000)
+	addr = (addr & 0x3fff) + (m_vicBank & 3) * 16384;
+	if ((addr >= 0x1000 && addr < 0x2000) || (addr >= 0x9000 && addr < 0xa000))
 	{
-		return gC64_charRom[addr - 0x1000];
+		return gC64_charRom[addr & 0xfff];
 	}
 	else
 	{
@@ -144,7 +145,7 @@ void MemC64::WriteByte(u16 addr, u8 val)
 			else if (addr >= 0xdd00 && addr < 0xde00)
 			{
 				// cia 2
-				//WriteCia2Byte(addr, val);
+				WriteCia2Byte(addr, val);
 				return;
 			}
 			else if (addr >= 0xde00 && addr < 0xdf00)
