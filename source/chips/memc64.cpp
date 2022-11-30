@@ -21,6 +21,22 @@ void MemC64::Reset(u8* mem, u8* memMask)
 	m_ram[0] = 7;
 	m_ram[1] = 7;
 	m_vicBank = 0;
+
+	// set the stack
+	m_ram[0x1f7] = 0x46;
+	m_ram[0x1f8] = 0xe1;
+	m_ram[0x1f9] = 0xe9;
+	m_ram[0x1fa] = 0xa7;
+	m_ram[0x1fb] = 0xa7;
+	m_ram[0x1fc] = 0x79;
+	m_ram[0x1fd] = 0xa6;
+	m_ram[0x1fe] = 0x9c;
+	m_ram[0x1ff] = 0xe3;
+}
+
+u16 MemC64::GetKernelResetAddr()
+{
+	return gC64_kernalRom[0x1ffc] + (((u16)gC64_kernalRom[0x1ffd]) << 8);
 }
 
 u8 MemC64::ReadByte(u16 addr)

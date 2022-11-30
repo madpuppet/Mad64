@@ -178,13 +178,21 @@ void LogWindow::Update()
 			(cpuRegs.SR & Cpu6502::SR_Negative) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Overflow) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Break) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Decimal) ? 1 : 0,
 			(cpuRegs.SR & Cpu6502::SR_Interrupt) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Zero) ? 1 : 0, (cpuRegs.SR & Cpu6502::SR_Carry) ? 1 : 0));
 
-		LogText(LF_Registers, "ROW COL     XSC YSC   CSL RSL   ECM MCM BMM   SSC SDC");
-		LogText(LF_Registers, FormatString("%03x %03x      %d   %d     %d   %d     %d   %d   %d   %02x  %02x", 
+		LogText(LF_Registers, "ROW COL     XSC YSC   CSL RSL   ECM MCM BMM DEN   SSC SDC");
+		LogText(LF_Registers, FormatString("%03x %03x      %d   %d     %d   %d     %d   %d   %d   %d   %02x  %02x",
 			rasterLine, rasterRow,
 			vicRegs.control2 & Vic::XSCROLL, vicRegs.control1 & Vic::YSCROLL,
 			(vicRegs.control2 & Vic::CSEL) ? 1 : 0, (vicRegs.control1 & Vic::RSEL) ? 1 : 0,
 			(vicRegs.control1 & Vic::ECM) ? 1 : 0, (vicRegs.control2 & Vic::MCM) ? 1 : 0, (vicRegs.control1 & Vic::BMM) ? 1 : 0,
-			vicRegs.spriteSpriteCollision, vicRegs.spriteDataCollision ));
+			(vicRegs.control1 & Vic::DEN) ? 1 : 0,
+			vicRegs.spriteSpriteCollision, vicRegs.spriteDataCollision));
+
+		u8 ram[3];
+		ram[0] = gApp->GetEmulator()->GetByte(cpuRegs.PC);
+		ram[1] = gApp->GetEmulator()->GetByte(cpuRegs.PC + 1);
+		ram[2] = gApp->GetEmulator()->GetByte(cpuRegs.PC + 2);
+		string disasm = gApp->GetEmulator()->GetCpu()->Disassemble(cpuRegs.PC);
+		LogText(LF_Registers, FormatString("PC: %s", disasm.c_str()));
 	}
 
 	if (m_autoScroll)
@@ -687,10 +695,14 @@ void LogWindow::OnMouseDown(SDL_Event* event)
 			case LF_LabelHelp:
 			case LF_Memory:
 			case LF_Registers:
-			case LF_Emulator:
 				if (FindLogLine(group, item, line))
 				{
 					gApp->GetEditWindow()->GotoLineCol(line, 0, MARK_None, true);
+				}
+				return;
+			case LF_Emulator:
+				{
+					gApp->SetEmulatorCaptureInput(true);
 				}
 				return;
 			case LF_MemoryDump:
@@ -706,10 +718,6 @@ void LogWindow::OnMouseDown(SDL_Event* event)
 				return;
 		}
 	
-	}
-
-	else if (FindLogLineAt(event->button.x, event->button.y, line))
-	{
 	}
 }
 

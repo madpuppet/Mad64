@@ -813,6 +813,7 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 	}
 	else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
 	{
+		gApp->SetEmulatorCaptureInput(false);
 		m_searchBox->SetActive(true);
 		m_replaceBox->SetActive(false);
 		m_inputCapture = IC_Search;
@@ -821,6 +822,7 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 	}
 	else if (Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
 	{
+		gApp->SetEmulatorCaptureInput(false);
 		m_searchBox->SetActive(false);
 		m_replaceBox->SetActive(true);
 		m_inputCapture = IC_Replace;
@@ -885,6 +887,11 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 	}
 	else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
 	{
+		gApp->SetEmulatorCaptureInput(false);
+		m_searchBox->SetActive(false);
+		m_replaceBox->SetActive(false);
+		m_inputCapture = IC_None;
+
 		if (e->button.x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
 		{
 			m_dragMode = DRAG_EditVertScroll;

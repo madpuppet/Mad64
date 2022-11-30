@@ -66,6 +66,7 @@ public:
     SourceFile* FindFile(const char* path);
     void ReloadFont();
     void ResetAndStopEmulator();
+    void SetEmulatorCaptureInput(bool capture) { m_emulatorCaptureInput = capture; }
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -100,6 +101,7 @@ protected:
     EmulatorC64* m_emulator;
     bool m_quit;
     bool m_fullscreen;
+    bool m_emulatorCaptureInput;
     AppSettings* m_settings;
 
     enum InputCapture

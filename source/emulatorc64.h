@@ -20,6 +20,7 @@ public:
 
 	// reset memory and PC pointer
 	void Reset(u8* ram, u8* ramMask, u16 cpuStart);
+	void ColdReset(u8* ram, u8* ramMask);
 
 	// step one cycle
 	// return true if cpu completed an instruction
@@ -46,6 +47,9 @@ public:
 	int GetCurrentRasterline() { return m_vic->CurrentRasterLine(); }
 	Cpu6502* GetCpu() { return m_cpu; }
 	Vic* GetVic() { return m_vic; }
+
+	void OnKeyDown(SDL_Event* e) { m_cia1->OnKeyDown(e); }
+	void OnKeyUp(SDL_Event* e) { m_cia1->OnKeyUp(e); }
 
 protected:
 	struct Breakpoint

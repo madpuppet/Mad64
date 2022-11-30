@@ -3,6 +3,8 @@
 class Cia1
 {
 public:
+    Cia1();
+
     struct Registers
     {
         // Monitoring / control of the 8 data lines of Port A.
@@ -120,6 +122,10 @@ public:
     // set the callback for triggering a cpu interrupt
     void SetTriggerInterrupt(const InterruptHook& hook) { TriggerInterrupt = hook; }
 
+    // capture keyboard
+    void OnKeyDown(SDL_Event* e);
+    void OnKeyUp(SDL_Event* e);
+
 protected:
     InterruptHook TriggerInterrupt;
 
@@ -155,5 +161,9 @@ protected:
     u16 m_timerBLatch;              // latch is what value timer resets to on reset
     u16 m_timerBVal;
     void StepTimerB();
+
+    u8 m_keyState[8];               // 8 rows of keys - each bit represents a key (column) in that row
+    u8 m_keyboardRowMask;
+    int m_keyMap[256];              // map Scan codes to keyState entries  r*8 + c;
 };
 

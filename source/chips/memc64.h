@@ -4,6 +4,7 @@ class MemC64
 {
 public:
     void Reset(u8* mem, u8* memMask);
+    u16 GetKernelResetAddr();
     void Step() {};
 
     u8 ReadByte(u16 addr);

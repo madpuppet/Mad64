@@ -100,6 +100,17 @@ public:
 		return m_autoScroll;
 	}
 
+	enum InputCapture
+	{
+		IC_None,
+		IC_Search,
+		IC_Replace
+	};
+	void SetInputCapture(InputCapture ic)
+	{
+		m_inputCapture = ic;
+	}
+
 protected:
 	void ClampTargetVertScroll();
 	void ClampTargetHorizScroll();
@@ -139,12 +150,6 @@ protected:
 	SourceFileItem* m_activeSourceFileItem;
 	float m_cursorAnimTime;
 
-	enum InputCapture
-	{
-		IC_None,
-		IC_Search,
-		IC_Replace
-	};
 	InputCapture m_inputCapture;
 
 	TextInput* m_searchBox;

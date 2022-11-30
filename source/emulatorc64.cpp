@@ -46,6 +46,11 @@ void EmulatorC64::Reset(u8* ram, u8* ramMask, u16 cpuStart)
 	m_sid->Reset();
 }
 
+void EmulatorC64::ColdReset(u8* ram, u8* ramMask)
+{
+	Reset(ram, ramMask, m_mem->GetKernelResetAddr());
+}
+
 bool EmulatorC64::Step()
 {
 	m_vic->Step();

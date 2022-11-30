@@ -39,7 +39,7 @@ u16 Cpu6502::Decode_AbsY_Addr()
 }
 u16 Cpu6502::Decode_Ind_Addr()
 {
-    return (u16)ReadByte(m_regs.operand) | ((u16)ReadByte((m_regs.operand + 1)&0xff) << 8);
+    return (u16)ReadByte(m_regs.operand) | ((u16)ReadByte(m_regs.operand + 1) << 8);
 }
 u16 Cpu6502::Decode_IndX_Addr()
 {
@@ -81,6 +81,7 @@ void Cpu6502::Decode_SEI_Imp()
 void Cpu6502::Decode_CLI_Imp()
 {
     m_regs.SR &= ~SR_Interrupt;
+    m_interruptDelay = 2;
 }
 
 void Cpu6502::Decode_CLV_Imp()
@@ -128,23 +129,23 @@ void Cpu6502::Decode_NOP_Imp()
 
 void Cpu6502::Decode_PHA_Imp()
 {
-    WriteByte(m_regs.SP--, m_regs.A);
+    WriteByte(0x100 + m_regs.SP--, m_regs.A);
 }
 
 void Cpu6502::Decode_PHP_Imp()
 {
-    WriteByte(m_regs.SP--, m_regs.SR);
+    WriteByte(0x100 + m_regs.SP--, m_regs.SR);
 }
 
 void Cpu6502::Decode_PLA_Imp()
 {
-    m_regs.A = ReadByte(++m_regs.SP);
+    m_regs.A = ReadByte(++m_regs.SP + 0x100);
     m_regs.SetNZ(m_regs.A);
 }
 
 void Cpu6502::Decode_PLP_Imp()
 {
-    m_regs.SR = ReadByte(++m_regs.SP);
+    m_regs.SR = ReadByte(++m_regs.SP + 0x100);
 }
 
 void Cpu6502::Decode_TAX_Imp()
@@ -179,7 +180,7 @@ void Cpu6502::Decode_TXS_Imp()
 
 void Cpu6502::Decode_TYA_Imp()
 {
-    m_regs.SP = m_regs.Y;
+    m_regs.A = m_regs.Y;
     m_regs.SetNZ(m_regs.Y);
 }
 
@@ -449,11 +450,11 @@ void Cpu6502::Decode_SBC(u8 M)
             outLow = outLow + 10;
             outHi--;
         }
-        u8 C = SR_Carry;
+        u8 C = 0;
         if (outHi < 0)
         {
             outHi += 10;
-            C = 0;
+            C = SR_Carry;
         }
         u8 result = outLow | (outHi << 4);
         u8 N = 0;
@@ -468,7 +469,7 @@ void Cpu6502::Decode_SBC(u8 M)
         u8 N = result & SR_Negative;
         u8 Z = (result & 0xff) ? 0 : SR_Zero;
         u8 V = ((m_regs.A ^ result) & (m_regs.operand ^ result)) & 0x80 ? SR_Overflow : 0;
-        u8 C = result & 0x100 ? 1 : 0;
+        u8 C = result & 0x100 ? 0 : 1;
         m_regs.A = (u8)result;
         m_regs.SR = (m_regs.SR & ~(SR_Zero | SR_Negative | SR_Carry | SR_Overflow)) | N | Z | V | C;
     }
@@ -600,7 +601,7 @@ void Cpu6502::Decode_BIT(u16 addr)
 {
     u8 M = ReadByte(addr);
     u8 Z = (M & m_regs.A) ? 0 : 1;
-    m_regs.SP = (m_regs.SP & ~(SR_Negative | SR_Overflow | SR_Zero)) | (M & (SR_Negative | SR_Overflow)) | SR_Zero;
+    m_regs.SR = (m_regs.SR & ~(SR_Negative | SR_Overflow | SR_Zero)) | (M & (SR_Negative | SR_Overflow)) | SR_Zero;
 }
 
 void Cpu6502::Decode_BIT_Zero()
@@ -854,6 +855,7 @@ void Cpu6502::Decode_LDX(u16 addr)
 void Cpu6502::Decode_LDX_Imm()
 {
     m_regs.X = (u8)m_regs.operand;
+    m_regs.SetNZ(m_regs.X);
 }
 void Cpu6502::Decode_LDX_Zero()
 {
@@ -880,6 +882,7 @@ void Cpu6502::Decode_LDY(u16 addr)
 void Cpu6502::Decode_LDY_Imm()
 {
     m_regs.Y = (u8)m_regs.operand;
+    m_regs.SetNZ(m_regs.Y);
 }
 void Cpu6502::Decode_LDY_Zero()
 {
@@ -915,6 +918,16 @@ void Cpu6502::Decode_JSR_Abs()
     m_regs.PC = Decode_Abs_Addr();
 }
 
+void Cpu6502::Decode_ROL(u16 addr)
+{
+    u8 val = ReadByte(addr);
+    u8 newCarry = (val & 0x80) ? SR_Carry : 0;
+    u8 oldCarry = (m_regs.SR & SR_Carry);
+    val = (u8)((u16)val << 1) | oldCarry;
+    WriteByte(addr, val);
+    m_regs.SetNZC(val, newCarry);
+}
+
 void Cpu6502::Decode_ROR(u16 addr)
 {
     u8 val = ReadByte(addr);
@@ -923,6 +936,14 @@ void Cpu6502::Decode_ROR(u16 addr)
     val = (u8)((u16)val >> 1) | oldCarry;
     WriteByte(addr, val);
     m_regs.SetNZC(val, newCarry);
+}
+
+void Cpu6502::Decode_ROL_Imp()
+{
+    u8 newCarry = (m_regs.A & 0x80) ? SR_Carry : 0;
+    u8 oldCarry = (m_regs.SR & SR_Carry);
+    m_regs.A = (u8)((u16)m_regs.A << 1) | oldCarry;
+    m_regs.SetNZC(m_regs.A, newCarry);
 }
 
 void Cpu6502::Decode_ROR_Imp()
@@ -951,6 +972,26 @@ void Cpu6502::Decode_ROR_Abs()
 void Cpu6502::Decode_ROR_AbsX()
 {
     Decode_ROR(Decode_AbsX_Addr());
+}
+
+void Cpu6502::Decode_ROL_Zero()
+{
+    Decode_ROL(Decode_Zero_Addr());
+}
+
+void Cpu6502::Decode_ROL_ZeroX()
+{
+    Decode_ROL(Decode_ZeroX_Addr());
+}
+
+void Cpu6502::Decode_ROL_Abs()
+{
+    Decode_ROL(Decode_Abs_Addr());
+}
+
+void Cpu6502::Decode_ROL_AbsX()
+{
+    Decode_ROL(Decode_AbsX_Addr());
 }
 
 void Cpu6502::Decode_STA_Zero()
@@ -1188,6 +1229,12 @@ Cpu6502::Cpu6502()
     OPC(PLA, Imp,   0x68, 4);
     OPC(PLP, Imp,   0x28, 4);
 
+    OPC(ROL, Imp, 0x2A, 2);
+    OPC(ROL, Zero, 0x26, 5);
+    OPC(ROL, ZeroX, 0x36, 6);
+    OPC(ROL, Abs, 0x2E, 6);
+    OPC(ROL, AbsX, 0x3E, 7);
+
     OPC(ROR, Imp, 0x6A, 2);
     OPC(ROR, Zero,  0x66, 5);
     OPC(ROR, ZeroX, 0x76, 6);
@@ -1246,10 +1293,13 @@ void Cpu6502::Reset(u16 cpuStart)
 {
     memset(&m_regs, 0, sizeof(m_regs));
     m_regs.PC = cpuStart;
-    m_regs.SP = 0xff;
+    m_regs.SP = 0xf6;
     m_regs.SR = 0;
     m_irqInterrupt = 0;
     m_nmiInterrupt = 0;
+    m_interruptDelay = 0;
+
+    traceFH = fopen("trace.txt", "w");
 }
 
 bool Cpu6502::IsOpcode(const char* text)
@@ -1288,6 +1338,9 @@ const char *Cpu6502::GetAddressingModeName(AddressingMode am)
 
 bool Cpu6502::Step()
 {
+    if (m_interruptDelay)
+        m_interruptDelay--;
+
     m_regs.frameCycle++;
     if (m_regs.delayCycles)
     {
@@ -1302,7 +1355,7 @@ bool Cpu6502::Step()
     {
         if (m_regs.decodeCycle == 0)
         {
-            if (m_nmiInterrupt || m_irqInterrupt)
+            if (m_interruptDelay == 0 && (m_nmiInterrupt || m_irqInterrupt))
             {
                 // not sure how long an interrupt takes...
                 m_regs.delayCycles = 4;
@@ -1314,16 +1367,54 @@ bool Cpu6502::Step()
                 {
                     m_nmiInterrupt = false;
                     m_regs.PC = ReadByte(0xfffa) + (ReadByte(0xfffb) << 8);
+
+                    fprintf(traceFH, "NMI -> %04x\n", m_regs.PC);
                 }
                 else if (m_irqInterrupt)
                 {
                     m_irqInterrupt = false;
                     m_regs.PC = ReadByte(0xfffe) + (ReadByte(0xffff) << 8);
+
+                    fprintf(traceFH, "IRQ -> %04x\n", m_regs.PC);
                 }
                 return false;
             }
             else
             {
+#if 0
+                // TRACE
+                string out = Disassemble(m_regs.PC);
+                string regsOut = FormatString("%-40s  A %02x X %02x Y %02x SP %02x SR %c%c%c%c%c%c%c%c  STACK %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", out.c_str(), m_regs.A, m_regs.X, m_regs.Y, m_regs.SP,
+                    (m_regs.SR & SR_Negative) ? 'N' : '.',
+                    (m_regs.SR & SR_Overflow) ? 'V' : '.',
+                    '-',
+                    (m_regs.SR & SR_Break) ? 'B' : '.',
+                    (m_regs.SR & SR_Decimal) ? 'D' : '.',
+                    (m_regs.SR & SR_Interrupt) ? 'I' : '.',
+                    (m_regs.SR & SR_Zero) ? 'Z' : '.',
+                    (m_regs.SR & SR_Carry) ? 'C' : '.',
+
+                    ReadByte(0x100 + m_regs.SP + 1),
+                    ReadByte(0x100 + m_regs.SP + 2),
+                    ReadByte(0x100 + m_regs.SP + 3),
+                    ReadByte(0x100 + m_regs.SP + 4),
+                    ReadByte(0x100 + m_regs.SP + 5),
+                    ReadByte(0x100 + m_regs.SP + 6),
+                    ReadByte(0x100 + m_regs.SP + 7),
+                    ReadByte(0x100 + m_regs.SP + 8),
+                    ReadByte(0x100 + m_regs.SP + 9),
+                    ReadByte(0x100 + m_regs.SP + 10),
+                    ReadByte(0x100 + m_regs.SP + 11),
+                    ReadByte(0x100 + m_regs.SP + 12),
+                    ReadByte(0x100 + m_regs.SP + 13),
+                    ReadByte(0x100 + m_regs.SP + 14),
+                    ReadByte(0x100 + m_regs.SP + 15),
+                    ReadByte(0x100 + m_regs.SP + 16)
+                );
+                fprintf(traceFH, "%s\n", regsOut.c_str());
+#endif
+
+
                 u8 op = ReadByte(m_regs.PC++);
                 m_regs.op = &m_opcodes[op];
                 m_regs.opcodeCycleCount = m_regs.op->cycles;
@@ -1387,4 +1478,87 @@ void Cpu6502::TriggerNMInterrupt()
         m_nmiInterrupt = true;
     }
 }
+
+string Cpu6502::Disassemble(u16 addr)
+{
+    u8 opc = ReadByte(addr);
+    auto &opcode = m_opcodes[opc];
+    switch (opcode.addressMode)
+    {
+        case AM_Imp:
+            return FormatString("%04x   %02x .. ..   %s", addr, opc, opcode.name);
+
+        case AM_Imm:
+            {
+                u8 val = ReadByte(addr + 1);
+                return FormatString("%04x   %02x .. ..   %s #$%02x", addr, opc, opcode.name, val);
+            }
+
+        case AM_Rel:
+            {
+                u8 val = ReadByte(addr + 1);
+                u16 target = addr + 2 + (i8)val;
+                return FormatString("%04x   %02x %02x ..   %s $%04x", addr, opc, val, opcode.name, target);
+            }
+
+        case AM_Zero:
+            {
+                u8 val = ReadByte(addr + 1);
+                return FormatString("%04x   %02x %02x ..   %s $%02x", addr, opc, val, opcode.name, val);
+            }
+
+        case AM_ZeroX:
+            {
+                u8 val = ReadByte(addr + 1);
+                return FormatString("%04x   %02x %02x ..   %s $%02x,x", addr, opc, val, opcode.name, val);
+            }
+
+        case AM_ZeroY:
+            {
+                u8 val = ReadByte(addr + 1);
+                return FormatString("%04x   %02x %02x ..   %s $%02x,y", addr, opc, val, opcode.name, val);
+            }
+
+        case AM_IndX:
+            {
+                u8 val = ReadByte(addr + 1);
+                u16 indAddr = ReadByte(val) + (((u16)ReadByte(val + 1)) << 8);
+                return FormatString("%04x   %02x %02x ..   %s ($%02x:$%04x,x)", addr, opc, val, opcode.name, val, indAddr);
+            }
+
+        case AM_IndY:
+            {
+                u8 val = ReadByte(addr + 1);
+                u16 indAddr = ReadByte(val) + (((u16)ReadByte(val + 1)) << 8);
+                return FormatString("%04x   %02x %02x ..   %s ($%02x:$%04x),y", addr, opc, val, opcode.name, val, indAddr);
+            }
+
+        case AM_Abs:
+            {
+                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2))<<8);
+                return FormatString("%04x   %02x %02x %02x   %s $%04x", addr, opc, target&0xff, target>>8, opcode.name, target);
+            }
+
+        case AM_AbsX:
+            {
+                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2)) << 8);
+                return FormatString("%04x   %02x %02x %02x   %s $%04x,x", addr, opc, target & 0xff, target >> 8, opcode.name, target);
+            }
+
+        case AM_AbsY:
+            {
+                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2)) << 8);
+                return FormatString("%04x   %02x %02x %02x   %s $%04x,y", addr, opc, target & 0xff, target >> 8, opcode.name, target);
+            }
+
+        case AM_Ind:
+            {
+                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2)) << 8);
+                u16 indAddr = ReadByte(target) + (((u16)ReadByte(target + 1)) << 8);
+                return FormatString("%04x   %02x %02x %02x   %s ($%04x:$%04x)", addr, opc, target & 0xff, target >> 8, opcode.name, target, indAddr);
+            }
+    }
+    return FormatString("%04x  ?!?", addr);
+}
+
 

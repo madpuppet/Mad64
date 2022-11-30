@@ -1,6 +1,26 @@
 #include "common.h"
 #include "cia1.h"
 
+#define K(key,r,c) m_keyMap[(SDLK_##key) & 255]=r*8+(7-c)
+#define KEY_ROW(r, k0, k1, k2, k3, k4, k5, k6, k7) K(k0,r,0);K(k1,r,1);K(k2,r,2);K(k3,r,3);K(k4,r,4);K(k5,r,5);K(k6,r,6);K(k7,r,7);
+
+Cia1::Cia1()
+{
+    memset(m_keyMap, -1, sizeof(m_keyMap));
+    memset(m_keyState, 0xff, sizeof(m_keyState));
+
+    KEY_ROW(0, DOWN, F5, F3, F1, F7, RIGHT, RETURN, DELETE);
+    KEY_ROW(1, LSHIFT, e, s, z, 4, a, w, 3);
+    KEY_ROW(2, x, t, f, c, 6, d, r, 5);
+    KEY_ROW(3, v, u, h, b, 8, g, y, 7);
+    KEY_ROW(4, n, o, k, m, 0, j, i, 9);
+    KEY_ROW(5, COMMA, AT, COLON, PERIOD, MINUS, l, p, PLUS);
+    KEY_ROW(6, SLASH, CARET, EQUALS, RSHIFT, HOME, SEMICOLON, LEFTBRACKET, RIGHTBRACKET);
+    KEY_ROW(7, TAB, q, MENU, SPACE, 2, LCTRL, BACKQUOTE, 1);
+
+    m_keyMap[SDLK_k] = 4 * 8 + 2;
+}
+
 void Cia1::Reset()
 {
     memset(&m_regs, 0, sizeof(m_regs));
@@ -14,17 +34,17 @@ void Cia1::Reset()
 
     m_interruptEnabledMask = (u8)Interrupts::TimerA;
 
+    m_timerALatch = m_timerAVal = 0x3fff;
     m_timerARunning = true;
     m_timerAOneShot = false;
     m_timerACNT = false;
     m_serialShiftIsWrite = false;
     m_realTimeClock50hz = true;
 
-    m_timerALatch = m_timerAVal = 0x7ff;
+    m_timerBLatch = m_timerBVal = 0x3fff;
     m_timerBRunning = false;
     m_timerBOneShot = false;
     m_timerBMode = TimerBMode::Cycle;
-    m_timerBLatch = m_timerBVal = 0x7ff;
 }
 
 void Cia1::StepTimerB()
@@ -33,9 +53,6 @@ void Cia1::StepTimerB()
     if (m_timerBVal == 0xffff)
     {
         m_regs.interruptControl |= 2;
-
-        // underflow - trigger interrupt
-
 
         // reset
         if (m_timerBOneShot)
@@ -69,8 +86,6 @@ void Cia1::Step()
         {
             m_regs.interruptControl |= 1;
 
-            // trigger interrupt
-
             // check for timer B update
             if (m_timerBRunning && (m_timerBMode >= TimerBMode::TimerA))
             {
@@ -101,7 +116,17 @@ u8 Cia1::ReadReg(u16 addr)
 {
     addr = addr & 15;
     u8 val = ((u8*)&m_regs)[addr];
-    if (addr == (u16)((u64) & (((Registers*)0)->interruptControl)))
+    if (addr == (u16)((u64) & (((Registers*)0)->dataPortB)))
+    {
+        u8 val = 0xff;
+        for (int i = 0; i < 8; i++)
+        {
+            if (!(m_keyboardRowMask & (1<<i)))
+                val &= m_keyState[i];
+        }
+        return val;
+    }
+    else if (addr == (u16)((u64) & (((Registers*)0)->interruptControl)))
     {
         m_regs.interruptControl = 0;
     }
@@ -111,7 +136,11 @@ u8 Cia1::ReadReg(u16 addr)
 void Cia1::WriteReg(u16 addr, u8 val)
 {
     addr = addr & 15;
-    if (addr == (u16)((u64) & (((Registers*)0)->controlTimerA)))
+    if (addr == (u16)((u64) & (((Registers*)0)->dataPortA)))
+    {
+        m_keyboardRowMask = val;
+    }
+    else if (addr == (u16)((u64) & (((Registers*)0)->controlTimerA)))
     {
         // todo: I believe there is a 3 cycle delay to start a timer running...
         m_timerARunning = (val & 1) ? true : false;
@@ -159,4 +188,24 @@ void Cia1::WriteReg(u16 addr, u8 val)
     }
 }
 
+void Cia1::OnKeyDown(SDL_Event* e)
+{
+    int dat = m_keyMap[(e->key.keysym.sym)&255];
+    if (dat != -1)
+    {
+        int r = (dat >> 3) & 7;
+        int c = dat & 7;
+        m_keyState[r] &= ~(1 << c);
+    }
+}
 
+void Cia1::OnKeyUp(SDL_Event* e)
+{
+    int dat = m_keyMap[(e->key.keysym.sym)&255];
+    if (dat != -1)
+    {
+        int r = (dat >> 3) & 7;
+        int c = dat & 7;
+        m_keyState[r] |= (1 << c);
+    }
+}

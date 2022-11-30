@@ -274,7 +274,10 @@ void Application::HandleEvent(SDL_Event *e)
         m_editWindow->OnMouseWheel(e);
         break;
     case SDL_TEXTINPUT:
-        m_editWindow->OnTextInput(e);
+        if (!m_emulatorCaptureInput)
+        {
+            m_editWindow->OnTextInput(e);
+        }
         break;
     case SDL_KEYDOWN:
         OnKeyDown(e);
@@ -498,6 +501,12 @@ bool Application::IsMemoryBreakpointInRange(u16 addr, u16 length)
 
 void Application::OnKeyDown(SDL_Event* e)
 {
+    if (m_emulatorCaptureInput)
+    {
+        m_emulator->OnKeyDown(e);
+        return;
+    }
+
     switch (e->key.keysym.sym)
     {
     case SDLK_l:
@@ -622,6 +631,19 @@ void Application::OnKeyDown(SDL_Event* e)
             
         }
         return;
+    case SDLK_F6:
+        {
+            if (m_editWindow->IsActiveAsmFile())
+            {
+                auto file = m_editWindow->GetActiveFile();
+                auto compiledFile = file->GetCompileInfo();
+                ApplyBreakpoints();
+                m_emulator->ColdReset(compiledFile->m_ramDataMap, compiledFile->m_ramMask);
+                m_runEmulation = false;
+            }
+        }
+        break;
+
     case SDLK_F5:
         {
             if (m_editWindow->IsActiveAsmFile())
@@ -680,6 +702,12 @@ void Application::OnKeyDown(SDL_Event* e)
 
 void Application::OnKeyUp(SDL_Event* e)
 {
+    if (m_emulatorCaptureInput)
+    {
+        m_emulator->OnKeyUp(e);
+        return;
+    }
+
     m_editWindow->OnKeyUp(e);
 }
 

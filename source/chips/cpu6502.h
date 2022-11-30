@@ -95,6 +95,9 @@ public:
     void TriggerColdStart();
     void TriggerInterrupt();
     void TriggerNMInterrupt();
+    
+    // disassemble the memory at addr
+    string Disassemble(u16 addr);
 
 private:
     // HOOKS
@@ -118,6 +121,7 @@ private:
     // interrupt 
     bool m_irqInterrupt;
     bool m_nmiInterrupt;
+    int m_interruptDelay;   // a few cycles after CLI before we can actually interrupt
 
     // addressing mode helpers
     u16 Decode_Zero_Addr();
@@ -331,5 +335,7 @@ private:
 
     void Decode_DEY();
     void Decode_RTS();
+
+    FILE* traceFH;
 };
 
