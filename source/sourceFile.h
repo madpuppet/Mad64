@@ -7,11 +7,12 @@ class SourceLine
 public:
     SourceLine();
     SourceLine(const char* start, const char* end);
+    SourceLine(string line);
     ~SourceLine();
 
     string &GetChars() { return m_chars; }
     vector<string>& GetTokens() { return m_tokens; }
-    int GetLineWidth() { VisualizeIfNecessary(); return m_charXOffset.back(); }
+    int GetLineWidth() { VisualizeIfNecessary(); return m_charXOffset.empty() ? 0 : m_charXOffset.back(); }
     void GetCharX(int column, int& xStart, int& xEnd);
     int GetColumnAtX(int x);
 

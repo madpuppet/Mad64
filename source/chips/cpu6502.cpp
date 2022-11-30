@@ -1485,84 +1485,166 @@ void Cpu6502::TriggerNMInterrupt()
 
 string Cpu6502::Disassemble(u16 addr)
 {
-    u8 opc = ReadByte(addr);
+    DisassembledLine dl;
+    dl.size = SDL_min(0x10000 - addr, 3);
+    for (int i=0; i<dl.size; i++)
+        dl.ram[i] = ReadByte(addr+i);
+    if (!Disassemble(dl))
+    {
+        dl.text = "???";
+    }
+    return dl.text;
+}
+
+bool Cpu6502::Disassemble(DisassembledLine &dl)
+{
+    u8 opc = dl.ram[0];
     auto &opcode = m_opcodes[opc];
+    if (StrEqual(opcode.name, "???"))
+        return false;
+
     switch (opcode.addressMode)
     {
         case AM_Imp:
-            return FormatString("%04x   %02x .. ..   %s", addr, opc, opcode.name);
+            dl.text = FormatString("    %s", opcode.name);
+            dl.size = 1;
+            return true;
 
         case AM_Imm:
             {
-                u8 val = ReadByte(addr + 1);
-                return FormatString("%04x   %02x .. ..   %s #$%02x", addr, opc, opcode.name, val);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.text = FormatString("    %s #$%02x", opcode.name, val);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_Rel:
             {
-                u8 val = ReadByte(addr + 1);
-                u16 target = addr + 2 + (i8)val;
-                return FormatString("%04x   %02x %02x ..   %s $%04x", addr, opc, val, opcode.name, target);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.target = dl.addr + (i8)val;
+                    dl.text = FormatString("    %s $%04x", opcode.name, dl.target);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_Zero:
             {
-                u8 val = ReadByte(addr + 1);
-                return FormatString("%04x   %02x %02x ..   %s $%02x", addr, opc, val, opcode.name, val);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.text = FormatString("    %s $%02x", opcode.name, val);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_ZeroX:
             {
-                u8 val = ReadByte(addr + 1);
-                return FormatString("%04x   %02x %02x ..   %s $%02x,x", addr, opc, val, opcode.name, val);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.text = FormatString("    %s $%02x,x", opcode.name, val);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_ZeroY:
             {
-                u8 val = ReadByte(addr + 1);
-                return FormatString("%04x   %02x %02x ..   %s $%02x,y", addr, opc, val, opcode.name, val);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.text = FormatString("    %s $%02x,y", opcode.name, val);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_IndX:
             {
-                u8 val = ReadByte(addr + 1);
-                u16 indAddr = ReadByte(val) + (((u16)ReadByte(val + 1)) << 8);
-                return FormatString("%04x   %02x %02x ..   %s ($%02x:$%04x,x)", addr, opc, val, opcode.name, val, indAddr);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.text = FormatString("    %s ($%02x,x)", opcode.name, val);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_IndY:
             {
-                u8 val = ReadByte(addr + 1);
-                u16 indAddr = ReadByte(val) + (((u16)ReadByte(val + 1)) << 8);
-                return FormatString("%04x   %02x %02x ..   %s ($%02x:$%04x),y", addr, opc, val, opcode.name, val, indAddr);
+                if (dl.size > 1)
+                {
+                    u8 val = dl.ram[1];
+                    dl.text = FormatString("    %s ($%02x),y", opcode.name, val);
+                    dl.size = 2;
+                    return true;
+                }
             }
+            break;
 
         case AM_Abs:
             {
-                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2))<<8);
-                return FormatString("%04x   %02x %02x %02x   %s $%04x", addr, opc, target&0xff, target>>8, opcode.name, target);
+                if (dl.size > 2)
+                {
+                    u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
+                    dl.text = FormatString("    %s $%04x", opcode.name, target);
+                    dl.size = 3;
+                    return true;
+                }
             }
+            break;
 
         case AM_AbsX:
             {
-                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2)) << 8);
-                return FormatString("%04x   %02x %02x %02x   %s $%04x,x", addr, opc, target & 0xff, target >> 8, opcode.name, target);
+                if (dl.size > 2)
+                {
+                    u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
+                    dl.text = FormatString("    %s $%04x,x", opcode.name, target);
+                    dl.size = 3;
+                    return true;
+                }
             }
+            break;
 
         case AM_AbsY:
             {
-                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2)) << 8);
-                return FormatString("%04x   %02x %02x %02x   %s $%04x,y", addr, opc, target & 0xff, target >> 8, opcode.name, target);
+                if (dl.size > 2)
+                {
+                    u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
+                    dl.text = FormatString("    %s $%04x,y", opcode.name, target);
+                    dl.size = 3;
+                    return true;
+                }
             }
+            break;
 
         case AM_Ind:
             {
-                u16 target = ReadByte(addr + 1) + (((u16)ReadByte(addr + 2)) << 8);
-                u16 indAddr = ReadByte(target) + (((u16)ReadByte(target + 1)) << 8);
-                return FormatString("%04x   %02x %02x %02x   %s ($%04x:$%04x)", addr, opc, target & 0xff, target >> 8, opcode.name, target, indAddr);
+                if (dl.size > 2)
+                {
+                    u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
+                    dl.text = FormatString("    %s ($%04x)", opcode.name, target);
+                    dl.size = 3;
+                    return true;
+                }
             }
+            break;
     }
-    return FormatString("%04x  ?!?", addr);
+    dl.text = FormatString("?!?");
+    return false;
 }
 
 

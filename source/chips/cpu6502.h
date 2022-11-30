@@ -99,7 +99,17 @@ public:
     void TriggerNMInterrupt();
     
     // disassemble the memory at addr
+    struct DisassembledLine
+    {
+        string text;
+        int size;
+        u8 ram[3];
+
+        u16 addr;
+        u16 target;
+    };
     string Disassemble(u16 addr);
+    bool Disassemble(DisassembledLine& dl);
 
 private:
     // HOOKS

@@ -77,16 +77,6 @@ bool SourceFile::Load()
             auto line = new SourceLine(start, end);
             m_lines.push_back(line);
         }
-
-        // tokenize..
-        for (auto line : m_lines)
-        {
-            line->Tokenize();
-        }
-
-        // compile & vizualize compiled elements
-        if (HasExtension(m_path.c_str(), ".asm"))
-            gApp->GetCompiler()->Compile(this);
         return true;
     }
     else
@@ -257,6 +247,13 @@ SourceLine::SourceLine(const char* start, const char* end)
         m_chars.push_back(*start++);
     }
 }
+
+SourceLine::SourceLine(string line)
+{
+    m_gcText = new GraphicChunk();
+    m_chars = line;
+}
+
 SourceLine::SourceLine()
 {
     m_gcText = new GraphicChunk();
@@ -289,15 +286,23 @@ void SourceLine::Tokenize()
 void SourceLine::GetCharX(int column, int& xStart, int& xEnd)
 {
     VisualizeIfNecessary();
-    if (column >= m_charXOffset.size()-1)
+    if (m_charXOffset.empty())
     {
-        xStart = m_charXOffset.back();
-        xEnd = xStart + 16;
+        xStart = 0;
+        xEnd = 0;
     }
     else
     {
-        xStart = m_charXOffset[column];
-        xEnd = m_charXOffset[column + 1];
+        if (column >= m_charXOffset.size() - 1)
+        {
+            xStart = m_charXOffset.back();
+            xEnd = xStart + 16;
+        }
+        else
+        {
+            xStart = m_charXOffset[column];
+            xEnd = m_charXOffset[column + 1];
+        }
     }
 }
 

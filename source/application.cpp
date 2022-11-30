@@ -304,6 +304,79 @@ void Application::HandleEvent(SDL_Event *e)
     }
 }
 
+void AddDataLines(u8 *data, SourceFile *sf, int &baseIdx, int &idx)
+{
+    while (baseIdx < idx)
+    {
+        int bytes = SDL_min(16, idx - baseIdx);
+        string line = "    dc.b ";
+        for (int i = 0; i < bytes; i++)
+        {
+            if (i != 0)
+                line += ", ";
+            line += FormatString("$%02x", data[baseIdx + i]);
+        }
+        sf->GetLines().push_back(new SourceLine(line));
+        baseIdx += bytes;
+    }
+}
+
+bool Application::ImportFile()
+{
+    const char* path = gApp->GetSettings()->activeFilePath.c_str();
+    const char* patterns[3] = { "*.prg", "*.d64", "*.crt" };
+    const char* file = tinyfd_openFileDialog("Import binary", path, 3, patterns, nullptr, false);
+    if (file)
+    {
+        Log("Load Binary: %s", file);
+        if (HasExtension(file, ".prg"))
+        {
+            size_t size;
+            u8* data = (u8*)SDL_LoadFile(file, &size);
+            auto proc = m_emulator->GetCpu();
+            string path = file;
+            size_t lastindex = path.find_last_of(".");
+            string asmname = path.substr(0, lastindex) + ".asm";
+
+            auto sf = new SourceFile(asmname.c_str());
+            if (data)
+            {
+                u16 addr = ((u16)data[1] << 8) | (u16)data[0];
+                sf->GetLines().push_back(new SourceLine(FormatString("    * = $%04x", addr)));
+
+                int idx = 2;
+                int baseIdx = 2;
+                Cpu6502::DisassembledLine dl;
+                while (idx < size)
+                {
+                    int remain = SDL_min(3, (int)size - idx);
+                    for (int i = 0; i < remain; i++)
+                    {
+                        dl.ram[i] = data[idx+i];
+                    }
+                    dl.size = remain;
+                    dl.addr = addr + idx;
+
+                    int dataBytes = idx - baseIdx;
+                    if (dl.ram[0] != 0 && proc->Disassemble(dl))
+                    {
+                        AddDataLines(data, sf, baseIdx, idx);
+                        sf->GetLines().push_back(new SourceLine(dl.text));
+                        idx += dl.size;
+                        baseIdx = idx;
+                    }
+                    else
+                        idx++;
+                }
+                AddDataLines(data, sf, baseIdx, idx);
+                AddFile(sf);
+                SDL_free(data);
+            }
+        }
+    }
+    return false;
+}
+
 bool Application::LoadFile()
 {
     const char* path = gApp->GetSettings()->activeFilePath.c_str();
@@ -330,6 +403,50 @@ SourceFile *Application::FindFile(const char* path)
     return nullptr;
 }
 
+void Application::AddFile(SourceFile* sf)
+{
+    // tokenize..
+    for (auto line : sf->GetLines())
+    {
+        line->Tokenize();
+    }
+
+    // compile & vizualize compiled elements
+    if (HasExtension(sf->GetPath().c_str(), ".asm"))
+        gApp->GetCompiler()->Compile(sf);
+
+    m_sourceFiles.push_back(sf);
+
+    // alert renderer of update
+    m_editWindow->OnFileLoaded(sf);
+
+    bool exists = false;
+    for (auto& p : m_settings->loadedFilePaths)
+    {
+        if (SDL_strcasecmp(p.c_str(), sf->GetPath().c_str()) == 0)
+        {
+            exists = true;
+            break;
+        }
+    }
+    if (!exists)
+    {
+        m_settings->loadedFilePaths.push_back(sf->GetPath());
+        m_settings->Save();
+    }
+
+    if (HasExtension(sf->GetPath().c_str(), ".asm"))
+    {
+        m_compiler->Compile(sf);
+        m_compiler->LogContextualHelp(sf, m_editWindow->GetActiveLine());
+    }
+    else
+    {
+        m_logWindow->ClearAllLogs();
+    }
+    m_editWindow->CalcRects();
+}
+
 bool Application::LoadFile(const char* path)
 {
     auto file = FindFile(path);
@@ -342,36 +459,7 @@ bool Application::LoadFile(const char* path)
     auto source = new SourceFile(path);
     if (source->Load())
     {
-        m_sourceFiles.push_back(source);
-
-        // alert renderer of update
-        m_editWindow->OnFileLoaded(source);
-
-        bool exists = false;
-        for (auto& p : m_settings->loadedFilePaths)
-        {
-            if (SDL_strcasecmp(p.c_str(), path) == 0)
-            {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists)
-        {
-            m_settings->loadedFilePaths.push_back(string(path));
-            m_settings->Save();
-        }
-
-        if (HasExtension(path, ".asm"))
-        {
-            m_compiler->Compile(source);
-            m_compiler->LogContextualHelp(source, m_editWindow->GetActiveLine());
-        }
-        else
-        {
-            m_logWindow->ClearAllLogs();
-        }
-        m_editWindow->CalcRects();
+        AddFile(source);
         return true;
     }
     else
@@ -509,6 +597,15 @@ void Application::OnKeyDown(SDL_Event* e)
 
     switch (e->key.keysym.sym)
     {
+     case SDLK_i:
+        if (e->key.keysym.mod & KMOD_CTRL)
+        {
+            if (!e->key.repeat)
+                ImportFile();
+            return;
+        }
+        break;
+
     case SDLK_l:
         if (e->key.keysym.mod & KMOD_CTRL)
         {

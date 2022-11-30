@@ -80,6 +80,9 @@ protected:
     void Draw();
     bool LoadFile();
     bool LoadFile(const char* path);
+    void AddFile(SourceFile* sf);
+
+    bool ImportFile();
     void SaveFile();
     void SaveFileAs();
     void CreateNewFile();
