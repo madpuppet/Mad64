@@ -1,5 +1,7 @@
 #pragma once
 
+//#define TRACE_FILE
+
 class Cpu6502
 {
 public:
@@ -336,6 +338,8 @@ private:
     void Decode_DEY();
     void Decode_RTS();
 
+#if defined(TRACE_FILE)
     FILE* traceFH;
+#endif
 };
 

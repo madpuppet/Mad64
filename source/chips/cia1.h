@@ -163,7 +163,24 @@ protected:
     void StepTimerB();
 
     u8 m_keyState[8];               // 8 rows of keys - each bit represents a key (column) in that row
+    u8 m_keyStateOr[8];             // or this to key state
+    u8 m_keyStateAnd[8];            // and this with key state
     u8 m_keyboardRowMask;
-    int m_keyMap[256];              // map Scan codes to keyState entries  r*8 + c;
+    int m_keyMap[512];              // map Scan codes to keyState entries  r*8 + c;
+
+    struct KeyMap
+    {
+        int symbol;
+        int modifier;
+        bool secondary;
+        int code;
+        int code2;
+    };
+    vector<KeyMap> m_keys;
+    vector<KeyMap> m_keyDown;
 };
+
+
+
+
 

@@ -77,6 +77,7 @@ RIGHT CLICK    on the search or replace box to clear and select the box
 F5             Toggle emulation auto-run on/off
 CTRL-F5        Reset and Start emulation auto-run
 CTRL-SHIFT-F5  Load PRG file in Vice (use settings file to set up path to VICE)
+F6             Hard Reset c64.  Does not start emulation or take focus.  You should follow with F5 and click on emulator window to capture input.
 
 F10            Step to next 6502 instruction
 SHIFT-F10      Step to start of next vic rasterline
@@ -159,6 +160,10 @@ Add xscroll/yscroll/rsel/csel support
 Add raster interrupt support
 Add sprite-sprite collisions
 Add cia1 timer interrupts
+Add cia2 nmi interrupts
+Add F6 hard-reset support
+Add cia1 keyboard support
+
 
 2022.8
 

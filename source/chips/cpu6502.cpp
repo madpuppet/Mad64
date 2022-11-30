@@ -1299,7 +1299,9 @@ void Cpu6502::Reset(u16 cpuStart)
     m_nmiInterrupt = 0;
     m_interruptDelay = 0;
 
+#if defined(TRACE_FILE)
     traceFH = fopen("trace.txt", "w");
+#endif
 }
 
 bool Cpu6502::IsOpcode(const char* text)
@@ -1368,21 +1370,24 @@ bool Cpu6502::Step()
                     m_nmiInterrupt = false;
                     m_regs.PC = ReadByte(0xfffa) + (ReadByte(0xfffb) << 8);
 
+#if defined(TRACE_FILE)
                     fprintf(traceFH, "NMI -> %04x\n", m_regs.PC);
+#endif
                 }
                 else if (m_irqInterrupt)
                 {
                     m_irqInterrupt = false;
                     m_regs.PC = ReadByte(0xfffe) + (ReadByte(0xffff) << 8);
 
+#if defined(TRACE_FILE)
                     fprintf(traceFH, "IRQ -> %04x\n", m_regs.PC);
+#endif
                 }
                 return false;
             }
             else
             {
-#if 0
-                // TRACE
+#if defined(TRACE_FILE)
                 string out = Disassemble(m_regs.PC);
                 string regsOut = FormatString("%-40s  A %02x X %02x Y %02x SP %02x SR %c%c%c%c%c%c%c%c  STACK %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", out.c_str(), m_regs.A, m_regs.X, m_regs.Y, m_regs.SP,
                     (m_regs.SR & SR_Negative) ? 'N' : '.',
@@ -1413,7 +1418,6 @@ bool Cpu6502::Step()
                 );
                 fprintf(traceFH, "%s\n", regsOut.c_str());
 #endif
-
 
                 u8 op = ReadByte(m_regs.PC++);
                 m_regs.op = &m_opcodes[op];
