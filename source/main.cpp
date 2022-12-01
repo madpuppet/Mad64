@@ -108,5 +108,3 @@ string GetPath(const string& path)
     return path;
 }
 
-
-

@@ -1082,7 +1082,7 @@ int gAddressingModeSize[] =
 
 const char* gAddressingModeName[] =
 {
-    "Imp", "Imm", "Zero Page", "Zero Page X", "Zero Page Y", "Abs", "Abs X", "Abs Y", "Ind", "Ind X", "Ind Y", "Relative"
+    "Imp", "Imm", "Rel", "Zero", "Zero X", "Zero Y", "Ind X", "Ind Y", "Abs", "Abs X", "Abs Y", "Ind"
 };
 
 Cpu6502::Cpu6502()
@@ -1304,11 +1304,37 @@ void Cpu6502::Reset(u16 cpuStart)
 #endif
 }
 
-bool Cpu6502::IsOpcode(const char* text)
+bool Cpu6502::IsOpcode(const char* text, ForceAddressing* forceAM)
 {
+    int len;
+    auto* end = SDL_strchr(text, '.');
+    if (forceAM)
+        *forceAM = FA_Auto;
+
+    if (end)
+    {
+        len = (int)(end - text);
+        if (forceAM)
+        {
+            char ch = tolower(end[1]);
+            if (ch == 'z' && end[2] == 0)
+                *forceAM = FA_Zero;
+            else if (ch == 'a' && end[2] == 0)
+                *forceAM = FA_Absolute;
+            else
+                *forceAM = FA_Error;
+        }
+    }
+    else
+    {
+        len = (int)SDL_strlen(text);
+        if (forceAM)
+            *forceAM = FA_Auto;
+    }
+
     for (auto opcode : m_uniqueOpcodes)
     {
-        if (StrEqual(text, opcode))
+        if (SDL_strncasecmp(text, opcode.c_str(), len) == 0)
         {
             return true;
         }
@@ -1318,10 +1344,12 @@ bool Cpu6502::IsOpcode(const char* text)
 
 Cpu6502::Opcode* Cpu6502::FindOpcode(const string& name, AddressingMode am)
 {
-    // TODO: make this a hash lookup
+    size_t idx = name.find_first_of('.');
+    size_t len = (idx == string::npos) ? name.size() : idx;
+
     for (int i=0; i<255; i++)
     {
-        if (StrEqual(name, m_opcodes[i].name) && m_opcodes[i].addressMode == am)
+        if ((SDL_strncasecmp(name.c_str(), m_opcodes[i].name, len) == 0) && m_opcodes[i].addressMode == am)
         {
             return &m_opcodes[i];
         }
@@ -1600,7 +1628,10 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 2)
                 {
                     u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
-                    dl.text = FormatString("    %s $%04x", opcode.name, target);
+                    if (opcode.opc == 0x4c || opcode.opc == 0x20 || target > 0xff)
+                        dl.text = FormatString("    %s $%04x", opcode.name, target);
+                    else
+                        dl.text = FormatString("    %s.a $%04x", opcode.name, target);
                     dl.size = 3;
                     return true;
                 }
@@ -1612,7 +1643,10 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 2)
                 {
                     u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
-                    dl.text = FormatString("    %s $%04x,x", opcode.name, target);
+                    if (target > 0xff)
+                        dl.text = FormatString("    %s $%04x,x", opcode.name, target);
+                    else
+                        dl.text = FormatString("    %s.a $%04x,x", opcode.name, target);
                     dl.size = 3;
                     return true;
                 }
@@ -1624,7 +1658,10 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 2)
                 {
                     u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
-                    dl.text = FormatString("    %s $%04x,y", opcode.name, target);
+                    if (target > 0xff)
+                        dl.text = FormatString("    %s $%04x,y", opcode.name, target);
+                    else
+                        dl.text = FormatString("    %s.a $%04x,y", opcode.name, target);
                     dl.size = 3;
                     return true;
                 }

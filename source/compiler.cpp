@@ -503,6 +503,7 @@ void Compiler::CmdImport_Parse(TokenFifo &fifo, CompilerSourceInfo *si, Compiler
 void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine, u32& currentMemAddr)
 {
     auto tokens = sourceLine->GetTokens();
+    Cpu6502::ForceAddressing fa;
     TokenFifo fifo(tokens);
     string &token = fifo.Pop();
     if (token.empty())
@@ -725,7 +726,7 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
         li->memAddr = (u32)addr;
         return;
     }
-    else if (m_cpu->IsOpcode(token.c_str()))
+    else if (m_cpu->IsOpcode(token.c_str(), &fa))
     {
         // decode the opcode
         li->type = LT_Instruction;
@@ -763,6 +764,10 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
                 if (fifo.Pop() != "x")
                     ERR("Expected 'x' for indirect X addressing mode");
                 li->addressMode = Cpu6502::AM_IndX;
+
+                // indirect, indirectY
+                if (fifo.Pop() != ")")
+                    ERR("Expected close bracket");
             }
             else
             {
@@ -806,26 +811,49 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
                     if (fifo.Peek() == "x")
                     {
                         fifo.Pop();
-                        li->addressMode = isZeroPage ? Cpu6502::AM_ZeroX : Cpu6502::AM_AbsX;
+                        if (fa != Cpu6502::FA_Auto)
+                            li->addressMode = (fa == Cpu6502::FA_Zero) ? Cpu6502::AM_ZeroX : Cpu6502::AM_AbsX;
+                        else
+                            li->addressMode = isZeroPage ? Cpu6502::AM_ZeroX : Cpu6502::AM_AbsX;
                     }
                     else if (fifo.Peek() == "y")
                     {
                         fifo.Pop();
-                        li->addressMode = isZeroPage ? Cpu6502::AM_ZeroY : Cpu6502::AM_AbsY;
+                        if (fa != Cpu6502::FA_Auto)
+                            li->addressMode = (fa == Cpu6502::FA_Zero) ? Cpu6502::AM_ZeroY : Cpu6502::AM_AbsY;
+                        else
+                            li->addressMode = isZeroPage ? Cpu6502::AM_ZeroY : Cpu6502::AM_AbsY;
                     }
                     else
                         ERR("Expected x or y for absolute indexed addressing mode")
                 }
                 else
                 {
-                    li->addressMode = isZeroPage ? Cpu6502::AM_Zero : Cpu6502::AM_Abs;
+                    if (fa != Cpu6502::FA_Auto)
+                        li->addressMode = (fa == Cpu6502::FA_Zero) ? Cpu6502::AM_Zero : Cpu6502::AM_Abs;
+                    else
+                        li->addressMode = isZeroPage ? Cpu6502::AM_Zero : Cpu6502::AM_Abs;
                 }
             }
         }
 
         auto opcode = m_cpu->FindOpcode(token, li->addressMode);
         if (opcode == nullptr)
-            ERR("Opcode '%s' with address mode '%s'", token.c_str(), m_cpu->GetAddressingModeName(li->addressMode));
+        {
+            if (li->addressMode == Cpu6502::AM_Zero)
+            {
+                opcode = m_cpu->FindOpcode(token, Cpu6502::AM_Abs);
+                if (opcode)
+                {
+                    li->addressMode = Cpu6502::AM_Abs;
+                }
+            }
+            if (opcode == nullptr)
+                ERR("Opcode '%s' with address mode '%s'", token.c_str(), m_cpu->GetAddressingModeName(li->addressMode));
+        }
+
+        if (fa == Cpu6502::FA_Error)
+            ERR("Unknown explicit addressing mode on '%s' - should be .b (zero page) or .w (absolute)", token.c_str());
 
         li->opcode = opcode->opc;
 

@@ -25,6 +25,14 @@ public:
         AM_Ind              // operand (value)
     };
 
+    enum ForceAddressing
+    {
+        FA_Auto,
+        FA_Zero,
+        FA_Absolute,
+        FA_Error
+    };
+
     enum CpuStatusRegisters
     {
         SR_Carry = 1,
@@ -75,13 +83,13 @@ public:
             u8 Z = (val & 0xff) ? 0 : SR_Zero;
             SR = (SR & ~(SR_Negative | SR_Zero | SR_Carry)) | N | Z | C;
         }
-    };
+    };  
 
     void Reset(u16 cpuStart);
 
     Registers& Regs() { return m_regs; }
 
-    bool IsOpcode(const char* text);
+    bool IsOpcode(const char* text, ForceAddressing *forceAM = NULL);
     Opcode* FindOpcode(const string& name, AddressingMode am);
     Opcode* GetOpcode(u8 opcode) { return &m_opcodes[opcode]; }
     int GetAddressingModeSize(AddressingMode am);
