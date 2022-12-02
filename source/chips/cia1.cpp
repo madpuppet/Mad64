@@ -1,5 +1,7 @@
 #include "common.h"
 #include "cia1.h"
+#include "SDL.h"
+#include "SDL_Joystick.h"
 
 #define K(key,row,col) m_keyMap[((SDLK_##key)>>22)|((SDLK_##key) & 255)]=(row<<4)+col
 #define KEY_ROW(row, k0, k1, k2, k3, k4, k5, k6, k7) K(k0,row,0);K(k1,row,1);K(k2,row,2);K(k3,row,3);K(k4,row,4);K(k5,row,5);K(k6,row,6);K(k7,row,7)
@@ -7,9 +9,6 @@
 Cia1::Cia1()
 {
     memset(m_keyMap, -1, sizeof(m_keyMap));
-    memset(m_keyState, 0xff, sizeof(m_keyState));
-    memset(m_keyStateOr, 0, sizeof(m_keyStateOr));
-    memset(m_keyStateAnd, 0xff, sizeof(m_keyStateAnd));
 
     KEY_ROW(0, DELETE, RETURN, RIGHT, F7, F1, F3, F5, DOWN);
     KEY_ROW(1, 3, w, a, 4, z, s, e, LSHIFT);
@@ -64,6 +63,14 @@ void Cia1::Reset()
     m_timerBRunning = false;
     m_timerBOneShot = false;
     m_timerBMode = TimerBMode::Cycle;
+
+    memset(m_keyState, 0xff, sizeof(m_keyState));
+    memset(m_keyStateOr, 0, sizeof(m_keyStateOr));
+    memset(m_keyStateAnd, 0xff, sizeof(m_keyStateAnd));
+    m_keyboardRowMask = 0xff;
+
+    m_joystickState[0] = 0xff;
+    m_joystickState[1] = 0xff;
 }
 
 void Cia1::StepTimerB()
@@ -135,14 +142,19 @@ u8 Cia1::ReadReg(u16 addr)
 {
     addr = addr & 15;
     u8 val = ((u8*)&m_regs)[addr];
-    if (addr == (u16)((u64) & (((Registers*)0)->dataPortB)))
+    if (addr == (u16)((u64) & (((Registers*)0)->dataPortA)))
+    {
+        return m_joystickState[0];
+    }
+    else if (addr == (u16)((u64) & (((Registers*)0)->dataPortB)))
     {
         u8 val = 0xff;
         for (int i = 0; i < 8; i++)
         {
             if (!(m_keyboardRowMask & (1 << i)))
-                val = (val & m_keyState[i] & m_keyStateAnd[i]) | m_keyStateOr[i];
+                val = ((val & m_keyState[i] & m_keyStateAnd[i]) | m_keyStateOr[i]);
         }
+        val &= m_joystickState[1];
         return val;
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->interruptControl)))
@@ -267,3 +279,61 @@ void Cia1::OnKeyUp(SDL_Event* e)
         m_keyState[r] |= (1 << c);
     }
 }
+
+void Cia1::OnJoystickButtonDown(SDL_Event* e)
+{
+    int bid = (e->jbutton.which) ? 1 : 0;
+
+    auto settings = gApp->GetSettings();
+    if (settings->swapJoystickPorts)
+        bid = 1 - bid;
+
+    m_joystickState[bid] &= ~(1 << 4);
+}
+void Cia1::OnJoystickButtonUp(SDL_Event* e)
+{
+    int bid = (e->jbutton.which) ? 1 : 0;
+
+    auto settings = gApp->GetSettings();
+    if (settings->swapJoystickPorts)
+        bid = 1 - bid;
+
+    m_joystickState[bid] |= (1 << 4);
+}
+void Cia1::OnJoystickAxisMotion(SDL_Event* e)
+{
+    int bid = (e->jbutton.which) ? 1 : 0;
+
+    auto settings = gApp->GetSettings();
+    if (settings->swapJoystickPorts)
+        bid = 1 - bid;
+
+    u8 mask = m_joystickState[bid];
+    if (e->jaxis.axis == 0)  // x axis
+    {
+        if (e->jaxis.value < -16000)
+            mask &= ~1;
+        else
+            mask |= 1;
+
+        if (e->jaxis.value > 16000)
+            mask &= ~2;
+        else
+            mask |= 2;
+    }
+    else if (e->jaxis.axis == 1)  // y axis
+    {
+        if (e->jaxis.value < -16000)
+            mask &= ~4;
+        else
+            mask |= 4;
+
+        if (e->jaxis.value > 16000)
+            mask &= ~8;
+        else
+            mask |= 8;
+    }
+    m_joystickState[bid] = (m_joystickState[bid] | 0xf) & mask;
+}
+
+

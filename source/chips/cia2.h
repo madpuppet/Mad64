@@ -160,4 +160,6 @@ protected:
     void StepTimerB();
 
     u8 m_vicBank;
+
+    SDL_GameController* m_joystick;
 };

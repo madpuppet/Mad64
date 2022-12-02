@@ -4,6 +4,7 @@ class Cia1
 {
 public:
     Cia1();
+    ~Cia1();
 
     struct Registers
     {
@@ -126,6 +127,11 @@ public:
     void OnKeyDown(SDL_Event* e);
     void OnKeyUp(SDL_Event* e);
 
+    // capture joystick state
+    void OnJoystickButtonDown(SDL_Event* e);
+    void OnJoystickButtonUp(SDL_Event* e);
+    void OnJoystickAxisMotion(SDL_Event* e);
+
 protected:
     InterruptHook TriggerInterrupt;
 
@@ -167,6 +173,7 @@ protected:
     u8 m_keyStateAnd[8];            // and this with key state
     u8 m_keyboardRowMask;
     int m_keyMap[512];              // map Scan codes to keyState entries  r*8 + c;
+    u8 m_joystickState[2];          // bits 0-4 lrudf
 
     struct KeyMap
     {
@@ -179,8 +186,5 @@ protected:
     vector<KeyMap> m_keys;
     vector<KeyMap> m_keyDown;
 };
-
-
-
 
 

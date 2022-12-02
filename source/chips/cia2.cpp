@@ -28,6 +28,8 @@ void Cia2::Reset()
 
     m_vicBank = 0;
     SetVicBankIdx(m_vicBank);
+
+    m_joystick = SDL_GameControllerOpen(1);
 }
 
 void Cia2::StepTimerB()

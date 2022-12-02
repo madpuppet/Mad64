@@ -151,4 +151,3 @@ void EmulatorC64::CheckBreakpoint(u8 breakpointType, u16 addr, u8 val)
 	}
 }
 
-

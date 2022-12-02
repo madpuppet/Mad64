@@ -85,7 +85,7 @@ AppSettings::AppSettings()
     overwriteMode = false;
     autoIndent = true;
     renderLineBackgrounds = true;
-    lowCPUMode = false;
+    swapJoystickPorts = false;
     vicePath = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
     openLogs = "CHLMRE";
     lineHeight = 24;
@@ -151,7 +151,11 @@ bool AppSettings::Load()
                 }
                 else if (SDL_strcasecmp(token, "lowCPUMode") == 0)
                 {
-                    lowCPUMode = val ? true : false;
+                    swapJoystickPorts = val ? true : false;
+                }
+                else if (SDL_strcasecmp(token, "swapJoystickPorts") == 0)
+                {
+                    swapJoystickPorts = val ? true : false;
                 }
                 else if (SDL_strcasecmp(token, "FontSize") == 0)
                 {
@@ -325,6 +329,8 @@ bool AppSettings::Save()
         fprintf(fh, "renderLineBackgrounds=%d\n\n", renderLineBackgrounds ? 1 : 0);
         fprintf(fh, "; mad64 will delay 10ms each loop to give time back to the OS\n");
         fprintf(fh, "lowCPUMode=%d\n\n", lowCPUMode ? 1 : 0);
+        fprintf(fh, "; swap joystick ports 1 & 2\n");
+        fprintf(fh, "swapJoystickPorts=%d\n\n", swapJoystickPorts ? 1 : 0);
         fprintf(fh, "; path to font 'otf' or 'ttf' file \n");
         fprintf(fh, "fontPath=%s\n\n", fontPath.c_str());
         fprintf(fh, "; font point size to render with\n");

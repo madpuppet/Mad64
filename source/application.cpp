@@ -26,6 +26,12 @@ Application::Application()
     m_hasFocus = false;
     m_flashScreenRed = 0.0f;
 
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_TIMER) < 0)
+    {
+        Log("SDL could not initialize! SDL Error: %s\n", SDL_GetError());
+        exit(0);
+    }
+
     LogStart();
     gApp = this;
     m_fullscreen = false;
@@ -106,6 +112,9 @@ Application::Application()
         m_keyCapture = Capture_None;
     }
 
+    m_joystick[0] = SDL_JoystickOpen(0);
+    m_joystick[1] = SDL_JoystickOpen(1);
+
     SDL_StartTextInput();
 }
 
@@ -132,6 +141,9 @@ void Application::ReloadFont()
 
 Application::~Application()
 {
+    SDL_JoystickClose(m_joystick[0]);
+    SDL_JoystickClose(m_joystick[1]);
+
     //Destroy window
     SDL_DestroyWindow(m_window);
 
@@ -301,6 +313,15 @@ void Application::HandleEvent(SDL_Event *e)
                 break;
         }
         break;
+    case SDL_JOYBUTTONDOWN:
+        m_emulator->OnJoystickButtonDown(e);
+        return;
+    case SDL_JOYBUTTONUP:
+        m_emulator->OnJoystickButtonUp(e);
+        return;
+    case SDL_JOYAXISMOTION:
+        m_emulator->OnJoystickAxisMotion(e);
+        return;
     }
 }
 

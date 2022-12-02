@@ -51,6 +51,10 @@ public:
 	void OnKeyDown(SDL_Event* e) { m_cia1->OnKeyDown(e); }
 	void OnKeyUp(SDL_Event* e) { m_cia1->OnKeyUp(e); }
 
+	void OnJoystickButtonDown(SDL_Event* e) { m_cia1->OnJoystickButtonDown(e); }
+	void OnJoystickButtonUp(SDL_Event* e) { m_cia1->OnJoystickButtonUp(e); }
+	void OnJoystickAxisMotion(SDL_Event* e) { m_cia1->OnJoystickAxisMotion(e); }
+
 protected:
 	struct Breakpoint
 	{

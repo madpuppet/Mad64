@@ -116,6 +116,9 @@ protected:
     InputCapture m_mouseCapture;
     InputCapture m_keyCapture;
 
+    // joystick
+    SDL_Joystick* m_joystick[2];
+
     // double click
     bool m_latchDoubleClick;
     int m_clickX;
