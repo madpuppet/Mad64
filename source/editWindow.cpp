@@ -141,7 +141,7 @@ void EditWindow::ClearVisuals()
 	for (auto sfi : m_fileTabs)
 	{
 		delete sfi->geText;
-		sfi->geText = GraphicElement::CreateFromText(gApp->GetFont(), sfi->file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
+		sfi->geText = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), sfi->file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
 	}
 	LayoutTabs();
 	CalcRects();
@@ -534,6 +534,8 @@ void EditWindow::CalcRects()
 	m_contextHelpRect = { activeXPosContextHelp, settings->lineHeight * 2, windowWidth - activeXPosContextHelp, editHeight - settings->lineHeight };
 
 	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
+
+	gApp->GetDockableMgr()->SetRect(m_contextHelpRect);
 }
 
 bool EditWindow::CalcHorizScrollBar(int& start, int& end)
@@ -576,7 +578,7 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 	auto sfi = new SourceFileItem();
 	sfi->modified = false;
 	sfi->file = file;
-	sfi->geText = GraphicElement::CreateFromText(gApp->GetFont(), file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
+	sfi->geText = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
 	sfi->activeColumn = 0;
 	sfi->activeLine = 0;
 	sfi->activeTargetX = 0;
@@ -1692,7 +1694,7 @@ void EditWindow::UpdateStatus()
 		);
 
 		delete m_status.m_ge;
-		m_status.m_ge = GraphicElement::CreateFromText(gApp->GetFont(), fpsText, col, 0, 0);
+		m_status.m_ge = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), fpsText, col, 0, 0);
 	}
 }
 void EditWindow::DrawStatus()

@@ -73,7 +73,7 @@ GraphicElement* LogWindow::GetGroupTitleGE(LogFilter group)
 	{
 		auto settings = gApp->GetSettings();
 		SDL_Color col = settings->helpGroupColor;
-		lg.m_geTitle = GraphicElement::CreateFromText(gApp->GetFont(), s_titles[group], col, 0, 0);
+		lg.m_geTitle = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), s_titles[group], col, 0, 0);
 
 		if (lg.m_geTitle == 0)
 		{
@@ -131,11 +131,12 @@ void LogWindow::BuildIcons()
 {
 	auto settings = gApp->GetSettings();
 	auto r = gApp->GetRenderer();
+	auto font = gApp->GetFont();
 	SDL_Color col = { 255, 255, 255, 255 };
 	for (int i = 0; i < LF_MAX; i++)
 	{
 		auto& lg = m_logGroups[i];
-		lg.m_geIcon = GraphicElement::CreateFromText(gApp->GetFont(), s_short_titles[i], col, 0, 0);
+		lg.m_geIcon = GraphicElement::CreateFromText(r, font, s_short_titles[i], col, 0, 0);
 	}
 }
 
@@ -155,7 +156,7 @@ void LogWindow::LayoutIcons()
 GraphicElement *LogWindow::LogItem::GetGE()
 {
 	if (!ge)
-		ge = GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), col, 0, 0);
+		ge = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), text.c_str(), col, 0, 0);
 	return ge;
 }
 
@@ -399,7 +400,7 @@ void LogWindow::Draw()
 						emu->GetByte(addr+8), emu->GetByte(addr+9), emu->GetByte(addr+10), emu->GetByte(addr+11),
 						emu->GetByte(addr+12), emu->GetByte(addr+13), emu->GetByte(addr+14), emu->GetByte(addr+15));
 
-					auto ge = GraphicElement::CreateFromText(font, text.c_str(), col, x, lineY + settings->textYMargin);
+					auto ge = GraphicElement::CreateFromText(r, font, text.c_str(), col, x, lineY + settings->textYMargin);
 					ge->Render(r);
 					delete ge;
 				}
@@ -421,7 +422,7 @@ void LogWindow::Draw()
 					if (i == LF_LabelHelp)
 					{
 						SDL_Color col = { 255,255,255 };
-						auto ge = GraphicElement::CreateFromText(gApp->GetFont(), 
+						auto ge = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(),
 							FormatString("%02x %02x %02x %02x", emu->GetByte(line->addr), emu->GetByte(line->addr + 1), 
 								emu->GetByte(line->addr + 2), emu->GetByte(line->addr + 3)).c_str(),  col,
 							    x + line->GetGE()->GetRect().w + 40, y + settings->textYMargin);

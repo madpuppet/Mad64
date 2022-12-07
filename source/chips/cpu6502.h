@@ -117,7 +117,8 @@ public:
         u16 target;
     };
     string Disassemble(u16 addr);
-    bool Disassemble(DisassembledLine& dl);
+    bool Disassemble(DisassembledLine& dl, bool details);
+    void AddDetails(DisassembledLine& dl);
 
 private:
     // HOOKS

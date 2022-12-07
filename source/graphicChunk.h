@@ -6,9 +6,9 @@ public:
     GraphicElement(SDL_Texture* tex, i32 x, i32 y, bool ownTexture);
     ~GraphicElement();
 
-    static GraphicElement* CreateFromImage(const char* path, i32 x, i32 y);
+    static GraphicElement* CreateFromImage(SDL_Renderer* r, const char* path, i32 x, i32 y);
     static GraphicElement* CreateFromTexture(SDL_Texture* tex, i32 x, i32 y, bool ownTexture);
-    static GraphicElement* CreateFromText(TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
+    static GraphicElement* CreateFromText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
 
     static void RenderText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
 

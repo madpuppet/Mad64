@@ -384,7 +384,7 @@ void SourceLine::VisualizeIfNecessary()
                 else if (token[0] == '$' || (token[0] >= '0' && token[0] <= '9'))
                     col = settings->numericColor;
 
-                m_gcText->Add(GraphicElement::CreateFromText(gApp->GetFont(), token.c_str(), col, xLoc, 0));
+                m_gcText->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), token.c_str(), col, xLoc, 0));
                 xLoc += textWidth;
             }
             charIdx += len;

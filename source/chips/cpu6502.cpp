@@ -1417,34 +1417,7 @@ bool Cpu6502::Step()
             {
 #if defined(TRACE_FILE)
                 string out = Disassemble(m_regs.PC);
-                string regsOut = FormatString("%-40s  A %02x X %02x Y %02x SP %02x SR %c%c%c%c%c%c%c%c  STACK %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x", out.c_str(), m_regs.A, m_regs.X, m_regs.Y, m_regs.SP,
-                    (m_regs.SR & SR_Negative) ? 'N' : '.',
-                    (m_regs.SR & SR_Overflow) ? 'V' : '.',
-                    '-',
-                    (m_regs.SR & SR_Break) ? 'B' : '.',
-                    (m_regs.SR & SR_Decimal) ? 'D' : '.',
-                    (m_regs.SR & SR_Interrupt) ? 'I' : '.',
-                    (m_regs.SR & SR_Zero) ? 'Z' : '.',
-                    (m_regs.SR & SR_Carry) ? 'C' : '.',
-
-                    ReadByte(0x100 + m_regs.SP + 1),
-                    ReadByte(0x100 + m_regs.SP + 2),
-                    ReadByte(0x100 + m_regs.SP + 3),
-                    ReadByte(0x100 + m_regs.SP + 4),
-                    ReadByte(0x100 + m_regs.SP + 5),
-                    ReadByte(0x100 + m_regs.SP + 6),
-                    ReadByte(0x100 + m_regs.SP + 7),
-                    ReadByte(0x100 + m_regs.SP + 8),
-                    ReadByte(0x100 + m_regs.SP + 9),
-                    ReadByte(0x100 + m_regs.SP + 10),
-                    ReadByte(0x100 + m_regs.SP + 11),
-                    ReadByte(0x100 + m_regs.SP + 12),
-                    ReadByte(0x100 + m_regs.SP + 13),
-                    ReadByte(0x100 + m_regs.SP + 14),
-                    ReadByte(0x100 + m_regs.SP + 15),
-                    ReadByte(0x100 + m_regs.SP + 16)
-                );
-                fprintf(traceFH, "%s\n", regsOut.c_str());
+                fprintf(traceFH, "%s\n", out.c_str());
 #endif
 
                 u8 op = ReadByte(m_regs.PC++);
@@ -1511,20 +1484,56 @@ void Cpu6502::TriggerNMInterrupt()
     }
 }
 
+void Cpu6502::AddDetails(DisassembledLine& dl)
+{
+    string bytes;
+    if (dl.size == 1)
+        bytes = FormatString("%02x .. ..", dl.ram[0]);
+    else if (dl.size == 2)
+        bytes = FormatString("%02x %02x ..", dl.ram[0], dl.ram[1]);
+    else
+        bytes = FormatString("%02x %02x %02x", dl.ram[0], dl.ram[1], dl.ram[2]);
+
+    string out = FormatString("%04x  %s  %-25s A %02x X %02x Y %02x SP %02x SR %c%c%c%c%c%c%c%c  STACK %02x %02x %02x %02x %02x %02x %02x %02x",
+        m_regs.PC,
+        bytes.c_str(),
+        dl.text.c_str(),
+        m_regs.A, m_regs.X, m_regs.Y, m_regs.SP,
+        (m_regs.SR & SR_Negative) ? 'N' : '.',
+        (m_regs.SR & SR_Overflow) ? 'V' : '.',
+        '-',
+        (m_regs.SR & SR_Break) ? 'B' : '.',
+        (m_regs.SR & SR_Decimal) ? 'D' : '.',
+        (m_regs.SR & SR_Interrupt) ? 'I' : '.',
+        (m_regs.SR & SR_Zero) ? 'Z' : '.',
+        (m_regs.SR & SR_Carry) ? 'C' : '.',
+        ReadByte(0x100 + m_regs.SP + 1),
+        ReadByte(0x100 + m_regs.SP + 2),
+        ReadByte(0x100 + m_regs.SP + 3),
+        ReadByte(0x100 + m_regs.SP + 4),
+        ReadByte(0x100 + m_regs.SP + 5),
+        ReadByte(0x100 + m_regs.SP + 6),
+        ReadByte(0x100 + m_regs.SP + 7),
+        ReadByte(0x100 + m_regs.SP + 8));
+    dl.text = out;
+}
+
 string Cpu6502::Disassemble(u16 addr)
 {
     DisassembledLine dl;
     dl.size = SDL_min(0x10000 - addr, 3);
     for (int i=0; i<dl.size; i++)
         dl.ram[i] = ReadByte(addr+i);
-    if (!Disassemble(dl))
+    dl.addr = addr;
+    if (!Disassemble(dl, true))
     {
         dl.text = "???";
     }
+    AddDetails(dl);
     return dl.text;
 }
 
-bool Cpu6502::Disassemble(DisassembledLine &dl)
+bool Cpu6502::Disassemble(DisassembledLine &dl, bool detailed)
 {
     u8 opc = dl.ram[0];
     auto &opcode = m_opcodes[opc];
@@ -1555,7 +1564,7 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 1)
                 {
                     u8 val = dl.ram[1];
-                    dl.target = dl.addr + (i8)val;
+                    dl.target = dl.addr + (i8)val + 2;
                     dl.text = FormatString("    %s $%04x", opcode.name, dl.target);
                     dl.size = 2;
                     return true;
@@ -1604,7 +1613,15 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 1)
                 {
                     u8 val = dl.ram[1];
-                    dl.text = FormatString("    %s ($%02x,x)", opcode.name, val);
+                    if (detailed)
+                    {
+                        u16 target = ReadByte(val) + ((u16)ReadByte(val + 1) << 8);
+                        dl.text = FormatString("    %s ($%02x:$%04x,x)", opcode.name, val, target);
+                    }
+                    else
+                    {
+                        dl.text = FormatString("    %s ($%02x,x)", opcode.name, val);
+                    }
                     dl.size = 2;
                     return true;
                 }
@@ -1616,7 +1633,15 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 1)
                 {
                     u8 val = dl.ram[1];
-                    dl.text = FormatString("    %s ($%02x),y", opcode.name, val);
+                    if (detailed)
+                    {
+                        u16 target = ReadByte(val) + ((u16)ReadByte(val + 1) << 8);
+                        dl.text = FormatString("    %s ($%02x:$%04x),y", opcode.name, val, target);
+                    }
+                    else
+                    {
+                        dl.text = FormatString("    %s ($%02x),y", opcode.name, val);
+                    }
                     dl.size = 2;
                     return true;
                 }
@@ -1673,14 +1698,30 @@ bool Cpu6502::Disassemble(DisassembledLine &dl)
                 if (dl.size > 2)
                 {
                     u16 target = dl.ram[1] + (((u16)dl.ram[2]) << 8);
-                    dl.text = FormatString("    %s ($%04x)", opcode.name, target);
+                    if (detailed)
+                    {
+                        u16 indTarget = ReadByte(target) + ((u16)ReadByte(target + 1) << 8);
+                        dl.text = FormatString("    %s ($%04x:$%04x)", opcode.name, target, indTarget);
+                    }
+                    else
+                    {
+                        dl.text = FormatString("    %s ($%04x)", opcode.name, target);
+                    }
                     dl.size = 3;
                     return true;
                 }
             }
             break;
     }
-    dl.text = FormatString("?!?");
+
+    if (detailed)
+    {
+        dl.text = FormatString("%04x  %02x   ?!?", dl.addr, opc);
+    }
+    else
+    {
+        dl.text = FormatString("?!?");
+    }
     return false;
 }
 

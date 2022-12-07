@@ -1,6 +1,7 @@
 #include "common.h"
 #include "application.h"
 #include "tinyfiledialogs.h"
+#include "DockableManager.h"
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
@@ -85,6 +86,7 @@ Application::Application()
         SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
         Log("Create Modules");
+        m_dockableMgr = new DockableManager();
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
@@ -212,7 +214,7 @@ void Application::Update()
         int cycles = (int)(m_emulator->CyclesPerSecond() * m_timeDelta);
         for (int i = 0; i < cycles; i++)
         {
-            m_emulator->Step();
+            while (!m_emulator->Step());
             if (m_emulator->WasBreakpointHit())
             {
                 m_emulator->ClearBreakpointHit();
@@ -231,8 +233,10 @@ void Application::Draw()
 {
     SDL_SetRenderDrawColor(m_renderer, m_settings->backColor.r, m_settings->backColor.g, m_settings->backColor.b, 255);
     SDL_RenderFillRect(m_renderer, NULL);
+
     m_editWindow->Draw();
-    SDL_RenderPresent(m_renderer);
+
+    m_dockableMgr->Draw();
 
     if (m_flashScreenRed)
     {
@@ -240,6 +244,8 @@ void Application::Draw()
         SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, (int)(m_flashScreenRed*255));
         SDL_RenderFillRect(m_renderer, NULL);
     }
+
+    SDL_RenderPresent(m_renderer);
 }
 
 void Application::HandleEvent(SDL_Event *e)
@@ -272,18 +278,32 @@ void Application::HandleEvent(SDL_Event *e)
                 m_latchDoubleClick = true;
             }
 
-            m_editWindow->OnMouseDown(e);
+            if (e->button.windowID == SDL_GetWindowID(m_window))
+                m_editWindow->OnMouseDown(e);
+            else
+                m_dockableMgr->OnMouseDown(e);
         }
         break;
     case SDL_MOUSEBUTTONUP:
-        m_editWindow->OnMouseUp(e);
+        if (e->button.windowID == SDL_GetWindowID(m_window))
+            m_editWindow->OnMouseUp(e);
+        else
+            m_dockableMgr->OnMouseUp(e);
         break;
     case SDL_MOUSEMOTION:
         if (!m_latchDoubleClick)
-            m_editWindow->OnMouseMotion(e);
+        {
+            if (e->motion.windowID == SDL_GetWindowID(m_window))
+                m_editWindow->OnMouseMotion(e);
+            else
+                m_dockableMgr->OnMouseMotion(e);
+        }
         break;
     case SDL_MOUSEWHEEL:
-        m_editWindow->OnMouseWheel(e);
+        if (e->wheel.windowID == SDL_GetWindowID(m_window))
+            m_editWindow->OnMouseWheel(e);
+        else
+            m_dockableMgr->OnMouseWheel(e);
         break;
     case SDL_TEXTINPUT:
         if (!m_emulatorCaptureInput)
@@ -298,19 +318,26 @@ void Application::HandleEvent(SDL_Event *e)
         OnKeyUp(e);
         break;
     case SDL_WINDOWEVENT:
-        switch (e->window.event)
+        if (e->window.windowID == SDL_GetWindowID(m_window))
         {
-            case SDL_WINDOWEVENT_FOCUS_GAINED:
-                m_hasFocus = true;
-                break;
+            switch (e->window.event)
+            {
+                case SDL_WINDOWEVENT_CLOSE:
+                    m_quit = true;
+                    break;
 
-            case SDL_WINDOWEVENT_FOCUS_LOST:
-                m_hasFocus = false;
-                break;
+                case SDL_WINDOWEVENT_FOCUS_GAINED:
+                    m_hasFocus = true;
+                    break;
 
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-                m_editWindow->OnResize();
-                break;
+                case SDL_WINDOWEVENT_FOCUS_LOST:
+                    m_hasFocus = false;
+                    break;
+
+                case SDL_WINDOWEVENT_SIZE_CHANGED:
+                    m_editWindow->OnResize();
+                    break;
+            }
         }
         break;
     case SDL_JOYBUTTONDOWN:
@@ -379,7 +406,7 @@ bool Application::ImportFile()
                     dl.addr = addr + idx;
 
                     int dataBytes = idx - baseIdx;
-                    if (dl.ram[0] != 0 && proc->Disassemble(dl))
+                    if (dl.ram[0] != 0 && proc->Disassemble(dl, false))
                     {
                         AddDataLines(data, sf, baseIdx, idx);
                         sf->GetLines().push_back(new SourceLine(dl.text));

@@ -77,6 +77,9 @@
     <ClCompile Include="source\emulatorc64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\DockableManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -413,6 +416,9 @@
       <Filter>Source Files\chips</Filter>
     </ClInclude>
     <ClInclude Include="source\emulatorc64.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\DockableManager.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

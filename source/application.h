@@ -7,6 +7,7 @@
 #include "cmdManager.h"
 #include "appSettings.h"
 #include "logWindow.h"
+#include "DockableManager.h"
 #include "emulatorc64.h"
 
 enum CursorType
@@ -38,6 +39,8 @@ public:
     EmulatorC64* GetEmulator() { return m_emulator; }
     EditWindow* GetEditWindow() { return m_editWindow; }
     LogWindow* GetLogWindow() { return m_logWindow; }
+    DockableManager* GetDockableMgr() { return m_dockableMgr; }
+
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
     void ApplyBreakpoints();
@@ -102,6 +105,7 @@ protected:
     LogWindow* m_logWindow;
     Compiler* m_compiler;
     EmulatorC64* m_emulator;
+    DockableManager* m_dockableMgr;
     bool m_quit;
     bool m_fullscreen;
     bool m_emulatorCaptureInput;

@@ -1342,14 +1342,14 @@ GraphicChunk* CompilerSourceInfo::GetMemAddrGC(int line)
                 if (sl->error)
                 {
                     SDL_Color addrCol = { 255, 0, 0, 255 };
-                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetFont(), "****", addrCol, 0, 0));
+                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), "****", addrCol, 0, 0));
                 }
                 else
                 {
                     char buffer[16];
                     SDL_snprintf(buffer, 16, "%04x", sl->memAddr);
                     SDL_Color addrCol = { 255, 255, 0, 255 };
-                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, addrCol, 0, 0));
+                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), buffer, addrCol, 0, 0));
                 }
             }
             return sl->gcMemAddr;
@@ -1374,7 +1374,7 @@ GraphicChunk* CompilerSourceInfo::GetDecodeGC(int line)
                 char buffer[16];
                 auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
                 SDL_snprintf(buffer, 16, "%d", opcode->cycles);
-                sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, cycleCol, 0, 0));
+                sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), buffer, cycleCol, 0, 0));
             }
             if (sl->data.size() > 0)
             {
@@ -1382,13 +1382,13 @@ GraphicChunk* CompilerSourceInfo::GetDecodeGC(int line)
                 for (int i = 0; i < min((int)sl->data.size(), 16); i++)
                 {
                     SDL_snprintf(buffer, 16, "%02x", sl->data[i]);
-                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), buffer, dataCol, gApp->GetWhiteSpaceWidth() * (3 + i * 3), 0));
+                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), buffer, dataCol, gApp->GetWhiteSpaceWidth() * (3 + i * 3), 0));
                 }
                 if (sl->data.size() > 16)
                 {
                     dataCol = { 255, 255, 64, 255 };
                     string text = FormatString(".. %d bytes", sl->data.size());
-                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), 0));
+                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), 0));
                 }
             }
         }

@@ -22,10 +22,10 @@ GraphicElement::~GraphicElement()
         SDL_DestroyTexture(m_tex);
 }
 
-GraphicElement* GraphicElement::CreateFromImage(const char* path, i32 x, i32 y)
+GraphicElement* GraphicElement::CreateFromImage(SDL_Renderer* r, const char* path, i32 x, i32 y)
 {
     SDL_Surface* surface = SDL_LoadBMP(path);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(gApp->GetRenderer(), surface);
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
     SDL_FreeSurface(surface);
     return new GraphicElement(tex, x, y, true);
 }
@@ -36,7 +36,7 @@ GraphicElement* GraphicElement::CreateFromTexture(SDL_Texture* tex, i32 x, i32 y
 }
 
 static vector<u16> convert_unicode;
-GraphicElement* GraphicElement::CreateFromText(TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
+GraphicElement* GraphicElement::CreateFromText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
 {
     SDL_Color backCol = { 0, 0, 0, 0 };
 
@@ -47,7 +47,7 @@ GraphicElement* GraphicElement::CreateFromText(TTF_Font* font, const char* text,
         convert_unicode[i] = (u16)((u8)text[i]);
     }
     SDL_Surface* surface = TTF_RenderUNICODE_Blended(font, convert_unicode.data(), col);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(gApp->GetRenderer(), surface);
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
     SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
     SDL_FreeSurface(surface);
     return new GraphicElement(tex, x, y, true);
