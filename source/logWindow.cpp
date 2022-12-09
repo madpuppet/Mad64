@@ -741,6 +741,8 @@ void LogWindow::OnMouseMotion(SDL_Event* event)
 		m_highlightRow = -1;
 	else
 		m_highlightRow = (y - m_logArea.y + m_scroll) / settings->lineHeight;
+
+	SelectCursor(event->motion.x, event->motion.y);
 }
 
 

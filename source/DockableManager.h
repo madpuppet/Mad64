@@ -18,7 +18,7 @@ protected:
 class DockableWindow
 {
 public:
-    DockableWindow(const string &title) : m_title(title), m_isDocked(true), m_geTitle(nullptr), m_windowArea({ 100,100,640,480 }), m_dockedArea({0,0,640,480}) {}
+    DockableWindow(const string& title) : m_title(title), m_isDocked(true), m_dragging(false), m_geTitle(nullptr), m_windowArea({ 100,100,640,480 }), m_dockedArea({ 0,0,640,480 }) {}
     virtual ~DockableWindow();
 
     void SetTitle(const string& str);
@@ -26,7 +26,7 @@ public:
 
     virtual void OnMouseButtonDown(int button, int x, int y);
     virtual void OnMouseButtonUp(int button, int x, int y);
-    virtual void OnMouseMotion(int x, int y);
+    virtual void OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel);
     virtual void OnMouseWheel(int x, int y);
 
     virtual int GetHeight() = 0;
@@ -45,8 +45,11 @@ protected:
     virtual void DrawChild() = 0;
 
     bool m_isDocked;
-    SDL_Rect m_renderArea;
+    bool m_dragging;
+    bool m_resizing;
+    SDL_Point m_dragMouseGrab;
 
+    SDL_Rect m_renderArea;
     SDL_Rect m_dockedArea;
     SDL_Rect m_windowArea;
 

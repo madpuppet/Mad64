@@ -9,14 +9,54 @@ DockableWindow::~DockableWindow()
 
 void DockableWindow::OnMouseButtonDown(int button, int x, int y)
 {
+    auto settings = gApp->GetSettings();
+    if (!m_isDocked && (y < settings->lineHeight) && button == 1)
+    {
+        // dragging
+        m_dragMouseGrab = { x, y };
+        m_dragging = true;
+    }
+    else if (!m_isDocked && (y > m_renderArea.h - settings->lineHeight) && (x > m_renderArea.w - settings->lineHeight))
+    {
+        int mouseX, mouseY;
+        SDL_GetGlobalMouseState(&mouseX, &mouseY);
+
+        // resizing
+        m_resizing = true;
+        m_dragMouseGrab = { m_renderArea.w - mouseX, m_renderArea.h - mouseY };
+    }
 }
 
 void DockableWindow::OnMouseButtonUp(int button, int x, int y)
 {
+    m_dragging = false;
+    m_resizing = false;
 }
 
-void DockableWindow::OnMouseMotion(int x, int y) 
+void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel) 
 {
+    if (m_dragging)
+    {
+        int mouseX, mouseY;
+        SDL_GetGlobalMouseState(&mouseX, &mouseY);
+
+        int windowPosX, windowPosY;
+        windowPosX = mouseX - m_dragMouseGrab.x;
+        windowPosY = mouseY - m_dragMouseGrab.y;
+        SDL_SetWindowPosition(m_window, windowPosX, windowPosY);
+    }
+    if (m_resizing)
+    {
+        int mouseX, mouseY;
+        SDL_GetGlobalMouseState(&mouseX, &mouseY);
+
+        int w, h;
+        w = SDL_max(32, mouseX + m_dragMouseGrab.x);
+        h = SDL_max(32, mouseY + m_dragMouseGrab.y);
+        SDL_SetWindowSize(m_window, w, h);
+        m_windowArea.w = m_renderArea.w = w;
+        m_windowArea.h = m_renderArea.h = h;
+    }
 }
 
 void DockableWindow::OnMouseWheel(int x, int y)
@@ -36,6 +76,20 @@ void DockableWindow::Draw()
     SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
     SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
     SDL_RenderFillRect(r, &titleRect);
+
+    if (!m_isDocked)
+    {
+        SDL_Rect borderLeft = { 0, 0, 2, m_renderArea.h };
+        SDL_RenderFillRect(r, &borderLeft);
+
+        SDL_Rect borderRight = { m_renderArea.w - 2, 0, 2, m_renderArea.h };
+        SDL_RenderFillRect(r, &borderRight);
+
+        SDL_Rect borderBottom = { 0, m_renderArea.h-2, m_renderArea.w, 2 };
+        SDL_RenderFillRect(r, &borderBottom);
+    }
+
+
 
     if (!m_geTitle)
     {
@@ -82,7 +136,7 @@ void DockableWindow::SetTitle(const string& str)
 
 void DockableWindow::Undock()
 {
-    m_window = SDL_CreateWindow("LogWindow", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_windowArea.w, m_windowArea.h, SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    m_window = SDL_CreateWindow("Compiler Log", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_windowArea.w, m_windowArea.h, SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
     {
         Log("ERROR: Cannot undock window");
@@ -90,7 +144,7 @@ void DockableWindow::Undock()
     }
     SDL_SetWindowPosition(m_window, m_windowArea.x, m_windowArea.y);
     m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
-    m_isDocked = true;
+    m_isDocked = false;
 
     m_renderArea.x = 0;
     m_renderArea.y = 0;
@@ -113,8 +167,7 @@ void DockableWindow::Dock()
     SDL_DestroyWindow(m_window);
     m_window = 0;
     m_renderer = 0;
-    m_isDocked = false;
-
+    m_isDocked = true;
     m_renderArea = m_dockedArea;
 }
 
@@ -165,7 +218,7 @@ void DockableManager::OnMouseMotion(SDL_Event* e)
     auto window = FindWindow(e->button.windowID);
     if (window)
     {
-        window->OnMouseMotion(e->motion.x, e->motion.y);
+        window->OnMouseMotion(e->motion.x, e->motion.y, e->motion.xrel, e->motion.yrel);
     }
 }
 void DockableManager::OnMouseWheel(SDL_Event* e)

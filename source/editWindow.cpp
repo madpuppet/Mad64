@@ -1013,6 +1013,8 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 	m_mouseX = e->motion.x;
 	m_mouseY = e->motion.y;
 
+	SelectCursor(m_mouseX, m_mouseY);
+
 	int windowHeight, windowWidth;
 	SDL_GetRendererOutputSize(gApp->GetRenderer(), &windowWidth, &windowHeight);
 
@@ -1059,7 +1061,6 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 	else
 	{
 		gApp->GetLogWindow()->OnMouseMotion(e);
-		SelectCursor(e->motion.x, e->motion.y);
 	}
 }
 
