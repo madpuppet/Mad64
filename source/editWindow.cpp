@@ -483,6 +483,7 @@ void EditWindow::Draw()
 	DrawColouredLine(activeXPosContextHelp, m_sourceEditRect.y, m_sourceEditRect.y + m_sourceEditRect.h, false);
 
 	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
+	SDL_RenderSetClipRect(r, nullptr);
 }
 
 void EditWindow::OnResize()

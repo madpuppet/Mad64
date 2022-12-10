@@ -163,11 +163,13 @@
     <ClCompile Include="source\cmdManager.cpp" />
     <ClCompile Include="source\compiler.cpp" />
     <ClCompile Include="source\contextualHelp.cpp" />
-    <ClCompile Include="source\DockableManager.cpp" />
+    <ClCompile Include="source\dockableManager.cpp" />
+    <ClCompile Include="source\dockableWindow.cpp" />
+    <ClCompile Include="source\dockableWindow_log.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\emulatorc64.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
-    <ClCompile Include="source\LogWindow.cpp" />
+    <ClCompile Include="source\logWindow.cpp" />
     <ClCompile Include="source\main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">common.h</PrecompiledHeaderFile>
@@ -182,6 +184,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="source\uiItem_textButton.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\begin_code.h" />
@@ -287,7 +290,9 @@
     <ClInclude Include="source\common.h" />
     <ClInclude Include="source\compiler.h" />
     <ClInclude Include="source\contextualHelp.h" />
-    <ClInclude Include="source\DockableManager.h" />
+    <ClInclude Include="source\dockableManager.h" />
+    <ClInclude Include="source\dockableWindow.h" />
+    <ClInclude Include="source\dockableWindow_log.h" />
     <ClInclude Include="source\editWindow.h" />
     <ClInclude Include="source\emulatorc64.h" />
     <ClInclude Include="source\graphicChunk.h" />
@@ -297,6 +302,8 @@
     <ClInclude Include="source\textInput.h" />
     <ClInclude Include="source\thread.h" />
     <ClInclude Include="source\tinyfiledialogs.h" />
+    <ClInclude Include="source\uiItem.h" />
+    <ClInclude Include="source\uiItem_textButton.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="include\SDL_config.h.cmake" />

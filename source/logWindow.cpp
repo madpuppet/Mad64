@@ -220,6 +220,8 @@ void LogWindow::DrawLine(int lineIdx, int y, bool highlight)
 
 void LogWindow::Draw()
 {
+	return;
+
 	auto settings = gApp->GetSettings();
 	auto r = gApp->GetRenderer();
 	auto emu = gApp->GetEmulator();

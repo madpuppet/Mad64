@@ -53,13 +53,13 @@ GraphicElement* GraphicElement::CreateFromText(SDL_Renderer* r, TTF_Font* font, 
     return new GraphicElement(tex, x, y, true);
 }
 
-void GraphicElement::SetText(TTF_Font* font, const char* text, const SDL_Color& col)
+void GraphicElement::SetText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col)
 {
     if (m_ownTexture && m_tex)
         SDL_DestroyTexture(m_tex);
 
     SDL_Surface* surface = TTF_RenderText_Solid(font, text, col);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(gApp->GetRenderer(), surface);
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
     SDL_FreeSurface(surface);
 }
 

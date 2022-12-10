@@ -3,6 +3,7 @@
 #include "graphicChunk.h"
 #include "contextualHelp.h"
 #include "emulatorc64.h"
+#include "dockableWindow_log.h"
 
 char s_asciiToScreenCode[] = {
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 00
@@ -1400,8 +1401,8 @@ GraphicChunk* CompilerSourceInfo::GetDecodeGC(int line)
 void Compiler::StartThreadedCompile()
 {
     // start recompile now
-    auto lw = gApp->GetLogWindow();
-    lw->ClearLog(LogWindow::LF_CompilerWarning);
+    auto lw = gApp->GetWindowCompiler();
+    lw->Clear();
     Profile PF("Start Compile");
     PF.Log();
 }
@@ -1442,8 +1443,10 @@ void Compiler::Update()
             }
             lw->SetMemMap(m_compiledFile->m_ramColorMap);
 
-            lw->ClearLog(LogWindow::LF_CompilerWarning);
-            lw->LogText(LogWindow::LF_CompilerWarning, FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS));
+            auto winCom = gApp->GetWindowCompiler();
+            winCom->Clear();
+            winCom->Log(FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS));
+
             m_compiledFile->FlushErrors();
 
             // reset emulator
@@ -1530,10 +1533,10 @@ void CompilerSourceInfo::FlushErrors()
 {
     std::sort(m_errors.begin(), m_errors.end(), [](ErrorItem* a, ErrorItem* b) { return a->lineNmbr < b->lineNmbr; });
 
-    auto lw = gApp->GetLogWindow();
+    auto lw = gApp->GetWindowCompiler();
     for (auto e : m_errors)
     {
-        lw->LogText(LogWindow::LF_CompilerWarning, e->text, e->lineNmbr);
+        lw->Log(e->text, e->lineNmbr);
         delete e;
     }
     m_errors.clear();
@@ -1591,7 +1594,6 @@ void CompilerSourceInfo::SavePrg(const char* path)
         FILE* fh = fopen(path, "wb");
         if (fh)
         {
-
             // allocate flat memory block with 2 byte header for address
             u32 memSize = (endAddr + 1) - startAddr + 2;
             u8* mem = (u8*)SDL_malloc((size_t)(memSize + 2));

@@ -13,7 +13,7 @@ public:
     static void RenderText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
 
     void SetPos(i32 x, i32 y) { m_quad.x = x; m_quad.y = y; }
-    void SetText(TTF_Font* font, const char* text, const SDL_Color& col);
+    void SetText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col);
     void SetTexture(SDL_Texture *tex, bool ownTexture);
 
     void Render(SDL_Renderer *r)

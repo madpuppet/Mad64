@@ -44,7 +44,7 @@
     <ClCompile Include="source\thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\LogWindow.cpp">
+    <ClCompile Include="source\logWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="source\contextualHelp.cpp">
@@ -77,7 +77,16 @@
     <ClCompile Include="source\emulatorc64.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\DockableManager.cpp">
+    <ClCompile Include="source\dockableManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\dockableWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\uiItem_textButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\dockableWindow_log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -418,7 +427,19 @@
     <ClInclude Include="source\emulatorc64.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="source\DockableManager.h">
+    <ClInclude Include="source\dockableManager.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\dockableWindow.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\uiItem.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\uiItem_textButton.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\dockableWindow_log.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

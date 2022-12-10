@@ -1,7 +1,8 @@
 #include "common.h"
 #include "application.h"
 #include "tinyfiledialogs.h"
-#include "DockableManager.h"
+#include "dockableManager.h"
+#include "dockableWindow_log.h"
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
@@ -118,6 +119,20 @@ Application::Application()
     m_joystick[1] = SDL_JoystickOpen(1);
 
     SDL_StartTextInput();
+
+    m_editWindow->CalcRects();
+
+    m_windowCompiler = new DockableWindow_Log("Compiler Output");
+    m_windowHelp = new DockableWindow_Log("Contextual Help");
+    m_windowRegisters = new DockableWindow_Log("System Registers");
+    m_windowEmulatorScreen = new DockableWindow_Log("Emulator Screen");
+    m_windowMemoryDump = new DockableWindow_Log("Memory Dump");
+
+    m_dockableMgr->AddWindow(m_windowCompiler, "COM", true, true);
+    m_dockableMgr->AddWindow(m_windowHelp, "HLP", true, true);
+    m_dockableMgr->AddWindow(m_windowRegisters, "REG", true, true);
+    m_dockableMgr->AddWindow(m_windowEmulatorScreen, "EMU", true, true);
+    m_dockableMgr->AddWindow(m_windowMemoryDump, "DMP", true, true);
 }
 
 void Application::ReloadFont()
@@ -235,7 +250,6 @@ void Application::Draw()
     SDL_RenderFillRect(m_renderer, NULL);
 
     m_editWindow->Draw();
-
     m_dockableMgr->Draw();
 
     if (m_flashScreenRed)
@@ -278,32 +292,32 @@ void Application::HandleEvent(SDL_Event *e)
                 m_latchDoubleClick = true;
             }
 
-            if (e->button.windowID == SDL_GetWindowID(m_window))
+            if (!m_dockableMgr->OnMouseDown(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
+            {
                 m_editWindow->OnMouseDown(e);
-            else
-                m_dockableMgr->OnMouseDown(e);
+            }
         }
         break;
     case SDL_MOUSEBUTTONUP:
-        if (e->button.windowID == SDL_GetWindowID(m_window))
+        if (!m_dockableMgr->OnMouseUp(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
+        {
             m_editWindow->OnMouseUp(e);
-        else
-            m_dockableMgr->OnMouseUp(e);
+        }
         break;
     case SDL_MOUSEMOTION:
         if (!m_latchDoubleClick)
         {
-            if (e->motion.windowID == SDL_GetWindowID(m_window))
+            if (!m_dockableMgr->OnMouseMotion(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
+            {
                 m_editWindow->OnMouseMotion(e);
-            else
-                m_dockableMgr->OnMouseMotion(e);
+            }
         }
         break;
     case SDL_MOUSEWHEEL:
-        if (e->wheel.windowID == SDL_GetWindowID(m_window))
+        if (!m_dockableMgr->OnMouseWheel(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
+        {
             m_editWindow->OnMouseWheel(e);
-        else
-            m_dockableMgr->OnMouseWheel(e);
+        }
         break;
     case SDL_TEXTINPUT:
         if (!m_emulatorCaptureInput)

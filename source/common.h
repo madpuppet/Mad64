@@ -116,6 +116,7 @@ typedef DMFastDelegate::FastDelegate2<u16, u8> WriteByteHook;
 typedef DMFastDelegate::FastDelegate3<u8, u16, u8> BreakpointHook;
 typedef DMFastDelegate::FastDelegate0<> InterruptHook;
 typedef DMFastDelegate::FastDelegate1<u8> SetByteHook;
+typedef DMFastDelegate::FastDelegate0<> ButtonPressHook;
 
 enum BreakpointType
 {
@@ -129,6 +130,8 @@ enum BreakpointType
 #include "application.h"
 
 extern class Application* gApp;		// manages general application highlevel control
+
+#define DeleteClear(ptr) { delete ptr; ptr = nullptr; }
 
 #define TIMEDELTA gApp->GetTimeDelta()
 

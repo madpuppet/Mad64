@@ -7,8 +7,10 @@
 #include "cmdManager.h"
 #include "appSettings.h"
 #include "logWindow.h"
-#include "DockableManager.h"
+#include "dockableManager.h"
 #include "emulatorc64.h"
+
+class DockableWindow_Log;
 
 enum CursorType
 {
@@ -40,6 +42,12 @@ public:
     EditWindow* GetEditWindow() { return m_editWindow; }
     LogWindow* GetLogWindow() { return m_logWindow; }
     DockableManager* GetDockableMgr() { return m_dockableMgr; }
+
+    DockableWindow_Log* GetWindowCompiler() { return m_windowCompiler; }
+    DockableWindow_Log* GetWindowHelp() { return m_windowHelp; }
+    DockableWindow_Log* GetWindowRegisters() { return m_windowRegisters; }
+    DockableWindow_Log* GetWindowMemoryDump() { return m_windowMemoryDump; }
+    DockableWindow_Log* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
 
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
@@ -110,6 +118,12 @@ protected:
     bool m_fullscreen;
     bool m_emulatorCaptureInput;
     AppSettings* m_settings;
+
+    class DockableWindow_Log* m_windowCompiler;
+    class DockableWindow_Log* m_windowHelp;
+    class DockableWindow_Log* m_windowRegisters;
+    class DockableWindow_Log* m_windowMemoryDump;
+    class DockableWindow_Log* m_windowEmulatorScreen;
 
     enum InputCapture
     {
