@@ -19,7 +19,9 @@ GraphicElement::GraphicElement(SDL_Texture *tex, i32 x, i32 y, bool ownTexture)
 GraphicElement::~GraphicElement()
 {
     if (m_ownTexture)
+    {
         SDL_DestroyTexture(m_tex);
+    }
 }
 
 GraphicElement* GraphicElement::CreateFromImage(SDL_Renderer* r, const char* path, i32 x, i32 y)
@@ -53,13 +55,23 @@ GraphicElement* GraphicElement::CreateFromText(SDL_Renderer* r, TTF_Font* font, 
     return new GraphicElement(tex, x, y, true);
 }
 
+void GraphicElement::RenderText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
+{
+    GraphicElement* ge = GraphicElement::CreateFromText(r, font, text, col, x, y);
+    ge->Render(r);
+    delete ge;
+}
+
+
 void GraphicElement::SetText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col)
 {
     if (m_ownTexture && m_tex)
+    {
         SDL_DestroyTexture(m_tex);
+    }
 
     SDL_Surface* surface = TTF_RenderText_Solid(font, text, col);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
+    m_tex = SDL_CreateTextureFromSurface(r, surface);
     SDL_FreeSurface(surface);
 }
 
@@ -69,7 +81,9 @@ void GraphicElement::SetTexture(SDL_Texture* tex, bool ownTexture)
     SDL_assert(!m_ownTexture || tex != m_tex);
 
     if (m_ownTexture && m_tex)
+    {
         SDL_DestroyTexture(m_tex);
+    }
 
     m_ownTexture = ownTexture;
     m_tex = tex;

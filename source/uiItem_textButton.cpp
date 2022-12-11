@@ -14,8 +14,11 @@ void UIItem_TextButton::Draw(SDL_Renderer* r)
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
     SDL_RenderFillRect(r, &m_area);
 
-    SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-    m_geButtonText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y + settings->textYMargin);
+    if (m_geButtonText)
+    {
+        SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+        m_geButtonText->RenderAt(r, m_area.x + 4, m_area.y + settings->textYMargin);
+    }
 }
 
 void UIItem_TextButton::OnButtonDown(int button, int x, int y)
@@ -31,34 +34,40 @@ void UIItem_TextButton::OnButtonUp(int button, int x, int y)
 int UIItem_TextButton::GetWidth()
 {
     auto settings = gApp->GetSettings();
-    return m_geButtonText ? m_geButtonText->GetRect().w + settings->textXMargin*2 : 16;
+    return m_geButtonText ? m_geButtonText->GetRect().w + 8 : settings->lineHeight - 8;
 }
 
 int UIItem_TextButton::GetHeight()
 {
     auto settings = gApp->GetSettings();
-    return settings->lineHeight - settings->textYMargin * 2;
+    return m_geButtonText ? settings->lineHeight - settings->textYMargin * 2 : settings->lineHeight - 8;
 }
 
 void UIItem_TextButton::OnRendererChange(SDL_Renderer* r)
 {
+    Log("UI TextButton Destroy");
     DeleteClear(m_geButtonText);
     BuildGE(r);
 }
 
 void UIItem_TextButton::BuildGE(SDL_Renderer *r)
 {
-    if (!m_geButtonText)
+    if (!m_geButtonText && !m_text.empty())
         m_geButtonText = GraphicElement::CreateFromText(r, gApp->GetFont(), m_text.c_str(), { 255,255,255,255 }, 0, 0);
 }
-
 
 void UIItem_TextButton::SetPos(int x, int y)
 {
     auto settings = gApp->GetSettings();
-    m_area.x = x - settings->textXMargin;
-    m_area.y = y + settings->textYMargin;
+    m_area.x = x;
+    m_area.y = y;
     m_area.w = GetWidth();
     m_area.h = GetHeight();
 }
+
+void UIItem_TextButton::SetArea(const SDL_Rect& area)
+{
+    m_area = area;
+}
+
 

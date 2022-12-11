@@ -65,6 +65,7 @@ protected:
 	vector<Breakpoint> m_breakpoints;
 
 	bool m_breakpointHit;
+	bool m_regsDirty;
 
 	Cpu6502* m_cpu;
 	Vic* m_vic;

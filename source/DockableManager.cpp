@@ -35,6 +35,16 @@ DockableWindow* DockableManager::FindWindow(int id)
     return nullptr;
 }
 
+bool DockableManager::IsWindowEnabled(DockableWindow* window)
+{
+    for (auto& it : m_windows)
+    {
+        if (it.m_window == window)
+            return it.m_enabled;
+    }
+    return false;
+}
+
 bool DockableManager::OnMouseDown(SDL_Event* e)
 {
     auto settings = gApp->GetSettings();
@@ -49,10 +59,11 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
                 if (Contains(win.m_geTitle->GetRect(), e->button.x, e->button.y))
                 {
                     win.m_enabled = !win.m_enabled;
-                    win.m_window->ShowWindow(win.m_enabled);
+                    if (!win.m_window->IsDocked())
+                        win.m_window->ShowWindow(win.m_enabled);
                     return true;
                 }
-                else if (Contains(win.m_window->GetArea(), e->button.x, e->button.y))
+                else if (win.m_enabled && win.m_window->IsDocked() && Contains(win.m_window->GetArea(), e->button.x, e->button.y))
                 {
                     win.m_window->OnMouseButtonDown(e->button.button, e->button.x, e->button.y);
                     return true;
@@ -211,12 +222,20 @@ void DockableManager::Draw()
     area.y += settings->lineHeight;
     for (auto &win : m_windows)
     {
-        if (win.m_enabled)
+        if (win.m_enabled && win.m_window->IsDocked())
         {
-            area.h = win.m_window->GetHeight();
+            area.h = win.m_window->GetContentHeight();
             win.m_window->SetRect(area);
             win.m_window->Draw();
             area.y += area.h;
+        }
+    }
+
+    for (auto& win : m_windows)
+    {
+        if (win.m_enabled && !win.m_window->IsDocked())
+        {
+            win.m_window->Draw();
         }
     }
 }

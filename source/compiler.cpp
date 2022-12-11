@@ -1432,20 +1432,22 @@ void Compiler::Update()
             delete m_activeFile;
 
             // compilation errors & compile time
-            auto lw = gApp->GetLogWindow();
-            lw->ClearLog(LogWindow::LF_LabelHelp);
+            auto winLabels = gApp->GetWindowLabels();
+            winLabels->Clear();
             for (auto l : m_compiledFile->m_labels)
             {
                 if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
-                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 0, (u16)l->m_value);
+                    winLabels->LogText(FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 0, (int)l->m_value);
                 else
-                    lw->LogText(LogWindow::LF_LabelHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 0, (u16)l->m_value);
+                    winLabels->LogText(FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 0, 0);
             }
+
+            auto lw = gApp->GetLogWindow();
             lw->SetMemMap(m_compiledFile->m_ramColorMap);
 
             auto winCom = gApp->GetWindowCompiler();
             winCom->Clear();
-            winCom->Log(FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS));
+            winCom->LogText(FormatString("Compiled Time: %1.2fms", m_compiledFile->m_compileTimeMS),0,-1);
 
             m_compiledFile->FlushErrors();
 
@@ -1536,7 +1538,7 @@ void CompilerSourceInfo::FlushErrors()
     auto lw = gApp->GetWindowCompiler();
     for (auto e : m_errors)
     {
-        lw->Log(e->text, e->lineNmbr);
+        lw->LogText(e->text, e->lineNmbr, 0);
         delete e;
     }
     m_errors.clear();
@@ -2020,7 +2022,7 @@ void Compiler::AddCommandsContaining(vector<CommandHelp*>& commands, const strin
 
 void Compiler::LogContextualHelp(SourceFile* sf, int line)
 {
-    auto lw = gApp->GetLogWindow();
+    auto help = gApp->GetWindowHelp();
     auto si = sf->GetLines()[line];
     auto ci = sf->GetCompileInfo();
     CompilerLineInfo* li = 0;
@@ -2029,7 +2031,7 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
 
     if (li && !li->error)
     {
-        lw->ClearLog(LogWindow::LF_InstructionHelp);
+        help->Clear();
         switch (li->type)
         {
             case LT_BasicStartup:
@@ -2046,11 +2048,11 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
                         auto cmd = FindMatchingCommand(si->GetTokens()[0]);
                         if (cmd)
                         {
-                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
+                            help->LogText(cmd->help, -1, 1);
                             if (cmd->detail1)
-                                lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail1, -1, 1);
+                                help->LogText(cmd->detail1, -1, 1);
                             if (cmd->detail2)
-                                lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail2, -1, 1);
+                                help->LogText(cmd->detail2, -1, 1);
                         }
                     }
                 }
@@ -2063,11 +2065,11 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
                     if (l)
                     {
                         if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
-                            lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1);
+                            help->LogText(FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1, (int)(l->m_value));
                         else
-                            lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1);
+                            help->LogText(FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1);
                         if (l->m_help)
-                            lw->LogTextArray(LogWindow::LF_InstructionHelp, l->m_help, 1);
+                            help->LogTextArray(l->m_help, 1);
                     }
                 }
                 break;
@@ -2078,11 +2080,11 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
                     auto cmd = FindMatchingCommand(op->name);
                     if (cmd)
                     {
-                        lw->LogText(LogWindow::LF_InstructionHelp, cmd->help, -1, 1);
+                        help->LogText(cmd->help, -1, 1);
                         if (cmd->detail1)
-                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail1, -1, 1);
+                            help->LogText(cmd->detail1, -1, 1);
                         if (cmd->detail2)
-                            lw->LogText(LogWindow::LF_InstructionHelp, cmd->detail2, -1, 1);
+                            help->LogText(cmd->detail2, -1, 1);
                     }
 
                     // find possible labels
@@ -2098,11 +2100,11 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
                         for (auto l : labels)
                         {
                             if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
-                                lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1 + colorToggle);
+                                help->LogText(FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1 + colorToggle, (int)(l->m_value));
                             else
-                                lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1 + colorToggle);
+                                help->LogText(FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1 + colorToggle);
                             if (labels.size() == 1 && l->m_help)
-                                lw->LogTextArray(LogWindow::LF_InstructionHelp, l->m_help, 1 + colorToggle);
+                                help->LogTextArray(l->m_help, 1 + colorToggle);
 
                             colorToggle = 1 - colorToggle;
                         }
@@ -2144,33 +2146,33 @@ void Compiler::LogContextualHelp(SourceFile* sf, int line)
             AddCommandsContaining(commands, token);
         }
 
-        lw->ClearLog(LogWindow::LF_InstructionHelp);
+        help->Clear();
         if (!labels.empty())
         {
-            lw->LogText(LogWindow::LF_InstructionHelp, "Suggested Labels:");
+            help->LogText("Suggested Labels:", 0, -1);
             for (auto l : labels)
             {
                 if (l->m_value >= 0 && abs(fmod(l->m_value, 1.0)) < 0.0000001 && abs(l->m_value) < 1000000000.0f)
-                    lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1 + colorToggle);
+                    help->LogText(FormatString("%s : $%x  %d", l->m_name.c_str(), (u32)l->m_value, (int)(l->m_value)), l->m_lineNmbr, 1 + colorToggle, (int)(l->m_value));
                 else
-                    lw->LogText(LogWindow::LF_InstructionHelp, FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1 + colorToggle);
+                    help->LogText(FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 1 + colorToggle);
                 if (labels.size() == 1 && l->m_help)
-                    lw->LogTextArray(LogWindow::LF_InstructionHelp, l->m_help, 1 + colorToggle);
+                    help->LogTextArray(l->m_help, 1 + colorToggle);
 
                 colorToggle = 1 - colorToggle;
             }
         }
         if (!commands.empty())
         {
-            lw->LogText(LogWindow::LF_InstructionHelp, "Suggested Commands:");
+            help->LogText("Suggested Commands:", -1, 0);
             colorToggle = 0;
             for (auto c : commands)
             {
-                lw->LogText(LogWindow::LF_InstructionHelp, c->help, -1, 1 + colorToggle);
+                help->LogText(c->help, -1, 1 + colorToggle);
                 if (c->detail1)
-                    lw->LogText(LogWindow::LF_InstructionHelp, c->detail1, -1, 1 + colorToggle);
+                    help->LogText(c->detail1, -1, 1 + colorToggle);
                 if (c->detail2)
-                    lw->LogText(LogWindow::LF_InstructionHelp, c->detail2, -1, 1 + colorToggle);
+                    help->LogText(c->detail2, -1, 1 + colorToggle);
                 colorToggle = 1 - colorToggle;
             }
         }

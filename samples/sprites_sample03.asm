@@ -89,7 +89,6 @@ loop:
     bcs loop
     lda vic.control1
     bmi loop
-
     dec delay
     bne endloop
     lda #FRAME_DELAY

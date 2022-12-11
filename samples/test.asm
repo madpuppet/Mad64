@@ -1,7 +1,5 @@
 .basicStartup
 
 start:
-    ora.w $08,x
+    ora.a $08,x
     rts
-    
-    

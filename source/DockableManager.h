@@ -8,6 +8,7 @@ public:
     ~DockableManager();
 
     void AddWindow(class DockableWindow* window, const char* iconText, bool enabled, bool docked);
+    bool IsWindowEnabled(DockableWindow* window);
 
     void SetRect(const SDL_Rect& rect);
     SDL_Rect& GetRect() { return m_area; }

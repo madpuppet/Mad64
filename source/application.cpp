@@ -39,7 +39,9 @@ Application::Application()
     m_fullscreen = false;
 
     //Create window
+    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
     m_window = SDL_CreateWindow(APP_TITLE " v" VERSION, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+
     if (m_window == NULL)
     {
         Log("Window could not be created! SDL_Error: %s\n", SDL_GetError());
@@ -84,14 +86,20 @@ Application::Application()
             exit(0);
         }
 
-        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-
         Log("Create Modules");
         m_dockableMgr = new DockableManager();
         m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
         m_emulator = new EmulatorC64();
+
+        m_windowCompiler = new DockableWindow_Log("Compiler Output");
+        m_windowHelp = new DockableWindow_Log("Contextual Help");
+        m_windowRegisters = new DockableWindow_Log("System Registers");
+        m_windowLabels = new DockableWindow_Log("Labels");
+        m_windowEmulatorScreen = new DockableWindow_Log("Emulator Screen");
+        m_windowMemoryDump = new DockableWindow_Log("Memory Dump");
+        m_windowSearchAndReplace = new DockableWindow_Log("Search and Replace");
 
         Log("Set open logs");
         m_logWindow->SetOpenLogs(m_settings->openLogs);
@@ -122,14 +130,10 @@ Application::Application()
 
     m_editWindow->CalcRects();
 
-    m_windowCompiler = new DockableWindow_Log("Compiler Output");
-    m_windowHelp = new DockableWindow_Log("Contextual Help");
-    m_windowRegisters = new DockableWindow_Log("System Registers");
-    m_windowEmulatorScreen = new DockableWindow_Log("Emulator Screen");
-    m_windowMemoryDump = new DockableWindow_Log("Memory Dump");
-
+    m_dockableMgr->AddWindow(m_windowSearchAndReplace, "S&R", true, true);
     m_dockableMgr->AddWindow(m_windowCompiler, "COM", true, true);
     m_dockableMgr->AddWindow(m_windowHelp, "HLP", true, true);
+    m_dockableMgr->AddWindow(m_windowLabels, "LAB", true, true);
     m_dockableMgr->AddWindow(m_windowRegisters, "REG", true, true);
     m_dockableMgr->AddWindow(m_windowEmulatorScreen, "EMU", true, true);
     m_dockableMgr->AddWindow(m_windowMemoryDump, "DMP", true, true);
@@ -307,6 +311,7 @@ void Application::HandleEvent(SDL_Event *e)
     case SDL_MOUSEMOTION:
         if (!m_latchDoubleClick)
         {
+            gApp->SetCursor(Cursor_Arrow);
             if (!m_dockableMgr->OnMouseMotion(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
             {
                 m_editWindow->OnMouseMotion(e);

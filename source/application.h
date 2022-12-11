@@ -48,6 +48,8 @@ public:
     DockableWindow_Log* GetWindowRegisters() { return m_windowRegisters; }
     DockableWindow_Log* GetWindowMemoryDump() { return m_windowMemoryDump; }
     DockableWindow_Log* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
+    DockableWindow_Log* GetWindowLabels() { return m_windowLabels; }
+    DockableWindow_Log* GetWindowSearchAndReplace() { return m_windowSearchAndReplace; }
 
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
@@ -124,6 +126,8 @@ protected:
     class DockableWindow_Log* m_windowRegisters;
     class DockableWindow_Log* m_windowMemoryDump;
     class DockableWindow_Log* m_windowEmulatorScreen;
+    class DockableWindow_Log* m_windowLabels;
+    class DockableWindow_Log* m_windowSearchAndReplace;
 
     enum InputCapture
     {
