@@ -32,6 +32,10 @@ add_executable(Mad64
 	source/chips/memc64.cpp
 	source/chips/sid.cpp
 	source/chips/vic.cpp
+	source/dockableManager.cpp
+	source/dockableWindow.cpp
+	source/dockableWindow_log.cpp
+	source/uiItem_textButton.cpp
 )
 
 if (APPLE)

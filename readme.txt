@@ -163,6 +163,7 @@ Add cia1 timer interrupts
 Add cia2 nmi interrupts
 Add F6 hard-reset support
 Add cia1 keyboard support
+Add support for undocking the log windows
 
 
 2022.8
