@@ -1,6 +1,6 @@
 #include "common.h"
 #include "dockableWindow.h"
-#include "uiItem_TextButton.h"
+#include "uiItem_textButton.h"
 
 DockableWindow::~DockableWindow()
 {

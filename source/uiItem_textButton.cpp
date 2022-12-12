@@ -1,5 +1,5 @@
 #include "common.h"
-#include "uiItem_TextButton.h"
+#include "uiItem_textButton.h"
 
 UIItem_TextButton::~UIItem_TextButton()
 {
