@@ -219,6 +219,11 @@ DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked
     SDL_SetWindowPosition(m_window, m_windowArea.x, m_windowArea.y);
     m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
+    m_vertScroll = 0;
+    m_horizScroll = 0;
+    m_targetVertScroll = 0;
+    m_targetHorizScroll = 0;
 }
 
 void DockableWindow::OnRendererChange()
@@ -241,9 +246,9 @@ void DockableWindow::OnRendererChange()
 }
 
 
-void DockableWindow::OnMouseWheel(int x, int y)
+void DockableWindow::OnMouseWheel(int mouseX, int mouseY, int wheelX, int wheelY)
 {
-    m_targetVertScroll -= y * 50;
+    m_targetVertScroll -= wheelY * 50;
     ClampTargetVertScroll();
 }
 
@@ -330,7 +335,6 @@ void DockableWindow::Draw()
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
 
-    SDL_RenderSetClipRect(r, &m_renderArea);
     SDL_SetRenderDrawColor(r, settings->backColor.r, settings->backColor.g, settings->backColor.b, 255);
     SDL_RenderFillRect(r, &m_renderArea);
 
@@ -358,9 +362,10 @@ void DockableWindow::Draw()
             { {(float)m_renderArea.w-settings->lineHeight,(float)m_renderArea.h}, {32, 64, 128, 255}, {0,0} },
             { {(float)m_renderArea.w,(float)m_renderArea.h}, {64, 128, 255, 255}, {0,0} },
             { {(float)m_renderArea.w,(float)m_renderArea.h - settings->lineHeight}, {32, 64, 128, 255}, {0,0} },
-            { {(float)0, (float)m_renderArea.h}, { 32, 64, 128, 255 }, { 0,0 } },
-            { {(float)settings->lineHeight,(float)m_renderArea.h}, {64, 128, 255, 255}, {0,0} },
-            { {(float)settings->lineHeight,(float)m_renderArea.h - settings->lineHeight}, {32, 64, 128, 255}, {0,0} }
+
+            { {(float)settings->lineHeight, (float)m_renderArea.h}, { 32, 64, 128, 255 }, { 0,0 } },
+            { {(float)0,(float)m_renderArea.h}, {64, 128, 255, 255}, {0,0} },
+            { {(float)0,(float)m_renderArea.h - settings->lineHeight}, {32, 64, 128, 255}, {0,0} }
         };
 
         int indices[6] = { 0, 1, 2, 3,4,5 };
@@ -390,14 +395,17 @@ void DockableWindow::Draw()
         icon->Draw(r);
     }
 
-    SDL_RenderSetClipRect(r, &m_contentArea);
-
-    DrawChild();
-
-    SDL_RenderSetClipRect(r, nullptr);
-
     if (!m_isDocked)
+    {
+        SDL_RenderSetClipRect(r, &m_contentArea);
+        DrawChild();
+        SDL_RenderSetClipRect(r, nullptr);
         SDL_RenderPresent(r);
+    }
+    else
+    {
+        DrawChild();
+    }
 }
 
 void DockableWindow::SetRect(const SDL_Rect& rect)
@@ -516,30 +524,4 @@ void DockableWindow::ClampTargetHorizScroll()
     m_targetHorizScroll = SDL_clamp(m_targetHorizScroll, 0.0f, (float)maxScroll);
     m_horizScroll = (int)m_targetHorizScroll;
 }
-bool DockableWindow::CalcVertScrollBar(int& start, int& end)
-{
-    start = 0;
-    end = 0;
-    int height = GetContentHeight();
-    int viewStart = m_vertScroll;
-    int viewEnd = m_vertScroll + m_renderArea.h;
-    float relStart = SDL_clamp((float)viewStart / (float)height, 0.0f, 1.0f);
-    float relEnd = SDL_clamp((float)viewEnd / (float)height, 0.0f, 1.0f);
-    start = (int)(m_renderArea.y + relStart * m_renderArea.h);
-    end = (int)(m_renderArea.y + relEnd * m_renderArea.h);
-    return relStart > 0.0f || relEnd < 1.0f;
-}
 
-bool DockableWindow::CalcHorizScrollBar(int& start, int& end)
-{
-    start = 0;
-    end = 0;
-    int width = GetContentWidth();
-    int viewStart = m_vertScroll;
-    int viewEnd = m_vertScroll + m_renderArea.h;
-    float relStart = SDL_clamp((float)viewStart / (float)width, 0.0f, 1.0f);
-    float relEnd = SDL_clamp((float)viewEnd / (float)width, 0.0f, 1.0f);
-    start = (int)(m_renderArea.x + relStart * m_renderArea.w);
-    end = (int)(m_renderArea.x + relEnd * m_renderArea.w);
-    return relStart > 0.0f || relEnd < 1.0f;
-}

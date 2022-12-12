@@ -28,7 +28,7 @@ public:
 
 	void OnMouseUp(SDL_Event* e);
 	void OnMouseMotion(SDL_Event* e);
-	void OnMouseWheel(SDL_Event* e);
+	void OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY);
 
 	void OnFileLoaded(SourceFile *file);
 	void OnFileClosed(SourceFile* file);
@@ -186,7 +186,8 @@ protected:
 		DRAG_DivideContext,
 		DRAG_EditVertScroll,
 		DRAG_EditHorizScroll,
-		DRAG_LogVertScroll
+		DRAG_LogVertScroll,
+		DRAG_LogHorizScroll
 	};
 	DragMode m_dragMode;
 	int m_dragOffset;
@@ -196,6 +197,9 @@ protected:
 	SDL_Rect m_allEditRect;
 	SDL_Rect m_titleTabsRect;
 	SDL_Rect m_sourceEditRect;
+	SDL_Rect m_sourceEditVBarRect;
+	SDL_Rect m_sourceEditHBarRect;
+
 	SDL_Rect m_memAddrRect;
 	SDL_Rect m_decodeRect;
 	SDL_Rect m_contextHelpRect;
@@ -216,9 +220,9 @@ protected:
 	void DrawStatus();
 	bool ScanTokenAt(int line, int col, int &startCol, int &endCol);
 
-	int activeXPosDecode;
-	int activeXPosText;
-	int activeXPosContextHelp;
+	int m_activeXPosDecode;
+	int m_activeXPosText;
+	int m_activeXPosContextHelp;
 
 	void ClampActiveLine();
 };

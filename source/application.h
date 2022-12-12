@@ -151,6 +151,10 @@ protected:
     float m_timeDelta;
     int m_focusedWindowID;
 
+    int m_mouseWindowID;
+    int m_mouseX;
+    int m_mouseY;
+
     // emulation
     bool m_runEmulation;
     float m_flashScreenRed;

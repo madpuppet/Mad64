@@ -310,19 +310,23 @@ void Application::HandleEvent(SDL_Event *e)
         }
         break;
     case SDL_MOUSEMOTION:
+        m_mouseWindowID = e->motion.windowID;
+        m_mouseX = e->motion.x;
+        m_mouseY = e->motion.y;
+
         if (!m_latchDoubleClick)
         {
             gApp->SetCursor(Cursor_Arrow);
-            if (!m_dockableMgr->OnMouseMotion(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
+            if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
             {
                 m_editWindow->OnMouseMotion(e);
             }
         }
         break;
     case SDL_MOUSEWHEEL:
-        if (!m_dockableMgr->OnMouseWheel(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
+        if (!m_dockableMgr->OnMouseWheel(m_mouseWindowID, m_mouseX, m_mouseY, e->wheel.x, e->wheel.y) && (m_mouseWindowID == SDL_GetWindowID(m_window)))
         {
-            m_editWindow->OnMouseWheel(e);
+            m_editWindow->OnMouseWheel(m_mouseWindowID, m_mouseX, m_mouseY, e->wheel.x, e->wheel.y);
         }
         break;
     case SDL_TEXTINPUT:

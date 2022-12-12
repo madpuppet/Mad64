@@ -310,8 +310,8 @@ void EditWindow::Draw()
 					red = brighten;
 					green = brighten;
 					blue = brighten + 128 - ((i & 1) ? 16 : 0);
-					SDL_Rect lineQuad1 = { activeXPosText - m_activeSourceFileItem->horizScroll, y, lineWidth, settings->lineHeight };
-					SDL_Rect lineQuad2 = { activeXPosText - m_activeSourceFileItem->horizScroll + lineWidth, y, m_sourceEditRect.w - lineWidth + m_activeSourceFileItem->horizScroll, settings->lineHeight };
+					SDL_Rect lineQuad1 = { m_activeXPosText - m_activeSourceFileItem->horizScroll, y, lineWidth, settings->lineHeight };
+					SDL_Rect lineQuad2 = { m_activeXPosText - m_activeSourceFileItem->horizScroll + lineWidth, y, m_sourceEditRect.w - lineWidth + m_activeSourceFileItem->horizScroll, settings->lineHeight };
 					SDL_SetRenderDrawColor(r, red, green, blue, 255);
 					SDL_RenderFillRect(r, &lineQuad1);
 					if (lineWidth < m_sourceEditRect.w + m_activeSourceFileItem->horizScroll)
@@ -360,7 +360,7 @@ void EditWindow::Draw()
 			// - text
 			if (line->GetGCText())
 			{
-				line->GetGCText()->DrawAt(activeXPosText + settings->textXMargin - m_activeSourceFileItem->horizScroll, y + settings->textYMargin);
+				line->GetGCText()->DrawAt(m_activeXPosText + settings->textXMargin - m_activeSourceFileItem->horizScroll, y + settings->textYMargin);
 				m_activeSourceFileItem->editWindowTextWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, line->GetGCText()->CalcMaxWidth());
 				if (m_activeSourceFileItem->horizScroll == 0)
 					m_activeSourceFileItem->editWindowHScrollWidth = 0;
@@ -415,8 +415,8 @@ void EditWindow::Draw()
 		int barY1, barY2;
 		CalcVertScrollBar(barY1, barY2);
 
-		SDL_Rect BarBack = { activeXPosContextHelp - settings->scrollBarWidth, m_sourceEditRect.y, settings->scrollBarWidth, m_sourceEditRect.h };
-		SDL_Rect Bar = { activeXPosContextHelp - settings->scrollBarWidth + 4, barY1, settings->scrollBarWidth - 4, barY2-barY1 };
+		SDL_Rect BarBack = { m_activeXPosContextHelp - settings->scrollBarWidth, m_sourceEditRect.y, settings->scrollBarWidth, m_sourceEditRect.h };
+		SDL_Rect Bar = { m_activeXPosContextHelp - settings->scrollBarWidth + 4, barY1, settings->scrollBarWidth - 4, barY2-barY1 };
 		SDL_SetRenderDrawColor(r, 0, 0, 32, 255);
 		SDL_RenderFillRect(r, &BarBack);
 		if (m_dragMode == DRAG_EditVertScroll)
@@ -469,21 +469,21 @@ void EditWindow::Draw()
 	DrawStatus();
 
 	// draw search boxes
-	SDL_Rect sarRect = { activeXPosContextHelp, settings->lineHeight, windowWidth - activeXPosContextHelp, settings->lineHeight };
-	SDL_SetRenderDrawColor(r, 32, 64, 32, 255);
-	SDL_RenderFillRect(r, &sarRect);
-	m_searchBox->Draw();
-	m_replaceBox->Draw();
+//	SDL_Rect sarRect = { activeXPosContextHelp, settings->lineHeight, windowWidth - activeXPosContextHelp, settings->lineHeight };
+//	SDL_SetRenderDrawColor(r, 32, 64, 32, 255);
+//	SDL_RenderFillRect(r, &sarRect);
+//	m_searchBox->Draw();
+//	m_replaceBox->Draw();
 
 	// draw context bar split
-	SDL_Rect divider = { activeXPosContextHelp, settings->lineHeight * 2 - 1, windowWidth - activeXPosContextHelp, 3 };
+	SDL_Rect divider = { m_activeXPosContextHelp, settings->lineHeight * 2 - 1, windowWidth - m_activeXPosContextHelp, 3 };
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &divider);
 
 	// draw separator bars
-	DrawColouredLine(activeXPosDecode, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
-	DrawColouredLine(activeXPosText, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
-	DrawColouredLine(activeXPosContextHelp, m_sourceEditRect.y, m_sourceEditRect.y + m_sourceEditRect.h, false);
+	DrawColouredLine(m_activeXPosDecode, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
+	DrawColouredLine(m_activeXPosText, m_sourceEditRect.y, m_sourceEditRect.y+m_sourceEditRect.h, false);
+	DrawColouredLine(m_activeXPosContextHelp, m_sourceEditRect.y, m_sourceEditRect.y + m_sourceEditRect.h, false);
 
 	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
 	SDL_RenderSetClipRect(r, nullptr);
@@ -511,35 +511,38 @@ void EditWindow::CalcRects()
 	Log("CalcRects: WindowSize %d,%d", windowWidth, windowHeight);
 
 	auto settings = gApp->GetSettings();
-	int editHeight = windowHeight - settings->lineHeight*2;
 
 	m_titleTabsRect = { 0, 0, windowWidth, settings->lineHeight };
+	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
 
+	int editY = settings->lineHeight;
+	int editHeight = windowHeight - settings->lineHeight * 2;
 	if (IsActiveAsmFile())
 	{
-		activeXPosDecode = settings->xPosDecode;
-		activeXPosText = settings->xPosText;
-		activeXPosContextHelp = settings->xPosContextHelp;
+		m_activeXPosDecode = settings->xPosDecode;
+		m_activeXPosText = settings->xPosText;
 	}
 	else
 	{
-		activeXPosDecode = 0;
-		activeXPosText = 0;
-		activeXPosContextHelp = settings->xPosContextHelp;
+		m_activeXPosDecode = 0;
+		m_activeXPosText = 0;
 	}
+	m_activeXPosContextHelp = settings->xPosContextHelp;
+	m_memAddrRect = { 0, editY, m_activeXPosDecode, editHeight };
+	m_decodeRect = { m_activeXPosDecode, editY, m_activeXPosText - m_activeXPosDecode, editHeight };
 
-	m_allEditRect = { 0, settings->lineHeight, activeXPosContextHelp, editHeight };
-	m_memAddrRect = { 0, settings->lineHeight, activeXPosDecode, editHeight };
-	m_decodeRect = { activeXPosDecode, settings->lineHeight, activeXPosText - activeXPosDecode, editHeight };
-	m_sourceEditRect = { activeXPosText, settings->lineHeight, activeXPosContextHelp - activeXPosText, editHeight };
-	m_statusRect = { 0, windowHeight - settings->lineHeight, windowWidth, settings->lineHeight };
-	m_searchBox->SetPos(activeXPosContextHelp, settings->lineHeight);
-	m_replaceBox->SetPos(activeXPosContextHelp + 250, settings->lineHeight);
-	m_contextHelpRect = { activeXPosContextHelp, settings->lineHeight * 2, windowWidth - activeXPosContextHelp, editHeight - settings->lineHeight };
+	m_sourceEditRect = { m_activeXPosText, editY, m_activeXPosContextHelp - m_activeXPosText - settings->lineHeight, editHeight - settings->lineHeight };
+	m_sourceEditVBarRect = { m_activeXPosContextHelp - settings->lineHeight, editY, settings->lineHeight, editHeight - settings->lineHeight };
+	m_sourceEditHBarRect = { m_activeXPosText, editY + editHeight - settings->lineHeight, m_activeXPosContextHelp - m_activeXPosText - settings->lineHeight, settings->lineHeight };
 
-	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
+	m_allEditRect = { 0, editY, m_activeXPosContextHelp, editHeight };
+	m_contextHelpRect = { m_activeXPosContextHelp, editY, windowWidth - m_activeXPosContextHelp, editHeight };
 
 	gApp->GetDockableMgr()->SetRect(m_contextHelpRect);
+
+//	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
+//	m_searchBox->SetPos(activeXPosContextHelp, settings->lineHeight);
+//	m_replaceBox->SetPos(activeXPosContextHelp + 250, settings->lineHeight);
 }
 
 bool EditWindow::CalcHorizScrollBar(int& start, int& end)
@@ -693,19 +696,19 @@ void EditWindow::OnFileClosed(SourceFile* file)
 	}
 }
 
-void EditWindow::OnMouseWheel(SDL_Event* e)
+void EditWindow::OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY)
 {
 	if (Contains(m_allEditRect,m_mouseX, m_mouseY))
 	{
 		if (m_activeSourceFileItem)
 		{
-			m_activeSourceFileItem->targetVertScroll += (e->wheel.preciseY * -80.0f);
+			m_activeSourceFileItem->targetVertScroll += (wheelY * -8);
 			ClampTargetVertScroll();
 		}
 	}
 	else if (Contains(m_contextHelpRect, m_mouseX, m_mouseY))
 	{
-		gApp->GetLogWindow()->OnMouseWheel(e);
+		gApp->GetLogWindow()->OnMouseWheel(windowID, mouseX, mouseY, wheelX, wheelY);
 	}
 }
 
@@ -841,23 +844,23 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 			m_replaceBox->SetText("");
 	}
 
-	else if (abs(e->button.x - activeXPosDecode) < 2)
+	else if (abs(e->button.x - m_activeXPosDecode) < 2)
 	{
 		// drag first divide
 		m_dragMode = DRAG_DivideDecode;
-		m_dragOffset = e->button.x - activeXPosDecode;
+		m_dragOffset = e->button.x - m_activeXPosDecode;
 	}
-	else if (abs(e->button.x - activeXPosText) < 2)
+	else if (abs(e->button.x - m_activeXPosText) < 2)
 	{
 		// drag second divide
 		m_dragMode = DRAG_DivideText;
-		m_dragOffset = e->button.x - activeXPosText;
+		m_dragOffset = e->button.x - m_activeXPosText;
 	}
-	else if (abs(e->button.x - activeXPosContextHelp) < 2)
+	else if (abs(e->button.x - m_activeXPosContextHelp) < 2)
 	{
 		// drag third divide
 		m_dragMode = DRAG_DivideContext;
-		m_dragOffset = e->button.x - activeXPosContextHelp;
+		m_dragOffset = e->button.x - m_activeXPosContextHelp;
 	}
 	else if (Contains(m_memAddrRect, e->button.x, e->button.y))
 	{
@@ -1038,19 +1041,19 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 		{
 		case DRAG_DivideDecode:
 			{
-				settings->xPosDecode = SDL_clamp(e->motion.x + m_dragOffset, 16, activeXPosText - 16);
+				settings->xPosDecode = SDL_clamp(e->motion.x + m_dragOffset, 16, m_activeXPosText - 16);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideText:
 			{
-				settings->xPosText = SDL_clamp(e->motion.x + m_dragOffset, activeXPosDecode + 16, activeXPosContextHelp - 32);
+				settings->xPosText = SDL_clamp(e->motion.x + m_dragOffset, m_activeXPosDecode + 16, m_activeXPosContextHelp - 32);
 				CalcRects();
 			}
 			return;
 		case DRAG_DivideContext:
 			{
-				settings->xPosContextHelp = SDL_clamp(e->motion.x + m_dragOffset, activeXPosText + 32, windowWidth - 16);
+				settings->xPosContextHelp = SDL_clamp(e->motion.x + m_dragOffset, m_activeXPosText + 32, windowWidth - 16);
 				CalcRects();
 			}
 			return;
@@ -1087,17 +1090,17 @@ void EditWindow::SelectCursor(int x, int y)
 			}
 		}
 	}
-	else if (abs(x - activeXPosDecode) < 2)
+	else if (abs(x - m_activeXPosDecode) < 2)
 	{
 		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
-	else if (abs(x - activeXPosText) < 2)
+	else if (abs(x - m_activeXPosText) < 2)
 	{
 		gApp->SetCursor(Cursor_Horiz);
 		return;
 	}
-	else if (abs(x - activeXPosContextHelp) < 2)
+	else if (abs(x - m_activeXPosContextHelp) < 2)
 	{
 		gApp->SetCursor(Cursor_Horiz);
 		return;

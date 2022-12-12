@@ -15,7 +15,7 @@ public:
     virtual void OnMouseButtonDown(int button, int x, int y);
     virtual void OnMouseButtonUp(int button, int x, int y);
     virtual void OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel);
-    virtual void OnMouseWheel(int x, int y);
+    virtual void OnMouseWheel(int mouseX, int mouseY, int wheelX, int wheelY);
 
     virtual int GetContentHeight() = 0;
     virtual int GetContentWidth() = 0;
@@ -85,8 +85,6 @@ protected:
     // vscroll/hscroll
     void ClampTargetVertScroll();
     void ClampTargetHorizScroll();
-    bool CalcVertScrollBar(int& start, int& end);
-    bool CalcHorizScrollBar(int& start, int& end);
     int m_vertScroll;
     int m_horizScroll;
     float m_targetVertScroll;

@@ -81,7 +81,7 @@ public:
 	void SnapScrollBarToMouseY(int y);
 	void OnMouseDown(SDL_Event* event);
 	void OnMouseMotion(SDL_Event* event);
-	void OnMouseWheel(SDL_Event* event);
+	void OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY);
 
 	// find which filter group toggle button is at x,y
 	bool FindGroupItemAt(int x, int y, int& group);

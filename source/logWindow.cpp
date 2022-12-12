@@ -748,9 +748,9 @@ void LogWindow::OnMouseMotion(SDL_Event* event)
 }
 
 
-void LogWindow::OnMouseWheel(SDL_Event* e)
+void LogWindow::OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY)
 {
-	m_targetScroll += (e->wheel.preciseY * -80.0f);
+	m_targetScroll += (mouseY * -8);
 	ClampTargetScroll();
 }
 
