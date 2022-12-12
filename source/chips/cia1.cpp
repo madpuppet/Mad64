@@ -1,7 +1,7 @@
 #include "common.h"
 #include "cia1.h"
 #include "SDL.h"
-#include "SDL_Joystick.h"
+#include "SDL_joystick.h"
 
 #define K(key,row,col) m_keyMap[((SDLK_##key)>>22)|((SDLK_##key) & 255)]=(row<<4)+col
 #define KEY_ROW(row, k0, k1, k2, k3, k4, k5, k6, k7) K(k0,row,0);K(k1,row,1);K(k2,row,2);K(k3,row,3);K(k4,row,4);K(k5,row,5);K(k6,row,6);K(k7,row,7)
