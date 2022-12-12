@@ -89,6 +89,9 @@
     <ClCompile Include="source\dockableWindow_log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\dockableWindow_emulatorScreen.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -440,6 +443,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\dockableWindow_log.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\dockableWindow_emulatorScreen.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -57,14 +57,14 @@ Vic::Vic()
     Reset();
 }
 
-void Vic::Render(int x, int y, int zoom)
+void Vic::RecreateTexture(SDL_Renderer* r)
 {
-    FlushTexture();
-    SDL_Rect dest = { x, y, m_scCurrent->screenWidth * zoom, m_scCurrent->screenHeight * zoom };
-    SDL_RenderCopy(gApp->GetRenderer(), m_texture, nullptr, &dest);
+    SDL_DestroyTexture(m_texture);
+    m_texture = SDL_CreateTexture(r, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, m_scCurrent->screenWidth, m_scCurrent->screenHeight);
+    SDL_UpdateTexture(m_texture, nullptr, m_textureMem, m_scCurrent->screenWidth * 4);
 }
 
-void Vic::FlushTexture()
+SDL_Texture *Vic::FlushTexture()
 {
     // check overlap
     if (m_textureDirtyExtra.h > 0)
@@ -105,6 +105,8 @@ void Vic::FlushTexture()
         SDL_UnlockTexture(m_texture);
         m_textureDirtyExtra.h = 0;
     }
+
+    return m_texture;
 }
 
 void Vic::Reset()

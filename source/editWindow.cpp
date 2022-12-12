@@ -1,5 +1,7 @@
 #include "common.h"
 #include "editWindow.h"
+#include "dockableWindow_log.h"
+#include "dockableWindow_emulatorScreen.h"
 
 #define TAB_ACTIVE_IMAGE "data/button_frame"
 #define TAB_INACTIVE_IMAGE "data/button_frame"
@@ -14,6 +16,7 @@ EditWindow::EditWindow()
 	surface = SDL_LoadBMP(TAB_ACTIVE_IMAGE);
 	m_tabInactiveTex = SDL_CreateTextureFromSurface(r, surface);
 	SDL_FreeSurface(surface);
+
 
 	m_activeSourceFileItem = nullptr;
 	m_cursorAnimTime = 0.0f;
@@ -643,6 +646,11 @@ void EditWindow::SetActiveFileIdx(int idx)
 			else
 			{
 				gApp->GetLogWindow()->ClearAllLogs();
+
+				gApp->GetWindowCompiler()->Clear();
+				gApp->GetWindowLabels()->Clear();
+				gApp->GetWindowHelp()->Clear();
+				gApp->GetWindowRegisters()->Clear();
 			}
 			CalcRects();
 
@@ -1744,8 +1752,9 @@ void EditWindow::GotoLineCol(int ln, int col, MarkingType mark, bool trackXPos)
 			m_keyMarking = true;
 		}
 
-		m_activeSourceFileItem->activeLine = ln;
-		m_activeSourceFileItem->activeColumn = col;
+		m_activeSourceFileItem->activeLine = SDL_min((int)file->GetLines().size()-1, ln);
+		auto line = file->GetLines()[m_activeSourceFileItem->activeLine];
+		m_activeSourceFileItem->activeColumn = SDL_min((int)line->GetChars().size(), col);
 
 		if (trackXPos)
 		{

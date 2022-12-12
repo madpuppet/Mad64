@@ -3,6 +3,7 @@
 #include "tinyfiledialogs.h"
 #include "dockableManager.h"
 #include "dockableWindow_log.h"
+#include "dockableWindow_emulatorScreen.h"
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
@@ -25,7 +26,7 @@ Application::Application()
     m_clickX = 0;
     m_clickY = 0;
     m_clickTime = 0;
-    m_hasFocus = false;
+    m_focusedWindowID = -1;
     m_flashScreenRed = 0.0f;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_TIMER) < 0)
@@ -97,7 +98,7 @@ Application::Application()
         m_windowHelp = new DockableWindow_Log("Contextual Help");
         m_windowRegisters = new DockableWindow_Log("System Registers");
         m_windowLabels = new DockableWindow_Log("Labels");
-        m_windowEmulatorScreen = new DockableWindow_Log("Emulator Screen");
+        m_windowEmulatorScreen = new DockableWindow_EmulatorScreen("Emulator Screen");
         m_windowMemoryDump = new DockableWindow_Log("Memory Dump");
         m_windowSearchAndReplace = new DockableWindow_Log("Search and Replace");
 
@@ -179,7 +180,7 @@ int Application::MainLoop()
     SDL_Event e;
     while (!m_quit)
     {
-        if (m_settings->lowCPUMode || !m_hasFocus)
+        if (m_settings->lowCPUMode || m_focusedWindowID == -1)
         {
             int timeout = (m_runEmulation || m_editWindow->IsAutoScrolling()) ? 10 : 200;
             if (SDL_WaitEventTimeout(&e,timeout))
@@ -345,18 +346,24 @@ void Application::HandleEvent(SDL_Event *e)
                     m_quit = true;
                     break;
 
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                    m_hasFocus = true;
-                    break;
-
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                    m_hasFocus = false;
-                    break;
-
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     m_editWindow->OnResize();
                     break;
             }
+        }
+
+        switch (e->window.event)
+        {
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+                if (e->window.windowID == SDL_GetWindowID(m_window) || m_dockableMgr->FindWindowByID(e->window.windowID) != nullptr)
+                    m_focusedWindowID = e->window.windowID;
+                else
+                    m_focusedWindowID = -1;
+                break;
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+                if (e->window.windowID == m_focusedWindowID)
+                    m_focusedWindowID = -1;
+                break;
         }
         break;
     case SDL_JOYBUTTONDOWN:

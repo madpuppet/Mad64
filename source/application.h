@@ -11,6 +11,7 @@
 #include "emulatorc64.h"
 
 class DockableWindow_Log;
+class DockableWindow_EmulatorScreen;
 
 enum CursorType
 {
@@ -47,7 +48,7 @@ public:
     DockableWindow_Log* GetWindowHelp() { return m_windowHelp; }
     DockableWindow_Log* GetWindowRegisters() { return m_windowRegisters; }
     DockableWindow_Log* GetWindowMemoryDump() { return m_windowMemoryDump; }
-    DockableWindow_Log* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
+    DockableWindow_EmulatorScreen* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
     DockableWindow_Log* GetWindowLabels() { return m_windowLabels; }
     DockableWindow_Log* GetWindowSearchAndReplace() { return m_windowSearchAndReplace; }
 
@@ -121,13 +122,13 @@ protected:
     bool m_emulatorCaptureInput;
     AppSettings* m_settings;
 
-    class DockableWindow_Log* m_windowCompiler;
-    class DockableWindow_Log* m_windowHelp;
-    class DockableWindow_Log* m_windowRegisters;
-    class DockableWindow_Log* m_windowMemoryDump;
-    class DockableWindow_Log* m_windowEmulatorScreen;
-    class DockableWindow_Log* m_windowLabels;
-    class DockableWindow_Log* m_windowSearchAndReplace;
+    DockableWindow_Log* m_windowCompiler;
+    DockableWindow_Log* m_windowHelp;
+    DockableWindow_Log* m_windowRegisters;
+    DockableWindow_Log* m_windowMemoryDump;
+    DockableWindow_EmulatorScreen* m_windowEmulatorScreen;
+    DockableWindow_Log* m_windowLabels;
+    DockableWindow_Log* m_windowSearchAndReplace;
 
     enum InputCapture
     {
@@ -148,7 +149,7 @@ protected:
     u64 m_clickTime;
     u64 m_frameTick;
     float m_timeDelta;
-    bool m_hasFocus;
+    int m_focusedWindowID;
 
     // emulation
     bool m_runEmulation;

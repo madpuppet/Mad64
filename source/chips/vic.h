@@ -23,7 +23,8 @@ public:
     void Reset();
     void Step();
 
-    void Render(int x, int y, int zoom);
+    void RecreateTexture(SDL_Renderer* r);
+    SDL_Texture* FlushTexture();
 
     enum Control1
     {
@@ -224,7 +225,6 @@ private:
 
     SDL_Rect m_textureDirty;
     SDL_Rect m_textureDirtyExtra;
-    void FlushTexture();
 };
 
 

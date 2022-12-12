@@ -25,7 +25,7 @@ void DockableManager::AddWindow(class DockableWindow* window, const char* iconTe
         window->OnRendererChange();
 }
 
-DockableWindow* DockableManager::FindWindow(int id)
+DockableWindow* DockableManager::FindWindowByID(int id)
 {
     for (auto& it : m_windows)
     {
@@ -74,7 +74,7 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
     else
     {
         // check undocked windows
-        auto window = FindWindow(e->button.windowID);
+        auto window = FindWindowByID(e->button.windowID);
         if (window)
         {
             window->OnMouseButtonDown(e->button.button, e->button.x, e->button.y);
@@ -107,7 +107,7 @@ bool DockableManager::OnMouseUp(SDL_Event* e)
     else
     {
         // check undocked windows
-        auto window = FindWindow(e->button.windowID);
+        auto window = FindWindowByID(e->button.windowID);
         if (window)
         {
             window->OnMouseButtonUp(e->button.button, e->button.x, e->button.y);
@@ -138,7 +138,7 @@ bool DockableManager::OnMouseMotion(SDL_Event* e)
     else
     {
         // check undocked windows
-        auto window = FindWindow(e->button.windowID);
+        auto window = FindWindowByID(e->button.windowID);
         if (window)
         {
             window->OnMouseMotion(e->motion.x, e->motion.y, e->motion.xrel, e->motion.yrel);
@@ -169,7 +169,7 @@ bool DockableManager::OnMouseWheel(SDL_Event* e)
     else
     {
         // check undocked windows
-        auto window = FindWindow(e->button.windowID);
+        auto window = FindWindowByID(e->button.windowID);
         if (window)
         {
             window->OnMouseWheel(e->wheel.x, e->wheel.y);

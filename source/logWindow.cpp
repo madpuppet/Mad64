@@ -331,7 +331,7 @@ void LogWindow::Draw()
 
 			if (containsRange(yMin, yMax, y, y + h + settings->textYMargin*2))
 			{
-				vic->Render(x + settings->textXMargin, y + settings->textYMargin, m_emulatorZoom);
+//				vic->Render(x + settings->textXMargin, y + settings->textYMargin, m_emulatorZoom);
 				MappedLogItem item;
 				item.area = { x + settings->textXMargin, y + settings->textYMargin, m_logArea.w, h };
 				item.group = i;

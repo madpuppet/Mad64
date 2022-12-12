@@ -1,5 +1,7 @@
 #pragma once
 
+#undef FindWindow
+
 // Manage a list of dockable windows
 class DockableManager
 {
@@ -9,6 +11,7 @@ public:
 
     void AddWindow(class DockableWindow* window, const char* iconText, bool enabled, bool docked);
     bool IsWindowEnabled(DockableWindow* window);
+    class DockableWindow* FindWindowByID(int id);
 
     void SetRect(const SDL_Rect& rect);
     SDL_Rect& GetRect() { return m_area; }
@@ -21,7 +24,6 @@ public:
     bool OnMouseWheel(SDL_Event* e);
 
 protected:
-    class DockableWindow* FindWindow(int id);
 
     int m_mainWindowID;
     SDL_Rect m_area;
