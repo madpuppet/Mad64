@@ -1,5 +1,5 @@
 #include "common.h"
-#include "dockableWindow_Log.h"
+#include "dockableWindow_log.h"
 
 void DockableWindow_Log::OnChildRendererChange()
 {
