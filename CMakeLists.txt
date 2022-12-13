@@ -35,7 +35,11 @@ add_executable(Mad64
 	source/dockableManager.cpp
 	source/dockableWindow.cpp
 	source/dockableWindow_log.cpp
+	source/dockableWindow_emulatorScreen.cpp
+	source/dockableWindow_searchAndReplace.cpp
 	source/uiItem_textButton.cpp
+	source/uiItem_textBox.cpp
+	
 )
 
 if (APPLE)
