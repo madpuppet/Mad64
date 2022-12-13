@@ -19,20 +19,19 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
     auto settings = gApp->GetSettings();
     SDL_RenderSetClipRect(r, &m_area);
 	if (m_isSelected)
-		SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
+		SDL_SetRenderDrawColor(r, 0, 0, 64, 255);
 	else
-		SDL_SetRenderDrawColor(r, 32, 32, 32, 255);
+		SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &m_area);
-    if (m_text.empty())
+    if (m_text.empty() && !m_isSelected)
     {
         int offset = (m_area.w - m_geHintText->GetRect().w) / 2;
         m_geHintText->RenderAt(r, m_area.x + offset, m_area.y);
     }
-    else
-        m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
-
-    SDL_RenderSetClipRect(r, nullptr);
-    m_geTitleText->RenderAt(r, m_area.x + m_area.w + SPACING, m_area.y);
+	else if (!m_text.empty())
+	{
+		m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
+	}
 
 	if (m_isSelected)
 	{
@@ -46,6 +45,9 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
 		SDL_RenderFillRect(r, &cursorRect);
 		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
 	}
+
+	SDL_RenderSetClipRect(r, nullptr);
+	m_geTitleText->RenderAt(r, m_area.x + m_area.w + SPACING, m_area.y);
 }
 void UIItem_TextBox::OnButtonDown(int button, int x, int y)
 {
@@ -53,10 +55,13 @@ void UIItem_TextBox::OnButtonDown(int button, int x, int y)
     {
 		if (button == 1)
 		{
-			m_isSelected = true;
-			m_cursorAnim = 0;
-			gApp->SetCaptureTextInput(DELEGATE(UIItem_TextBox::OnCapturedTextInput));
-			gApp->SetCaptureKeyInput(DELEGATE(UIItem_TextBox::OnCapturedKeyInput));
+			if (!m_isSelected)
+			{
+				m_isSelected = true;
+				m_cursorAnim = 0;
+				gApp->SetCaptureTextInput(DELEGATE(UIItem_TextBox::OnCapturedTextInput));
+				gApp->SetCaptureKeyInput(DELEGATE(UIItem_TextBox::OnCapturedKeyInput));
+			}
 		}
 		else if (button == 3)
 		{
