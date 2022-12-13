@@ -54,8 +54,8 @@ void DockableWindow_Log::DrawChild()
                 item.area = { x, y, it.ge->GetRect().w, it.ge->GetRect().h };
                 item.lineNmbr = it.lineNmbr;
                 m_renderedItems.push_back(item);
-                m_renderedWidth = SDL_max(m_renderedWidth, item.area.w);
             }
+            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + it.ge->GetRect().w);
             y += settings->lineHeight;
         }
     }
@@ -86,7 +86,7 @@ void DockableWindow_Log::LogText(const string& text, int lineNmbr, int color, in
 int DockableWindow_Log::GetContentHeight()
 {
     auto settings = gApp->GetSettings();
-    return settings->lineHeight * ((int)m_items.size() + 1);
+    return settings->lineHeight * (int)m_items.size();
 }
 
 int DockableWindow_Log::GetContentWidth()

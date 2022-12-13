@@ -323,7 +323,29 @@ void DockableWindow::CalcScrollBars()
     m_horizBarArea = { hBarStart, m_horizBarFullArea.y, hBarEnd - hBarStart + 1, m_horizBarFullArea.h };
 }
 
-void DockableWindow::Draw()
+void DockableWindow::DrawTitle()
+{
+    auto r = GetRenderer();
+    auto settings = gApp->GetSettings();
+    SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
+    SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
+    SDL_RenderFillRect(r, &titleRect);
+
+    SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
+    GenerateTitleGE();
+    m_geTitle->Render(r);
+
+    for (auto icon : m_titleIconsLeft)
+    {
+        icon->Draw(r);
+    }
+    for (auto icon : m_titleIconsRight)
+    {
+        icon->Draw(r);
+    }
+}
+
+void DockableWindow::DrawContent()
 {
     if (m_contentDirty)
     {
@@ -336,20 +358,18 @@ void DockableWindow::Draw()
     auto settings = gApp->GetSettings();
 
     SDL_SetRenderDrawColor(r, settings->backColor.r, settings->backColor.g, settings->backColor.b, 255);
-    SDL_RenderFillRect(r, &m_renderArea);
-
-    SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
-    SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
-    SDL_RenderFillRect(r, &titleRect);
+    SDL_RenderFillRect(r, &m_contentArea);
 
     if (!m_isDocked)
     {
+        SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
+
         // left border
-        SDL_Rect borderLeft = { 0, 0, 2, m_renderArea.h };
+        SDL_Rect borderLeft = { 0, settings->lineHeight, 2, m_renderArea.h-settings->lineHeight };
         SDL_RenderFillRect(r, &borderLeft);
 
         // right border
-        SDL_Rect borderRight = { m_renderArea.w - settings->lineHeight, 0, settings->lineHeight, m_renderArea.h };
+        SDL_Rect borderRight = { m_renderArea.w - settings->lineHeight, settings->lineHeight, settings->lineHeight, m_renderArea.h - settings->lineHeight };
         SDL_RenderFillRect(r, &borderRight);
 
         // bottom border
@@ -382,19 +402,6 @@ void DockableWindow::Draw()
         SDL_RenderFillRect(r, &m_horizBarArea);
     }
 
-    SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
-    GenerateTitleGE();
-    m_geTitle->Render(r);
-
-    for (auto icon : m_titleIconsLeft)
-    {
-        icon->Draw(r);
-    }
-    for (auto icon : m_titleIconsRight)
-    {
-        icon->Draw(r);
-    }
-
     if (!m_isDocked)
     {
         SDL_RenderSetClipRect(r, &m_contentArea);
@@ -411,11 +418,10 @@ void DockableWindow::Draw()
 void DockableWindow::SetRect(const SDL_Rect& rect)
 {
     auto settings = gApp->GetSettings();
-
     m_dockedArea = rect;
     if (m_isDocked)
     {
-        m_renderArea = m_dockedArea;
+        m_renderArea = rect;
         OnResize();
     }
 }

@@ -9,7 +9,8 @@ public:
     virtual ~DockableWindow();
 
     void SetTitle(const string& str);
-    void Draw();
+    void DrawTitle();
+    void DrawContent();
     void OnRendererChange();
 
     virtual void OnMouseButtonDown(int button, int x, int y);
@@ -63,11 +64,11 @@ protected:
 
     SDL_Point m_dragMouseGrab;
 
-    SDL_Rect m_renderArea;
-    SDL_Rect m_contentArea;
+    SDL_Rect m_renderArea;      // entire render area (including title line & scroll bars)
+    SDL_Rect m_contentArea;     // render area of just the content
 
-    SDL_Rect m_dockedArea;
-    SDL_Rect m_windowArea;
+    SDL_Rect m_dockedArea;      // entire docked render area
+    SDL_Rect m_windowArea;      // entire undocked render area (window size)
 
     string m_title;
     GraphicElement* m_geTitle;

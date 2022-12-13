@@ -18,4 +18,8 @@ public:
     void OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel);
 
     int m_zoomLevel = 2;
+
+protected:
+    int GetScreenRenderWidth();
+    int GetScreenRenderHeight();
 };

@@ -164,24 +164,6 @@ bool DockableManager::OnMouseUp(SDL_Event* e)
 bool DockableManager::OnMouseMotion(SDL_Event* e)
 {
     auto settings = gApp->GetSettings();
-    switch (m_grabMode)
-    {
-        case Grab_VScroll:
-            {
-                int newBarStart = e->motion.y - m_dragMouseGrab.y;
-                m_targetVertScroll = (float)(newBarStart - m_vertBarFullArea.y) / (float)m_vertBarFullArea.h * (float)GetDockedContentHeight();
-                ClampTargetVertScroll();
-            }
-            return true;
-        case Grab_HScroll:
-            {
-                int newBarStart = e->motion.x - m_dragMouseGrab.x;
-                m_targetHorizScroll = (float)(newBarStart - m_horizBarFullArea.x) / (float)m_horizBarFullArea.w * (float)GetDockedContentWidth();
-                ClampTargetHorizScroll();
-            }
-            return true;
-    }
-
     if (e->button.windowID == m_mainWindowID)
     {
         // clicked on the main window - check its on the dockable area
@@ -293,18 +275,23 @@ void DockableManager::Draw()
     m_renderedContentWidth = 64;
     SDL_RenderSetClipRect(r, &m_contentArea);
     SDL_Rect area = { m_contentArea.x - m_horizScroll, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
+    SDL_Rect titleArea = { m_contentArea.x, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
     for (auto &win : m_windows)
     {
         if (win.m_enabled && win.m_window->IsDocked())
         {
-            area.h = win.m_window->GetContentHeight();
-            win.m_window->SetRect(area);
-            if (((area.y + area.h) > m_contentArea.y) && (area.y < (m_contentArea.y + m_contentArea.h)))
+            area.h = win.m_window->GetContentHeight() + settings->lineHeight;
+            if (((area.y + area.h) >= m_contentArea.y) && (area.y <= (m_contentArea.y + m_contentArea.h)))
             {
-                win.m_window->Draw();
+                SDL_RenderSetClipRect(r, &m_contentArea);
+                win.m_window->SetRect(titleArea);
+                win.m_window->DrawTitle();
+                win.m_window->SetRect(area);
+                win.m_window->DrawContent();
                 m_renderedContentWidth = SDL_max(m_renderedContentWidth, win.m_window->GetContentWidth());
             }
             area.y += area.h;
+            titleArea.y += area.h;
         }
     }
     SDL_RenderSetClipRect(r, nullptr);
@@ -324,7 +311,8 @@ void DockableManager::Draw()
     {
         if (win.m_enabled && !win.m_window->IsDocked())
         {
-            win.m_window->Draw();
+            win.m_window->DrawTitle();
+            win.m_window->DrawContent();
         }
     }
 }
