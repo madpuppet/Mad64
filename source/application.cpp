@@ -304,10 +304,9 @@ void Application::HandleEvent(SDL_Event *e)
         }
         break;
     case SDL_MOUSEBUTTONUP:
-        if (!m_dockableMgr->OnMouseUp(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
-        {
-            m_editWindow->OnMouseUp(e);
-        }
+        m_mouseMotionCapture = nullptr;
+        m_dockableMgr->OnMouseUp(e);
+        m_editWindow->OnMouseUp(e);
         break;
     case SDL_MOUSEMOTION:
         m_mouseWindowID = e->motion.windowID;
@@ -317,7 +316,9 @@ void Application::HandleEvent(SDL_Event *e)
         if (!m_latchDoubleClick)
         {
             gApp->SetCursor(Cursor_Arrow);
-            if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
+            if (m_mouseMotionCapture != nullptr)
+                m_mouseMotionCapture(e->motion.x, e->motion.y);
+            else if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
             {
                 m_editWindow->OnMouseMotion(e);
             }

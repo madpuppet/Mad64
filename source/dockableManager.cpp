@@ -59,7 +59,7 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
     if (e->button.windowID == m_mainWindowID)
     {
         // clicked on the main window - check its on the dockable area
-        if (Contains(m_area, e->button.x, e->button.y))
+        if (e->button.y < m_area.y + settings->lineHeight)
         {
             // check docked windows
             for (auto& win : m_windows)
@@ -71,7 +71,14 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
                         win.m_window->ShowWindow(win.m_enabled);
                     return true;
                 }
-                else if (win.m_enabled && win.m_window->IsDocked() && Contains(win.m_window->GetArea(), e->button.x, e->button.y))
+            }
+        }
+        else if (Contains(m_contentArea, e->button.x, e->button.y))
+        {
+            // check docked windows
+            for (auto& win : m_windows)
+            {
+                if (win.m_enabled && win.m_window->IsDocked() && Contains(win.m_window->GetArea(), e->button.x, e->button.y))
                 {
                     win.m_window->OnMouseButtonDown(e->button.button, e->button.x, e->button.y);
                     return true;
@@ -84,6 +91,7 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
             {
                 m_grabMode = Grab_VScroll;
                 m_dragMouseGrab = { e->button.x - m_vertBarArea.x, e->button.y - m_vertBarArea.y };
+                gApp->SetCaptureMouseMotion(DELEGATE(DockableManager::OnMouseMotionCaptured));
                 return true;
             }
             else if (e->button.y < m_vertBarArea.y)
@@ -107,6 +115,7 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
             {
                 m_grabMode = Grab_HScroll;
                 m_dragMouseGrab = { e->button.x - m_horizBarArea.x, e->button.y - m_horizBarArea.y };
+                gApp->SetCaptureMouseMotion(DELEGATE(DockableManager::OnMouseMotionCaptured));
                 return true;
             }
             else if (e->button.x < m_horizBarArea.x)
@@ -144,34 +153,14 @@ bool DockableManager::OnMouseUp(SDL_Event* e)
     auto settings = gApp->GetSettings();
     m_grabMode = Grab_None;
 
-    if (e->button.windowID == m_mainWindowID)
+    // check docked windows
+    for (auto& win : m_windows)
     {
-        // clicked on the main window - check its on the dockable area
-        if (Contains(m_area, e->button.x, e->button.y))
-        {
-            // check docked windows
-            for (auto& win : m_windows)
-            {
-                if (Contains(win.m_window->GetArea(), e->button.x, e->button.y))
-                {
-                    win.m_window->OnMouseButtonUp(e->button.button, e->button.x, e->button.y);
-                    return true;
-                }
-            }
-        }
-    }
-    else
-    {
-        // check undocked windows
-        auto window = FindWindowByID(e->button.windowID);
-        if (window)
-        {
-            window->OnMouseButtonUp(e->button.button, e->button.x, e->button.y);
-            return true;
-        }
+        win.m_window->OnMouseButtonUp(e->button.button, e->button.x, e->button.y);
     }
     return false;
 }
+
 bool DockableManager::OnMouseMotion(SDL_Event* e)
 {
     auto settings = gApp->GetSettings();
@@ -393,4 +382,26 @@ void DockableManager::CalcScrollBars()
     int hBarStart = (int)(m_horizBarFullArea.x + m_horizBarFullArea.w * hStartRel);
     int hBarEnd = (int)(m_horizBarFullArea.x + m_horizBarFullArea.w * hEndRel);
     m_horizBarArea = { hBarStart, m_horizBarFullArea.y, hBarEnd - hBarStart + 1, m_horizBarFullArea.h };
+}
+
+void DockableManager::OnMouseMotionCaptured(int x, int y)
+{
+    auto settings = gApp->GetSettings();
+    switch (m_grabMode)
+    {
+        case Grab_VScroll:
+            {
+                int newBarStart = y - m_dragMouseGrab.y;
+                m_targetVertScroll = (float)(newBarStart - m_vertBarFullArea.y) / (float)m_vertBarFullArea.h * (float)GetDockedContentHeight();
+                ClampTargetVertScroll();
+            }
+            break;
+        case Grab_HScroll:
+            {
+                int newBarStart = x - m_dragMouseGrab.x;
+                m_targetHorizScroll = (float)(newBarStart - m_horizBarFullArea.x) / (float)m_horizBarFullArea.w * (float)GetDockedContentWidth();
+                ClampTargetHorizScroll();
+            }
+            break;
+    }
 }

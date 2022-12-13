@@ -1311,7 +1311,7 @@ bool Cpu6502::IsOpcode(const char* text, ForceAddressing* forceAM)
     if (forceAM)
         *forceAM = FA_Auto;
 
-    if (end)
+    if (end != text && end && end[1] && !end[2])
     {
         len = (int)(end - text);
         if (forceAM)

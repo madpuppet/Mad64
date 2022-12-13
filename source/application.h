@@ -82,12 +82,16 @@ public:
     void ResetAndStopEmulator();
     void SetEmulatorCaptureInput(bool capture) { m_emulatorCaptureInput = capture; }
 
+    void SetCaptureMouseMotion(MouseMotionCaptureHook hook) { m_mouseMotionCapture = hook; }
+
 protected:
     vector<SourceFile*> m_sourceFiles;
     vector<u16> m_memoryBreakpoints;
 
     // cursors
     SDL_Cursor* m_cursors[Cursor_MAX];
+
+    MouseMotionCaptureHook m_mouseMotionCapture;
 
     // GENERAL METHODS
     void Update();

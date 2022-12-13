@@ -112,8 +112,7 @@ public:
 	}
 
 protected:
-	void ClampTargetVertScroll();
-	void ClampTargetHorizScroll();
+	void OnMouseMotionCaptured(int x, int y);
 
 	// calculate scroll bar top and bottom screenspace coords
 	// returns true if scrollbar needs to render (ie. the start/end is not full screen)
@@ -138,8 +137,6 @@ protected:
 		GraphicElement* geText;
 		int vertScroll;
 		int horizScroll;
-		float targetVertScroll;
-		float targetHorizScroll;
 		int activeLine, activeColumn, activeTargetX;
 		bool modified;
 
@@ -225,6 +222,30 @@ protected:
 	int m_activeXPosContextHelp;
 
 	void ClampActiveLine();
+
+	// vscroll/hscroll
+	int GetContentHeight();
+	int GetContentWidth();
+	void ClampTargetVertScroll();
+	void ClampTargetHorizScroll();
+	int m_vertScroll;
+	int m_horizScroll;
+	float m_targetVertScroll;
+	float m_targetHorizScroll;
+	SDL_Point m_dragMouseGrab;
+
+	// scroll bar areas
+	SDL_Rect m_contentArea;
+	int m_renderedContentWidth;
+	int m_renderedContentHeight;
+
+	SDL_Rect m_vertBackArea;
+	SDL_Rect m_vertBarFullArea;
+	SDL_Rect m_vertBarArea;
+	SDL_Rect m_horizBackArea;
+	SDL_Rect m_horizBarFullArea;
+	SDL_Rect m_horizBarArea;
+	void CalcScrollBars();
 };
 
 
