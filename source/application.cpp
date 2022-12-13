@@ -4,6 +4,7 @@
 #include "dockableManager.h"
 #include "dockableWindow_log.h"
 #include "dockableWindow_emulatorScreen.h"
+#include "dockableWindow_searchAndReplace.h"
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
@@ -100,7 +101,7 @@ Application::Application()
         m_windowLabels = new DockableWindow_Log("Labels");
         m_windowEmulatorScreen = new DockableWindow_EmulatorScreen("Emulator Screen");
         m_windowMemoryDump = new DockableWindow_Log("Memory Dump");
-        m_windowSearchAndReplace = new DockableWindow_Log("Search and Replace");
+        m_windowSearchAndReplace = new DockableWindow_SearchAndReplace("Search and Replace");
 
         Log("Set open logs");
         m_logWindow->SetOpenLogs(m_settings->openLogs);
@@ -317,7 +318,7 @@ void Application::HandleEvent(SDL_Event *e)
         {
             gApp->SetCursor(Cursor_Arrow);
             if (m_mouseMotionCapture != nullptr)
-                m_mouseMotionCapture(e->motion.x, e->motion.y);
+                m_mouseMotionCapture(false, e->motion.x, e->motion.y);
             else if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
             {
                 m_editWindow->OnMouseMotion(e);
@@ -331,9 +332,9 @@ void Application::HandleEvent(SDL_Event *e)
         }
         break;
     case SDL_TEXTINPUT:
-        if (!m_emulatorCaptureInput)
+        if (m_textInputCapture != nullptr)
         {
-            m_editWindow->OnTextInput(e);
+            m_textInputCapture(false, string(e->text.text));
         }
         break;
     case SDL_KEYDOWN:
@@ -668,212 +669,212 @@ bool Application::IsMemoryBreakpointInRange(u16 addr, u16 length)
 
 void Application::OnKeyDown(SDL_Event* e)
 {
-    if (m_emulatorCaptureInput)
+    if (m_keyInputCapture)
     {
-        m_emulator->OnKeyDown(e);
-        return;
+        m_keyInputCapture(false, (u32)e->key.keysym.sym, (u32)e->key.keysym.mod);
     }
-
-    switch (e->key.keysym.sym)
+    else
     {
-     case SDLK_i:
-        if (e->key.keysym.mod & KMOD_CTRL)
+        switch (e->key.keysym.sym)
         {
-            if (!e->key.repeat)
-                ImportFile();
-            return;
-        }
-        break;
+            case SDLK_i:
+                if (e->key.keysym.mod & KMOD_CTRL)
+                {
+                    if (!e->key.repeat)
+                        ImportFile();
+                    return;
+                }
+                break;
 
-    case SDLK_l:
-        if (e->key.keysym.mod & KMOD_CTRL)
-        {
-            if (!e->key.repeat)
-                LoadFile();
-            return;
-        }
-        break;
-    case SDLK_n:
-        if (e->key.keysym.mod & KMOD_CTRL)
-        {
-            if (!e->key.repeat)
-                CreateNewFile();
-            return;
-        }
-        break;
-    case SDLK_s:
-        if (e->key.keysym.mod & KMOD_CTRL)
-        {
-            if (!e->key.repeat)
-            {
-                if (e->key.keysym.mod & KMOD_SHIFT)
+            case SDLK_l:
+                if (e->key.keysym.mod & KMOD_CTRL)
                 {
-                    SaveFileAs();
+                    if (!e->key.repeat)
+                        LoadFile();
+                    return;
                 }
-                else
+                break;
+            case SDLK_n:
+                if (e->key.keysym.mod & KMOD_CTRL)
                 {
-                    SaveFile();
+                    if (!e->key.repeat)
+                        CreateNewFile();
+                    return;
                 }
-            }
-            return;
-        }
-        break;
-    case SDLK_q:
-        if (e->key.keysym.mod & KMOD_CTRL)
-        {
-            if (!e->key.repeat)
-                CloseFile();
-            return;
-        }
-        break;
-    case SDLK_F1:
-        {
-            string path = m_settings->GetFilePath();
-            auto file = FindFile(path.c_str());
-            if (file)
-            {
-                m_editWindow->SetActiveFile(file);
-            }
-            else
-            {
-                m_settings->Save();
-                LoadFile(path.c_str());
-            }
-            return;
-        }
-        break;
-    case SDLK_F9:
-        {
-            if (m_editWindow->IsActiveAsmFile())
-            {
-                auto file = m_editWindow->GetActiveFile();
-                auto csi = file->GetCompileInfo();
+                break;
+            case SDLK_s:
+                if (e->key.keysym.mod & KMOD_CTRL)
                 {
-                    int line = m_editWindow->GetActiveLine();
-                    auto l = file->GetLines()[line];
-                    auto cl = csi->m_lines[line];
-                    if (l->GetBreakpoint())
-                        l->SetBreakpoint(0);
-                    else
+                    if (!e->key.repeat)
                     {
-                        l->SetBreakpoint(cl->type == LT_Instruction ? BRK_Execute : BRK_Read | BRK_Write);
-                    }
-                    gApp->ApplyBreakpoints();
-                }
-            }
-        }
-        return;
-    case SDLK_F10:
-        if (e->key.keysym.mod & KMOD_CTRL)
-        {
-            // frame step
-            while (m_emulator->GetCurrentRasterline() == 0)
-                m_emulator->Step();
-            while (m_emulator->GetCurrentRasterline() != 0)
-                m_emulator->Step();
-            m_editWindow->GotoEmuPC();
-        }
-        else if (e->key.keysym.mod & KMOD_SHIFT)
-        {
-            // rasterline step
-            int line = m_emulator->GetCurrentRasterline();
-            while (line == m_emulator->GetCurrentRasterline())
-                m_emulator->Step();
-            m_editWindow->GotoEmuPC();
-        }
-        else if (e->key.keysym.mod & KMOD_ALT)
-        {
-            // rasterline step
-            m_emulator->Step();
-            m_editWindow->GotoEmuPC();
-        }
-        else
-        {
-            // single step
-            while (!m_emulator->Step());
-            m_editWindow->GotoEmuPC();
-        }
-        return;
-
-    case SDLK_F11:
-        m_fullscreen = !m_fullscreen;
-        if (m_fullscreen)
-        {
-            SDL_SetWindowFullscreen(m_window, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
-        }
-        else
-        {
-            SDL_SetWindowFullscreen(m_window, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-            
-        }
-        return;
-    case SDLK_F6:
-        {
-            if (m_editWindow->IsActiveAsmFile())
-            {
-                auto file = m_editWindow->GetActiveFile();
-                auto compiledFile = file->GetCompileInfo();
-                ApplyBreakpoints();
-                m_emulator->ColdReset(compiledFile->m_ramDataMap, compiledFile->m_ramMask);
-                m_runEmulation = false;
-            }
-        }
-        break;
-
-    case SDLK_F5:
-        {
-            if (m_editWindow->IsActiveAsmFile())
-            {
-                if ((e->key.keysym.mod & KMOD_CTRL) && (e->key.keysym.mod & KMOD_SHIFT))
-                {
-                    // CTRL-SHIFT F5 - launch in vice
-#if defined(_WIN32)
-                    auto file = m_editWindow->GetActiveFile();
-                    if (file && HasExtension(file->GetName().c_str(), ".asm"))
-                    {
-                        m_settings->Save();
-                        file->Save();
-
-                        size_t lastindex = file->GetPath().find_last_of(".");
-                        string prgname = file->GetPath().substr(0, lastindex) + ".prg";
-
-                        STARTUPINFOA info = { sizeof(info) };
-                        PROCESS_INFORMATION processInfo;
-                        string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
-                        string cmdLine = "-autostartprgdiskimage \"" + prgname + "\"";
-                        if (CreateProcessA(path.c_str(), (char*)cmdLine.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+                        if (e->key.keysym.mod & KMOD_SHIFT)
                         {
-                            CloseHandle(processInfo.hProcess);
-                            CloseHandle(processInfo.hThread);
+                            SaveFileAs();
+                        }
+                        else
+                        {
+                            SaveFile();
                         }
                     }
-#endif
+                    return;
                 }
-                else if (e->key.keysym.mod & KMOD_CTRL)
+                break;
+            case SDLK_q:
+                if (e->key.keysym.mod & KMOD_CTRL)
                 {
-                    auto file = m_editWindow->GetActiveFile();
-                    auto compiledFile = file->GetCompileInfo();
-                    // CTRL F5 - restart emulator
-                    // reset emulator
-                    auto startLabel = gApp->GetCompiler()->FindMatchingLabel(compiledFile, "start");
-                    if (startLabel)
+                    if (!e->key.repeat)
+                        CloseFile();
+                    return;
+                }
+                break;
+            case SDLK_F1:
+                {
+                    string path = m_settings->GetFilePath();
+                    auto file = FindFile(path.c_str());
+                    if (file)
                     {
-                        ApplyBreakpoints();
-                        m_emulator->Reset(compiledFile->m_ramDataMap, compiledFile->m_ramMask, (u16)startLabel->m_value);
-                        m_runEmulation = true;
+                        m_editWindow->SetActiveFile(file);
                     }
+                    else
+                    {
+                        m_settings->Save();
+                        LoadFile(path.c_str());
+                    }
+                    return;
+                }
+                break;
+            case SDLK_F9:
+                {
+                    if (m_editWindow->IsActiveAsmFile())
+                    {
+                        auto file = m_editWindow->GetActiveFile();
+                        auto csi = file->GetCompileInfo();
+                        {
+                            int line = m_editWindow->GetActiveLine();
+                            auto l = file->GetLines()[line];
+                            auto cl = csi->m_lines[line];
+                            if (l->GetBreakpoint())
+                                l->SetBreakpoint(0);
+                            else
+                            {
+                                l->SetBreakpoint(cl->type == LT_Instruction ? BRK_Execute : BRK_Read | BRK_Write);
+                            }
+                            gApp->ApplyBreakpoints();
+                        }
+                    }
+                }
+                return;
+            case SDLK_F10:
+                if (e->key.keysym.mod & KMOD_CTRL)
+                {
+                    // frame step
+                    while (m_emulator->GetCurrentRasterline() == 0)
+                        m_emulator->Step();
+                    while (m_emulator->GetCurrentRasterline() != 0)
+                        m_emulator->Step();
+                    m_editWindow->GotoEmuPC();
+                }
+                else if (e->key.keysym.mod & KMOD_SHIFT)
+                {
+                    // rasterline step
+                    int line = m_emulator->GetCurrentRasterline();
+                    while (line == m_emulator->GetCurrentRasterline())
+                        m_emulator->Step();
+                    m_editWindow->GotoEmuPC();
+                }
+                else if (e->key.keysym.mod & KMOD_ALT)
+                {
+                    // rasterline step
+                    m_emulator->Step();
+                    m_editWindow->GotoEmuPC();
                 }
                 else
                 {
-                    // F5 - toggle emulator
-                    m_runEmulation = !m_runEmulation;
+                    // single step
+                    while (!m_emulator->Step());
+                    m_editWindow->GotoEmuPC();
                 }
-            }
-        }
-        break;
-    }
+                return;
 
-    m_editWindow->OnKeyDown(e);
+            case SDLK_F11:
+                m_fullscreen = !m_fullscreen;
+                if (m_fullscreen)
+                {
+                    SDL_SetWindowFullscreen(m_window, SDL_WINDOW_SHOWN | SDL_WINDOW_FULLSCREEN_DESKTOP);
+                }
+                else
+                {
+                    SDL_SetWindowFullscreen(m_window, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+
+                }
+                return;
+            case SDLK_F6:
+                {
+                    if (m_editWindow->IsActiveAsmFile())
+                    {
+                        auto file = m_editWindow->GetActiveFile();
+                        auto compiledFile = file->GetCompileInfo();
+                        ApplyBreakpoints();
+                        m_emulator->ColdReset(compiledFile->m_ramDataMap, compiledFile->m_ramMask);
+                        m_runEmulation = false;
+                    }
+                }
+                break;
+
+            case SDLK_F5:
+                {
+                    if (m_editWindow->IsActiveAsmFile())
+                    {
+                        if ((e->key.keysym.mod & KMOD_CTRL) && (e->key.keysym.mod & KMOD_SHIFT))
+                        {
+                            // CTRL-SHIFT F5 - launch in vice
+#if defined(_WIN32)
+                            auto file = m_editWindow->GetActiveFile();
+                            if (file && HasExtension(file->GetName().c_str(), ".asm"))
+                            {
+                                m_settings->Save();
+                                file->Save();
+
+                                size_t lastindex = file->GetPath().find_last_of(".");
+                                string prgname = file->GetPath().substr(0, lastindex) + ".prg";
+
+                                STARTUPINFOA info = { sizeof(info) };
+                                PROCESS_INFORMATION processInfo;
+                                string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
+                                string cmdLine = "-autostartprgdiskimage \"" + prgname + "\"";
+                                if (CreateProcessA(path.c_str(), (char*)cmdLine.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+                                {
+                                    CloseHandle(processInfo.hProcess);
+                                    CloseHandle(processInfo.hThread);
+                                }
+                            }
+#endif
+                        }
+                        else if (e->key.keysym.mod & KMOD_CTRL)
+                        {
+                            auto file = m_editWindow->GetActiveFile();
+                            auto compiledFile = file->GetCompileInfo();
+                            // CTRL F5 - restart emulator
+                            // reset emulator
+                            auto startLabel = gApp->GetCompiler()->FindMatchingLabel(compiledFile, "start");
+                            if (startLabel)
+                            {
+                                ApplyBreakpoints();
+                                m_emulator->Reset(compiledFile->m_ramDataMap, compiledFile->m_ramMask, (u16)startLabel->m_value);
+                                m_runEmulation = true;
+                            }
+                        }
+                        else
+                        {
+                            // F5 - toggle emulator
+                            m_runEmulation = !m_runEmulation;
+                        }
+                    }
+                }
+                break;
+        }
+        m_editWindow->OnKeyDown(e);
+    }
 }
 
 void Application::OnKeyUp(SDL_Event* e)
@@ -1479,3 +1480,27 @@ void Application::ResetAndStopEmulator()
 {
     m_emulator->GetVic()->Reset();
 }
+
+void Application::SetCaptureMouseMotion(MouseMotionCaptureHook hook)
+{
+    if (m_mouseMotionCapture != nullptr)
+        m_mouseMotionCapture(true, 0, 0);
+
+    m_mouseMotionCapture = hook; 
+}
+void Application::SetCaptureTextInput(TextCaptureHook hook)
+{
+    if (m_textInputCapture != nullptr)
+        m_textInputCapture(true, "");
+
+    m_textInputCapture = hook;
+}
+void Application::SetCaptureKeyInput(KeyCaptureHook hook)
+{
+    if (m_keyInputCapture != nullptr)
+        m_keyInputCapture(true, 0, 0);
+
+    m_keyInputCapture = hook;
+}
+
+

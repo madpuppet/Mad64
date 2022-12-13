@@ -24,7 +24,7 @@ public:
     bool OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY);
 
 protected:
-    void OnMouseMotionCaptured(int x, int y);
+    void OnMouseMotionCaptured(bool lostCapture, int x, int y);
 
     int m_mainWindowID;
     SDL_Rect m_area;

@@ -117,7 +117,11 @@ typedef DMFastDelegate::FastDelegate3<u8, u16, u8> BreakpointHook;
 typedef DMFastDelegate::FastDelegate0<> InterruptHook;
 typedef DMFastDelegate::FastDelegate1<u8> SetByteHook;
 typedef DMFastDelegate::FastDelegate0<> ButtonPressHook;
-typedef DMFastDelegate::FastDelegate2<int, int> MouseMotionCaptureHook;
+typedef DMFastDelegate::FastDelegate1<const string&> TextHook;
+
+typedef DMFastDelegate::FastDelegate3<bool, int, int> MouseMotionCaptureHook;
+typedef DMFastDelegate::FastDelegate2<bool, const string&> TextCaptureHook;
+typedef DMFastDelegate::FastDelegate3<bool, u32, u32> KeyCaptureHook;
 
 enum BreakpointType
 {

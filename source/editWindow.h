@@ -112,7 +112,7 @@ public:
 	}
 
 protected:
-	void OnMouseMotionCaptured(int x, int y);
+	void OnMouseMotionCaptured(bool lostCapture, int x, int y);
 
 	// calculate scroll bar top and bottom screenspace coords
 	// returns true if scrollbar needs to render (ie. the start/end is not full screen)

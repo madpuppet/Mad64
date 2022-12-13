@@ -372,9 +372,12 @@ void DockableManager::CalcScrollBars()
     m_horizBarArea = { hBarStart, m_horizBarFullArea.y, hBarEnd - hBarStart + 1, m_horizBarFullArea.h };
 }
 
-void DockableManager::OnMouseMotionCaptured(int x, int y)
+void DockableManager::OnMouseMotionCaptured(bool lostCapture, int x, int y)
 {
     auto settings = gApp->GetSettings();
+    if (lostCapture)
+        m_grabMode = Grab_None;
+
     switch (m_grabMode)
     {
         case Grab_VScroll:

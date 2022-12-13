@@ -167,6 +167,7 @@
     <ClCompile Include="source\dockableWindow.cpp" />
     <ClCompile Include="source\dockableWindow_emulatorScreen.cpp" />
     <ClCompile Include="source\dockableWindow_log.cpp" />
+    <ClCompile Include="source\dockableWindow_searchAndReplace.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\emulatorc64.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
@@ -185,6 +186,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="source\uiItem_textBox.cpp" />
     <ClCompile Include="source\uiItem_textButton.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -293,6 +295,7 @@
     <ClInclude Include="source\contextualHelp.h" />
     <ClInclude Include="source\dockableManager.h" />
     <ClInclude Include="source\dockableWindow.h" />
+    <ClInclude Include="source\dockableWindow_searchAndReplace.h" />
     <ClInclude Include="source\dockableWindow_emulatorScreen.h" />
     <ClInclude Include="source\dockableWindow_log.h" />
     <ClInclude Include="source\editWindow.h" />
@@ -305,6 +308,7 @@
     <ClInclude Include="source\thread.h" />
     <ClInclude Include="source\tinyfiledialogs.h" />
     <ClInclude Include="source\uiItem.h" />
+    <ClInclude Include="source\uiItem_textBox.h" />
     <ClInclude Include="source\uiItem_textButton.h" />
   </ItemGroup>
   <ItemGroup>

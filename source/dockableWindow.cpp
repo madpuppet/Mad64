@@ -270,19 +270,19 @@ void DockableWindow::LayoutIcons()
     auto settings = gApp->GetSettings();
     GenerateTitleGE();
     m_geTitle->SetPos(m_renderArea.x + settings->textXMargin, m_renderArea.y + settings->textYMargin);
-    int leftX = m_isDocked ? m_geTitle->GetRect().x + m_geTitle->GetRect().w : settings->textXMargin;
+    int leftX = m_isDocked ? m_geTitle->GetRect().x + m_geTitle->GetRect().w + settings->textXMargin : settings->textXMargin;
     for (auto item : m_titleIconsLeft)
     {
         int w = item->GetWidth();
         item->SetPos(leftX, m_renderArea.y + 2);
-        leftX -= w - settings->textXMargin;
+        leftX += w + settings->textXMargin;
     }
     int rightX = m_renderArea.x + m_renderArea.w - 4;
     for (auto item : m_titleIconsRight)
     {
         int w = item->GetWidth();
         item->SetPos(rightX - w, m_renderArea.y + 2);
-        rightX += w + settings->textXMargin;
+        rightX -= w + settings->textXMargin;
     }
 }
 

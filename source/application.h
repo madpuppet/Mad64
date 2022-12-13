@@ -12,6 +12,7 @@
 
 class DockableWindow_Log;
 class DockableWindow_EmulatorScreen;
+class DockableWindow_SearchAndReplace;
 
 enum CursorType
 {
@@ -50,7 +51,7 @@ public:
     DockableWindow_Log* GetWindowMemoryDump() { return m_windowMemoryDump; }
     DockableWindow_EmulatorScreen* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
     DockableWindow_Log* GetWindowLabels() { return m_windowLabels; }
-    DockableWindow_Log* GetWindowSearchAndReplace() { return m_windowSearchAndReplace; }
+    DockableWindow_SearchAndReplace* GetWindowSearchAndReplace() { return m_windowSearchAndReplace; }
 
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
@@ -82,7 +83,9 @@ public:
     void ResetAndStopEmulator();
     void SetEmulatorCaptureInput(bool capture) { m_emulatorCaptureInput = capture; }
 
-    void SetCaptureMouseMotion(MouseMotionCaptureHook hook) { m_mouseMotionCapture = hook; }
+    void SetCaptureMouseMotion(MouseMotionCaptureHook hook);
+    void SetCaptureTextInput(TextCaptureHook hook);
+    void SetCaptureKeyInput(KeyCaptureHook hook);
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -92,6 +95,8 @@ protected:
     SDL_Cursor* m_cursors[Cursor_MAX];
 
     MouseMotionCaptureHook m_mouseMotionCapture;
+    TextCaptureHook m_textInputCapture;
+    KeyCaptureHook m_keyInputCapture;
 
     // GENERAL METHODS
     void Update();
@@ -132,7 +137,7 @@ protected:
     DockableWindow_Log* m_windowMemoryDump;
     DockableWindow_EmulatorScreen* m_windowEmulatorScreen;
     DockableWindow_Log* m_windowLabels;
-    DockableWindow_Log* m_windowSearchAndReplace;
+    DockableWindow_SearchAndReplace* m_windowSearchAndReplace;
 
     enum InputCapture
     {

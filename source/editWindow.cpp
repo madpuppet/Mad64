@@ -1037,9 +1037,12 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 	}
 }
 
-void EditWindow::OnMouseMotionCaptured(int x, int y)
+void EditWindow::OnMouseMotionCaptured(bool lostCapture, int x, int y)
 {
 	auto settings = gApp->GetSettings();
+	if (lostCapture)
+		m_dragMode = DRAG_None;
+
 	switch (m_dragMode)
 	{
 		case DRAG_DivideDecode:

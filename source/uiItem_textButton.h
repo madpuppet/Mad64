@@ -33,3 +33,7 @@ protected:
     GraphicElement* m_geButtonText;
     SDL_Rect m_area;
 };
+
+
+
+
