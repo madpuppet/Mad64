@@ -1,7 +1,5 @@
 #pragma once
 
-#include "textInput.h"
-
 enum MarkingType
 {
 	MARK_None,
@@ -29,6 +27,7 @@ public:
 	void OnMouseUp(SDL_Event* e);
 	void OnMouseMotion(SDL_Event* e);
 	void OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY);
+	void UpdateCursor(int x, int y);
 
 	void OnFileLoaded(SourceFile *file);
 	void OnFileClosed(SourceFile* file);
@@ -100,17 +99,6 @@ public:
 		return m_autoScroll;
 	}
 
-	enum InputCapture
-	{
-		IC_None,
-		IC_Search,
-		IC_Replace
-	};
-	void SetInputCapture(InputCapture ic)
-	{
-		m_inputCapture = ic;
-	}
-
 protected:
 	void OnMouseMotionCaptured(bool lostCapture, int x, int y);
 
@@ -146,15 +134,6 @@ protected:
 	vector<SourceFileItem*> m_fileTabs;
 	SourceFileItem* m_activeSourceFileItem;
 	float m_cursorAnimTime;
-
-	InputCapture m_inputCapture;
-
-	TextInput* m_searchBox;
-	TextInput* m_replaceBox;
-	void OnSearchEnter(const string& text);
-	void OnSearchChange(const string& text);
-	void OnReplaceEnter(const string& text);
-	vector<int> m_searchFoundLines;
 
 	void UpdateContextualHelp();
 

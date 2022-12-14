@@ -11,6 +11,8 @@ public:
 
     void AddWindow(class DockableWindow* window, const char* iconText, bool enabled, bool docked);
     bool IsWindowEnabled(DockableWindow* window);
+    void EnableWindow(DockableWindow* window);
+
     class DockableWindow* FindWindowByID(int id);
 
     void SetRect(const SDL_Rect& rect);
@@ -22,6 +24,7 @@ public:
     bool OnMouseUp(SDL_Event* e);
     bool OnMouseMotion(SDL_Event* e);
     bool OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY);
+    void UpdateCursor(int windowID, int x, int y);
 
 protected:
     void OnMouseMotionCaptured(bool lostCapture, int x, int y);

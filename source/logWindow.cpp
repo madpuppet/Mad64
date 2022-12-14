@@ -670,7 +670,6 @@ void LogWindow::SelectCursor(int x, int y)
 			return;
 		}
 	}
-	gApp->SetCursor(Cursor_Arrow);
 }
 
 void LogWindow::OnMouseDown(SDL_Event* event)
@@ -705,7 +704,7 @@ void LogWindow::OnMouseDown(SDL_Event* event)
 				return;
 			case LF_Emulator:
 				{
-					gApp->SetEmulatorCaptureInput(true);
+//					gApp->SetEmulatorCaptureInput(true);
 				}
 				return;
 			case LF_MemoryDump:

@@ -119,9 +119,9 @@ typedef DMFastDelegate::FastDelegate1<u8> SetByteHook;
 typedef DMFastDelegate::FastDelegate0<> ButtonPressHook;
 typedef DMFastDelegate::FastDelegate1<const string&> TextHook;
 
-typedef DMFastDelegate::FastDelegate3<bool, int, int> MouseMotionCaptureHook;
-typedef DMFastDelegate::FastDelegate2<bool, const string&> TextCaptureHook;
-typedef DMFastDelegate::FastDelegate3<bool, u32, u32> KeyCaptureHook;
+typedef DMFastDelegate::FastDelegate3<bool, int, int> MouseMotionCaptureHook;	// lostcapture, x, y
+typedef DMFastDelegate::FastDelegate2<bool, const string&> TextCaptureHook;		// lostCapture, text
+typedef DMFastDelegate::FastDelegate3<bool, u32, u32> KeyCaptureHook;			// lostCapture, keyDown, sym, mod
 
 enum BreakpointType
 {

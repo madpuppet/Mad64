@@ -14,6 +14,7 @@ class DockableWindow_Log;
 class DockableWindow_EmulatorScreen;
 class DockableWindow_SearchAndReplace;
 
+
 enum CursorType
 {
     Cursor_Arrow,
@@ -81,11 +82,13 @@ public:
     SourceFile* FindFile(const char* path);
     void ReloadFont();
     void ResetAndStopEmulator();
-    void SetEmulatorCaptureInput(bool capture) { m_emulatorCaptureInput = capture; }
 
     void SetCaptureMouseMotion(MouseMotionCaptureHook hook);
     void SetCaptureTextInput(TextCaptureHook hook);
     void SetCaptureKeyInput(KeyCaptureHook hook);
+
+    void PushClippingRect(SDL_Renderer *r, SDL_Rect *rect);
+    void PopClippingRect(SDL_Renderer* r);
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -167,5 +170,31 @@ protected:
     // emulation
     bool m_runEmulation;
     float m_flashScreenRed;
+
+    // clipping rects
+    struct ClippingStack
+    {
+        SDL_Renderer* m_renderer;
+        vector<SDL_Rect> m_rects;
+    };
+    vector<ClippingStack*> m_clippingStacks;
+    ClippingStack* FindClippingStack(SDL_Renderer* r);
+    void ApplyClippingStack(ClippingStack* stack);
 };
 extern Application *gApp;
+
+
+struct ClipRectScope
+{
+    ClipRectScope(SDL_Renderer* r, SDL_Rect* rect)
+    {
+        gApp->PushClippingRect(r, rect);
+        m_r = r;
+    }
+    ~ClipRectScope()
+    {
+        gApp->PopClippingRect(m_r);
+    }
+    SDL_Renderer* m_r;
+};
+

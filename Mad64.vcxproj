@@ -180,7 +180,6 @@
     </ClCompile>
     <ClCompile Include="source\appSettings.cpp" />
     <ClCompile Include="source\sourcefile.cpp" />
-    <ClCompile Include="source\textInput.cpp" />
     <ClCompile Include="source\thread.cpp" />
     <ClCompile Include="source\tinyfiledialogs.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -304,7 +303,6 @@
     <ClInclude Include="source\appSettings.h" />
     <ClInclude Include="source\logWindow.h" />
     <ClInclude Include="source\sourceFile.h" />
-    <ClInclude Include="source\textInput.h" />
     <ClInclude Include="source\thread.h" />
     <ClInclude Include="source\tinyfiledialogs.h" />
     <ClInclude Include="source\uiItem.h" />

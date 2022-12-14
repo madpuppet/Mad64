@@ -252,17 +252,20 @@ void Application::Update()
 
 void Application::Draw()
 {
-    SDL_SetRenderDrawColor(m_renderer, m_settings->backColor.r, m_settings->backColor.g, m_settings->backColor.b, 255);
-    SDL_RenderFillRect(m_renderer, NULL);
-
-    m_editWindow->Draw();
-    m_dockableMgr->Draw();
-
-    if (m_flashScreenRed)
     {
-        SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
-        SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, (int)(m_flashScreenRed*255));
+        ClipRectScope crs(m_renderer, nullptr);
+        SDL_SetRenderDrawColor(m_renderer, m_settings->backColor.r, m_settings->backColor.g, m_settings->backColor.b, 255);
         SDL_RenderFillRect(m_renderer, NULL);
+
+        m_editWindow->Draw();
+        m_dockableMgr->Draw();
+
+        if (m_flashScreenRed)
+        {
+            SDL_SetRenderDrawBlendMode(m_renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(m_renderer, 255, 255, 255, (int)(m_flashScreenRed * 255));
+            SDL_RenderFillRect(m_renderer, NULL);
+        }
     }
 
     SDL_RenderPresent(m_renderer);
@@ -298,6 +301,9 @@ void Application::HandleEvent(SDL_Event *e)
                 m_latchDoubleClick = true;
             }
 
+            SetCaptureTextInput(nullptr);
+            SetCaptureKeyInput(nullptr);
+
             if (!m_dockableMgr->OnMouseDown(e) && (e->button.windowID == SDL_GetWindowID(m_window)))
             {
                 m_editWindow->OnMouseDown(e);
@@ -316,12 +322,17 @@ void Application::HandleEvent(SDL_Event *e)
 
         if (!m_latchDoubleClick)
         {
-            gApp->SetCursor(Cursor_Arrow);
             if (m_mouseMotionCapture != nullptr)
                 m_mouseMotionCapture(false, e->motion.x, e->motion.y);
-            else if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
+            else
             {
-                m_editWindow->OnMouseMotion(e);
+                gApp->SetCursor(Cursor_Arrow);
+                m_dockableMgr->UpdateCursor(e->motion.windowID, e->motion.x, e->motion.y);
+                if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
+                {
+                    m_editWindow->UpdateCursor(e->motion.x, e->motion.y);
+                    m_editWindow->OnMouseMotion(e);
+                }
             }
         }
         break;
@@ -336,6 +347,8 @@ void Application::HandleEvent(SDL_Event *e)
         {
             m_textInputCapture(false, string(e->text.text));
         }
+        else
+            m_editWindow->OnTextInput(e);
         break;
     case SDL_KEYDOWN:
         OnKeyDown(e);
@@ -879,11 +892,7 @@ void Application::OnKeyDown(SDL_Event* e)
 
 void Application::OnKeyUp(SDL_Event* e)
 {
-    if (m_emulatorCaptureInput)
-    {
-        m_emulator->OnKeyUp(e);
-        return;
-    }
+//        m_emulator->OnKeyUp(e);
 
     m_editWindow->OnKeyUp(e);
 }
@@ -1503,4 +1512,86 @@ void Application::SetCaptureKeyInput(KeyCaptureHook hook)
     m_keyInputCapture = hook;
 }
 
+Application::ClippingStack* Application::FindClippingStack(SDL_Renderer* r)
+{
+    // find the appropriate stack for this renderer
+    ClippingStack* stack = nullptr;
+    for (auto item : m_clippingStacks)
+    {
+        if (item->m_renderer == r)
+        {
+            stack = item;
+        }
+    }
+    return stack;
+}
+void Application::ApplyClippingStack(ClippingStack *stack)
+{
+    bool fullscreen = true;
+    int x1, x2, y1, y2;
+    for (auto& rect : stack->m_rects)
+    {
+        if (rect.w == -1)
+        {
+            fullscreen = true;
+        }
+        else if (fullscreen)
+        {
+            x1 = rect.x;
+            y1 = rect.y;
+            x2 = rect.x + rect.w;
+            y2 = rect.y + rect.h;
+            fullscreen = false;
+        }
+        else
+        {
+            x1 = SDL_max(x1, rect.x);
+            y1 = SDL_max(y1, rect.y);
+            x2 = SDL_min(x2, rect.x + rect.w);
+            y2 = SDL_min(y2, rect.y + rect.h);
+        }
+    }
+    if (fullscreen)
+        SDL_RenderSetClipRect(stack->m_renderer, nullptr);
+    else
+    {
+        SDL_Rect activeRect = { x1, y1, SDL_max(0,x2 - x1), SDL_max(0,y2 - y1) };
+        SDL_RenderSetClipRect(stack->m_renderer, &activeRect);
+    }
+}
+void Application::PushClippingRect(SDL_Renderer* r, SDL_Rect* rect)
+{
+    ClippingStack* stack = FindClippingStack(r);
+
+    // create a new stack if we didn't find one
+    if (!stack)
+    {
+        stack = new ClippingStack();
+        stack->m_renderer = r;
+        m_clippingStacks.push_back(stack);
+    }
+
+    // push this rect onto the stack
+    SDL_Rect empty = { -1,-1,-1,-1 };
+    SDL_Rect clip_rect = rect ? *rect : empty;
+    stack->m_rects.push_back(clip_rect);
+
+    // calculate active rect
+    ApplyClippingStack(stack);
+}
+void Application::PopClippingRect(SDL_Renderer* r)
+{
+    ClippingStack* stack = FindClippingStack(r);
+
+    // in case stack has been destroyed during the frame...
+    // may only happen if we ever need to support destroying renderers
+    if (stack)
+    {
+        // pop top rect from stack
+        stack->m_rects.pop_back();
+
+        // calculate active rect
+        ApplyClippingStack(stack);
+    }
+}
 

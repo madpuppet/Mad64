@@ -2,6 +2,7 @@
 #include "editWindow.h"
 #include "dockableWindow_log.h"
 #include "dockableWindow_emulatorScreen.h"
+#include "dockableWindow_searchAndReplace.h"
 
 #define TAB_ACTIVE_IMAGE "data/button_frame"
 #define TAB_INACTIVE_IMAGE "data/button_frame"
@@ -17,7 +18,6 @@ EditWindow::EditWindow()
 	m_tabInactiveTex = SDL_CreateTextureFromSurface(r, surface);
 	SDL_FreeSurface(surface);
 
-
 	m_activeSourceFileItem = nullptr;
 	m_cursorAnimTime = 0.0f;
 	m_dragMode = DRAG_None;
@@ -28,94 +28,17 @@ EditWindow::EditWindow()
 	m_marked = false;
 	m_keyMarking = false;
 	m_mouseMarking = false;
-	m_inputCapture = IC_None;
 	m_shiftDown = false;
 	m_markStartLine = 0;
 	m_markStartColumn = 0;
 	m_markEndLine = 0;
 	m_markEndColumn = 0;
 
-	m_searchBox = new TextInput(0,0,"S",DELEGATE(EditWindow::OnSearchEnter));
-	m_searchBox->SetOnChange(DELEGATE(EditWindow::OnSearchChange));
-	m_replaceBox = new TextInput(0, 0, "R", DELEGATE(EditWindow::OnReplaceEnter));
-
 	m_mouseX = 0;
 	m_mouseY = 0;
 
 	CalcRects();
 	InitStatus();
-}
-
-void EditWindow::OnSearchChange(const string& text)
-{
-	// search all
-	if (m_activeSourceFileItem)
-	{
-		// find all occurances...
-		m_searchFoundLines.clear();
-		auto& lines = m_activeSourceFileItem->file->GetLines();
-		for (int ln = 0; ln < lines.size(); ln++)
-		{
-			if (StrFind(lines[ln]->GetChars(), text) != string::npos)
-			{
-				m_searchFoundLines.push_back(ln);
-			}
-		}
-	}
-}
-void EditWindow::OnSearchEnter(const string& text)
-{
-	// search all
-	if (m_activeSourceFileItem)
-	{
-		// find all occurances...
-		m_searchFoundLines.clear();
-		auto& lines = m_activeSourceFileItem->file->GetLines();
-		for (int ln = 0; ln < lines.size(); ln++)
-		{
-			if (StrFind(lines[ln]->GetChars(), text) != string::npos)
-			{
-				m_searchFoundLines.push_back(ln);
-			}
-		}
-
-		int startLine = (m_activeSourceFileItem->activeLine + 1) % lines.size();
-		int ln = startLine;
-		do
-		{
-			auto line = lines[ln];
-			auto& chars = line->GetChars();
-			int col = (int)StrFind(line->GetChars(), text);
-			if (col != string::npos)
-			{
-				m_searchBox->Flash(TextInput::MODE_Found);
-				GotoLineCol(ln, col, MARK_None, true);
-				return;
-			}
-			ln = (ln + 1) % m_activeSourceFileItem->file->GetLines().size();
-		} while (ln != m_activeSourceFileItem->activeLine);
-		m_searchBox->Flash(TextInput::MODE_NotFound);
-	}
-}
-void EditWindow::OnReplaceEnter(const string& text)
-{
-	if (m_activeSourceFileItem)
-	{
-		string searchText = m_searchBox->GetText();
-		string replaceText = m_replaceBox->GetText();
-
-		if (m_marked)
-			gApp->Cmd_SearchAndReplace(searchText, replaceText, m_markStartLine, m_markStartColumn, m_markEndLine, m_markEndColumn);
-		else
-			gApp->Cmd_SearchAndReplace(searchText, replaceText);
-
-		m_searchBox->Flash(TextInput::MODE_Activated);
-		m_replaceBox->Flash(TextInput::MODE_Activated);
-
-		m_searchBox->SetActive(false);
-		m_replaceBox->SetActive(false);
-		m_inputCapture = IC_None;
-	}
 }
 
 void DrawColouredLine(int x, int y1, int y2, bool highlighted)
@@ -148,8 +71,6 @@ void EditWindow::ClearVisuals()
 	}
 	LayoutTabs();
 	CalcRects();
-	m_searchBox->Visualize();
-	m_replaceBox->Visualize();
 }
 
 bool IsEmulationAtLine(CompilerSourceInfo *csi, int line)
@@ -217,219 +138,213 @@ void EditWindow::Draw()
 		m_renderedContentHeight = settings->lineHeight * (int)file->GetLines().size();
 
 		// draw addresses
-		SDL_RenderSetClipRect(r, &m_memAddrRect);
-		int sourceVersion = file->GetSourceVersion();
-		u16 emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
-		for (int i = startLine; i < endLine; i++)
 		{
-			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
-			int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
-			auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
-			bool emulating = IsEmulationAtLine(csi, i);
-			u8 breakpoint = file->GetLines()[i]->GetBreakpoint();
-			if (settings->renderLineBackgrounds || brighten || emulating)
+			ClipRectScope crs(r, &m_memAddrRect);
+			int sourceVersion = file->GetSourceVersion();
+			u16 emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
+			for (int i = startLine; i < endLine; i++)
 			{
-				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
-				int red, green, blue;
-				if (emulating)
+				int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+				int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
+				auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
+				bool emulating = IsEmulationAtLine(csi, i);
+				u8 breakpoint = file->GetLines()[i]->GetBreakpoint();
+				if (settings->renderLineBackgrounds || brighten || emulating)
 				{
-					red = 96 + brighten;
-					green = 32 + brighten;
-					blue = 96 + brighten;
+					SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+					int red, green, blue;
+					if (emulating)
+					{
+						red = 96 + brighten;
+						green = 32 + brighten;
+						blue = 96 + brighten;
+					}
+					else
+					{
+						red = brighten;
+						green = brighten;
+						blue = brighten + 128 - ((i & 1) ? 16 : 0);
+					}
+					SDL_SetRenderDrawColor(r, red, green, blue, 255);
+					SDL_RenderFillRect(r, &lineQuad);
 				}
-				else
+				if (gc)
+					gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
+				if (breakpoint)
 				{
-					red = brighten;
-					green = brighten;
-					blue = brighten + 128 - ((i & 1) ? 16 : 0);
+					SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+					SDL_SetRenderDrawColor(r, 255, 0, 0, 128);
+					SDL_RenderFillRect(r, &lineQuad);
 				}
-				SDL_SetRenderDrawColor(r, red, green, blue, 255);
-				SDL_RenderFillRect(r, &lineQuad);
-			}
-			if (gc)
-				gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
-			if (breakpoint)
-			{
-				SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
-				SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-				SDL_SetRenderDrawColor(r, 255, 0, 0, 128);
-				SDL_RenderFillRect(r, &lineQuad);
 			}
 		}
 
 		// draw decode
-		SDL_RenderSetClipRect(r, &m_decodeRect);
-		for (int i = startLine; i < endLine; i++)
 		{
-			int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
-			auto gc = csi ? csi->GetDecodeGC(i) : nullptr;
-			int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
-			SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
-			bool emulating = IsEmulationAtLine(csi, i);
-			if (settings->renderLineBackgrounds || brighten || emulating)
+			ClipRectScope src(r, &m_decodeRect);
+			for (int i = startLine; i < endLine; i++)
 			{
-				int red, green, blue;
-				if (emulating)
-				{
-					red = 96 + brighten;
-					green = 32 + brighten;
-					blue = 96 + brighten;
-				}
-				else
-				{
-					red = brighten;
-					green = brighten;
-					blue = brighten + 128 - ((i & 1) ? 16 : 0);
-				}
-				SDL_SetRenderDrawColor(r, red, green, blue, 255);
-				SDL_RenderFillRect(r, &lineQuad);
-			}
-			if (gc)
-				gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
-		}
-
-		int branchDepth = 0;
-
-		// draw text
-		SDL_RenderSetClipRect(r, &m_sourceEditRect);
-		m_activeSourceFileItem->editWindowTextWidth = 0;
-		for (int i = startLine; i < endLine; i++)
-		{
-			int brighten = (m_activeSourceFileItem->activeLine == i) ? 32 : 0;
-			auto line = file->GetLines()[i];
-			int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
-			int lineWidth = line->GetLineWidth() + settings->textXMargin;
-			if (settings->renderLineBackgrounds || brighten)
-			{
-				if (line->GetChars().empty())
-				{
-					SDL_Rect lineQuad = { m_sourceEditRect.x, y, m_sourceEditRect.w, settings->lineHeight };
-					SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
-					SDL_RenderFillRect(r, &lineQuad);
-				}
-				else
+				int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+				auto gc = csi ? csi->GetDecodeGC(i) : nullptr;
+				int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
+				SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
+				bool emulating = IsEmulationAtLine(csi, i);
+				if (settings->renderLineBackgrounds || brighten || emulating)
 				{
 					int red, green, blue;
-					red = brighten;
-					green = brighten;
-					blue = brighten + 128 - ((i & 1) ? 16 : 0);
-					SDL_Rect lineQuad1 = { m_activeXPosText - m_horizScroll, y, lineWidth, settings->lineHeight };
-					SDL_Rect lineQuad2 = { m_activeXPosText - m_horizScroll + lineWidth, y, m_sourceEditRect.w - lineWidth + m_activeSourceFileItem->horizScroll, settings->lineHeight };
+					if (emulating)
+					{
+						red = 96 + brighten;
+						green = 32 + brighten;
+						blue = 96 + brighten;
+					}
+					else
+					{
+						red = brighten;
+						green = brighten;
+						blue = brighten + 128 - ((i & 1) ? 16 : 0);
+					}
 					SDL_SetRenderDrawColor(r, red, green, blue, 255);
-					SDL_RenderFillRect(r, &lineQuad1);
-					if (lineWidth < m_sourceEditRect.w + m_horizScroll)
-					{
-						SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
-						SDL_RenderFillRect(r, &lineQuad2);
-					}
+					SDL_RenderFillRect(r, &lineQuad);
 				}
-			}
-
-			// draw marking
-			int markStartCol, markEndCol;
-			if (CheckLineMarked(i, markStartCol, markEndCol))
-			{
-				int startX1, startX2, endX1, endX2;
-				line->GetCharX(markStartCol, startX1, startX2);
-				line->GetCharX(markEndCol, endX1, endX2);
-				SDL_Rect markedRect = { m_sourceEditRect.x + settings->textXMargin + startX1 - m_horizScroll, y, endX2 - startX1, settings->lineHeight };
-				SDL_SetRenderDrawColor(r, 128, 128, 128, 255);
-				SDL_RenderFillRect(r, &markedRect);
-			}
-
-			// search highlight
-			auto& search = m_searchBox->GetText();
-			if (!search.empty())
-			{
-				auto& str = line->GetChars();
-				size_t off = 0;
-				while (true)
-				{
-					off = StrFind(str, search, off);
-					if (off == string::npos)
-						break;
-
-					int x1,x2,stub;
-					line->GetCharX((int)off, x1, stub);
-					line->GetCharX((int)off + (int)search.size() - 1, stub, x2);
-					SDL_Rect markedRect = { m_sourceEditRect.x + settings->textXMargin + x1 - m_horizScroll, y, x2-x1, settings->lineHeight };
-					SDL_SetRenderDrawColor(r, 128, 128, 0, 255);
-					SDL_RenderFillRect(r, &markedRect);
-
-					off += search.size();
-				}
-			}
-
-			// - text
-			if (line->GetGCText())
-			{
-				int maxWidth = line->GetGCText()->CalcMaxWidth();
-				line->GetGCText()->DrawAt(m_activeXPosText + settings->textXMargin - m_horizScroll, y + settings->textYMargin);
-				m_activeSourceFileItem->editWindowTextWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, maxWidth);
-				if (m_horizScroll == 0)
-					m_activeSourceFileItem->editWindowHScrollWidth = 0;
-				m_activeSourceFileItem->editWindowHScrollWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, m_activeSourceFileItem->editWindowHScrollWidth);
-				m_renderedContentWidth = SDL_max(m_renderedContentWidth, m_activeSourceFileItem->editWindowTextWidth);
-			}
-
-			// draw branches
-			if (csi && csi->m_lines.size() > i)
-			{
-				auto cli = csi->m_lines[i];
-				if (!cli->error && (cli->addressMode == Cpu6502::AM_Rel))
-				{
-					int branchAddress = cli->memAddr + (int)cli->operand + 2;
-					int branchLine = csi->FindLineByAddress(branchAddress);
-					if (branchLine != -1)
-					{
-						int y1 = y + settings->lineHeight / 2;
-						int y2 = m_sourceEditRect.y + branchLine * settings->lineHeight - m_activeSourceFileItem->vertScroll + settings->lineHeight / 2;
-						int x1 = m_sourceEditRect.x - 2;
-						int x2 = x1 - branchDepth - 10;
-
-						SDL_RenderSetClipRect(r, nullptr);
-						SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
-						SDL_RenderDrawLine(r, x1, y1, x2, y1);
-						SDL_RenderDrawLine(r, x2, y1, x2, y2);
-						SDL_RenderDrawLine(r, x2, y2, x1, y2);
-						SDL_RenderDrawLine(r, x1, y2, x1 - 5, y2 - 5);
-						SDL_RenderDrawLine(r, x1, y2, x1 - 5, y2 + 5);
-						SDL_RenderSetClipRect(r, &m_sourceEditRect);
-
-						branchDepth += 4;
-					}
-				}
-			}
-
-			// draw cursor
-			if (i == m_activeSourceFileItem->activeLine && m_inputCapture == IC_None)
-			{
-				int cursorX1, cursorX2;
-				line->GetCharX(m_activeSourceFileItem->activeColumn, cursorX1, cursorX2);
-				int cursorY = m_sourceEditRect.y + m_activeSourceFileItem->activeLine * settings->lineHeight - m_activeSourceFileItem->vertScroll;
-				int brightness = max(0, (int)(100 + cosf(m_cursorAnimTime) * 128));
-				SDL_Rect cursorRect = { m_sourceEditRect.x + settings->textXMargin + cursorX1 - m_horizScroll, cursorY, settings->overwriteMode ? (cursorX2-cursorX1) : 2, settings->lineHeight };
-				SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-				SDL_SetRenderDrawColor(r, 255, 255, 255, brightness);
-				SDL_RenderFillRect(r, &cursorRect);
-				SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+				if (gc)
+					gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
 			}
 		}
 
-#if 0
-		// draw search lines
-		SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-		for (auto l : m_searchFoundLines)
+		// draw text
 		{
-			float relY = (float)l / (float)(m_activeSourceFileItem->file->GetLines().size()-1);
+			ClipRectScope crs(r, &m_sourceEditRect);
+			int branchDepth = 0;
+			m_activeSourceFileItem->editWindowTextWidth = 0;
+			for (int i = startLine; i < endLine; i++)
+			{
+				int brighten = (m_activeSourceFileItem->activeLine == i) ? 32 : 0;
+				auto line = file->GetLines()[i];
+				int y = m_sourceEditRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
+				int lineWidth = line->GetLineWidth() + settings->textXMargin;
+				if (settings->renderLineBackgrounds || brighten)
+				{
+					if (line->GetChars().empty())
+					{
+						SDL_Rect lineQuad = { m_sourceEditRect.x, y, m_sourceEditRect.w, settings->lineHeight };
+						SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
+						SDL_RenderFillRect(r, &lineQuad);
+					}
+					else
+					{
+						int red, green, blue;
+						red = brighten;
+						green = brighten;
+						blue = brighten + 128 - ((i & 1) ? 16 : 0);
+						SDL_Rect lineQuad1 = { m_activeXPosText - m_horizScroll, y, lineWidth, settings->lineHeight };
+						SDL_Rect lineQuad2 = { m_activeXPosText - m_horizScroll + lineWidth, y, m_sourceEditRect.w - lineWidth + m_activeSourceFileItem->horizScroll, settings->lineHeight };
+						SDL_SetRenderDrawColor(r, red, green, blue, 255);
+						SDL_RenderFillRect(r, &lineQuad1);
+						if (lineWidth < m_sourceEditRect.w + m_horizScroll)
+						{
+							SDL_SetRenderDrawColor(r, brighten, brighten, brighten + 80 - ((i & 1) ? 8 : 0), 255);
+							SDL_RenderFillRect(r, &lineQuad2);
+						}
+					}
+				}
 
-			int y = (int)(m_sourceEditRect.y + (float)(relY * m_sourceEditRect.h));
-			SDL_RenderDrawLine(r, Bar.x+1, y, Bar.x + Bar.w - 1, y);
+				// draw marking
+				int markStartCol, markEndCol;
+				if (CheckLineMarked(i, markStartCol, markEndCol))
+				{
+					int startX1, startX2, endX1, endX2;
+					line->GetCharX(markStartCol, startX1, startX2);
+					line->GetCharX(markEndCol, endX1, endX2);
+					SDL_Rect markedRect = { m_sourceEditRect.x + settings->textXMargin + startX1 - m_horizScroll, y, endX2 - startX1, settings->lineHeight };
+					SDL_SetRenderDrawColor(r, 128, 128, 128, 255);
+					SDL_RenderFillRect(r, &markedRect);
+				}
+
+				// search highlight
+				if (gApp->GetWindowSearchAndReplace()->ContainsLine(i))
+				{
+					auto& search = gApp->GetWindowSearchAndReplace()->GetSearchText();
+					if (!search.empty())
+					{
+						auto& str = line->GetChars();
+						size_t off = 0;
+						while (true)
+						{
+							off = StrFind(str, search, off);
+							if (off == string::npos)
+								break;
+
+							int x1, x2, stub;
+							line->GetCharX((int)off, x1, stub);
+							line->GetCharX((int)off + (int)search.size() - 1, stub, x2);
+							SDL_Rect markedRect = { m_sourceEditRect.x + settings->textXMargin + x1 - m_horizScroll, y, x2 - x1, settings->lineHeight };
+							SDL_SetRenderDrawColor(r, 128, 128, 0, 255);
+							SDL_RenderFillRect(r, &markedRect);
+
+							off += search.size();
+						}
+					}
+				}
+
+				// - text
+				if (line->GetGCText())
+				{
+					int lineStartX = m_activeXPosText + settings->textXMargin - m_horizScroll;
+					int lineStartY = y + settings->textYMargin;
+					int maxWidth = line->GetGCText()->CalcMaxWidth();
+					line->GetGCText()->DrawAt(lineStartX, lineStartY);
+					m_activeSourceFileItem->editWindowTextWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, maxWidth);
+					if (m_horizScroll == 0)
+						m_activeSourceFileItem->editWindowHScrollWidth = 0;
+					m_activeSourceFileItem->editWindowHScrollWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, m_activeSourceFileItem->editWindowHScrollWidth);
+					m_renderedContentWidth = SDL_max(m_renderedContentWidth, m_activeSourceFileItem->editWindowTextWidth);
+				}
+
+				// draw branches
+				if (csi && csi->m_lines.size() > i)
+				{
+					auto cli = csi->m_lines[i];
+					if (!cli->error && (cli->addressMode == Cpu6502::AM_Rel))
+					{
+						int branchAddress = cli->memAddr + (int)cli->operand + 2;
+						int branchLine = csi->FindLineByAddress(branchAddress);
+						if (branchLine != -1)
+						{
+							int y1 = y + settings->lineHeight / 2;
+							int y2 = m_sourceEditRect.y + branchLine * settings->lineHeight - m_activeSourceFileItem->vertScroll + settings->lineHeight / 2;
+							int x1 = m_sourceEditRect.x - 2;
+							int x2 = x1 - branchDepth - 10;
+
+							ClipRectScope crs(r, nullptr);
+							SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
+							SDL_RenderDrawLine(r, x1, y1, x2, y1);
+							SDL_RenderDrawLine(r, x2, y1, x2, y2);
+							SDL_RenderDrawLine(r, x2, y2, x1, y2);
+							SDL_RenderDrawLine(r, x1, y2, x1 - 5, y2 - 5);
+							SDL_RenderDrawLine(r, x1, y2, x1 - 5, y2 + 5);
+							branchDepth += 4;
+						}
+					}
+				}
+
+				// draw cursor
+				if (i == m_activeSourceFileItem->activeLine)
+				{
+					int cursorX1, cursorX2;
+					line->GetCharX(m_activeSourceFileItem->activeColumn, cursorX1, cursorX2);
+					int cursorY = m_sourceEditRect.y + m_activeSourceFileItem->activeLine * settings->lineHeight - m_activeSourceFileItem->vertScroll;
+					int brightness = max(0, (int)(100 + cosf(m_cursorAnimTime) * 128));
+					SDL_Rect cursorRect = { m_sourceEditRect.x + settings->textXMargin + cursorX1 - m_horizScroll, cursorY, settings->overwriteMode ? (cursorX2 - cursorX1) : 2, settings->lineHeight };
+					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+					SDL_SetRenderDrawColor(r, 255, 255, 255, brightness);
+					SDL_RenderFillRect(r, &cursorRect);
+					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+				}
+			}
 		}
-#endif
-
 	}
-	SDL_RenderSetClipRect(r, nullptr);
 
 	// scroll bar area
 	CalcScrollBars();
@@ -442,18 +357,27 @@ void EditWindow::Draw()
 	SDL_RenderFillRect(r, &m_vertBarArea);
 	SDL_RenderFillRect(r, &m_horizBarArea);
 
-	// - context help
-	gApp->GetLogWindow()->Draw();
+	// draw search lines
+	if (m_activeSourceFileItem)
+	{
+		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+		SDL_SetRenderDrawColor(r, 255, 255, 255, 64);
+		auto& sfl = gApp->GetWindowSearchAndReplace()->GetFoundLines();
+		float maxLines = (float)(m_activeSourceFileItem->file->GetLines().size() - 1);
+		for (auto l : sfl)
+		{
+			float relY = (float)l / maxLines;
+
+			int y = (int)(m_vertBarFullArea.y + (float)(relY * m_vertBarFullArea.h));
+			SDL_RenderDrawLine(r, m_vertBarFullArea.x + 1, y, m_vertBarFullArea.x + m_vertBarFullArea.w - 1, y);
+		}
+	}
+
+//	// - context help
+//	gApp->GetLogWindow()->Draw();
 
 	// draw status bar
 	DrawStatus();
-
-	// draw search boxes
-//	SDL_Rect sarRect = { activeXPosContextHelp, settings->lineHeight, windowWidth - activeXPosContextHelp, settings->lineHeight };
-//	SDL_SetRenderDrawColor(r, 32, 64, 32, 255);
-//	SDL_RenderFillRect(r, &sarRect);
-//	m_searchBox->Draw();
-//	m_replaceBox->Draw();
 
 	// draw context bar split
 	SDL_Rect divider = { m_activeXPosContextHelp, settings->lineHeight * 2 - 1, windowWidth - m_activeXPosContextHelp, 3 };
@@ -466,7 +390,6 @@ void EditWindow::Draw()
 	DrawColouredLine(m_activeXPosContextHelp, m_sourceEditRect.y, m_sourceEditRect.y + m_sourceEditRect.h, false);
 
 	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-	SDL_RenderSetClipRect(r, nullptr);
 }
 
 void EditWindow::OnResize()
@@ -688,7 +611,7 @@ void EditWindow::OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, 
 	{
 		if (m_activeSourceFileItem)
 		{
-			m_targetVertScroll += (wheelY * -8);
+			m_targetVertScroll += (wheelY * -80);
 			ClampTargetVertScroll();
 		}
 	}
@@ -750,9 +673,6 @@ void EditWindow::Update()
 	}
 
 	UpdateStatus();
-
-	m_searchBox->Update();
-	m_replaceBox->Update();
 }
 
 extern bool CharInStr(char ch, const char* str);
@@ -789,6 +709,7 @@ bool EditWindow::ScanTokenAt(int line, int col, int &startCol, int &endCol)
 void EditWindow::OnMouseDown(SDL_Event* e)
 {
 	auto settings = gApp->GetSettings();
+
 	/*
 	if (m_inputCapture == IC_Search && !Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
 	{
@@ -817,27 +738,6 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 			}
 		}
 	}
-	/*
-	else if (Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
-	{
-		gApp->SetEmulatorCaptureInput(false);
-		m_searchBox->SetActive(true);
-		m_replaceBox->SetActive(false);
-		m_inputCapture = IC_Search;
-		if (e->button.button == 3)
-			m_searchBox->SetText("");
-	}
-	else if (Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
-	{
-		gApp->SetEmulatorCaptureInput(false);
-		m_searchBox->SetActive(false);
-		m_replaceBox->SetActive(true);
-		m_inputCapture = IC_Replace;
-		if (e->button.button == 3)
-			m_replaceBox->SetText("");
-	}
-	*/
-
 	else if (abs(e->button.x - m_activeXPosDecode) < 4)
 	{
 		// drag first divide
@@ -932,11 +832,6 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 	}
 	else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
 	{
-		gApp->SetEmulatorCaptureInput(false);
-		m_searchBox->SetActive(false);
-		m_replaceBox->SetActive(false);
-		m_inputCapture = IC_None;
-
 		int line, col;
 		if (MouseToRowCol(e->button.x, e->button.y, line, col))
 		{
@@ -1030,11 +925,6 @@ void EditWindow::OnMouseMotion(SDL_Event* e)
 	{
 		ProcessMouseMarking(e->motion.x, e->motion.y);
 	}
-	else
-	{
-		SelectCursor(m_mouseX, m_mouseY);
-//		gApp->GetLogWindow()->OnMouseMotion(e);
-	}
 }
 
 void EditWindow::OnMouseMotionCaptured(bool lostCapture, int x, int y)
@@ -1082,7 +972,7 @@ void EditWindow::OnMouseMotionCaptured(bool lostCapture, int x, int y)
 	}
 }
 
-void EditWindow::SelectCursor(int x, int y)
+void EditWindow::UpdateCursor(int x, int y)
 {
 	auto settings = gApp->GetSettings();
 	if (Contains(m_titleTabsRect, x, y))
@@ -1113,19 +1003,31 @@ void EditWindow::SelectCursor(int x, int y)
 	}
 	else if (Contains(m_sourceEditRect, x, y))
 	{
-		if (x > m_sourceEditRect.x + m_sourceEditRect.w - settings->scrollBarWidth)
+		gApp->SetCursor(Cursor_IBeam);
+		return;
+	}
+	else if (Contains(m_horizBarFullArea, x, y))
+	{
+		if (Contains(m_horizBarArea, x, y))
+		{
+			gApp->SetCursor(Cursor_Horiz);
+		}
+		else
+		{
+			gApp->SetCursor(Cursor_Hand);
+		}
+		return;
+	}
+	else if (Contains(m_vertBarFullArea, x, y))
+	{
+		if (Contains(m_vertBarArea, x, y))
 		{
 			gApp->SetCursor(Cursor_Vert);
 		}
 		else
 		{
-			gApp->SetCursor(Cursor_IBeam);
+			gApp->SetCursor(Cursor_Hand);
 		}
-		return;
-	}
-	else if (Contains(m_contextHelpRect, x, y))
-	{
-		gApp->GetLogWindow()->SelectCursor(x, y);
 		return;
 	}
 }
@@ -1151,17 +1053,6 @@ bool EditWindow::MouseToRowCol(int x, int y, int& row, int& col)
 
 void EditWindow::OnTextInput(SDL_Event* e)
 {
-	if (m_inputCapture == IC_Search)
-	{
-		m_searchBox->OnTextInput(e);
-		return;
-	}
-	else if (m_inputCapture == IC_Replace)
-	{
-		m_replaceBox->OnTextInput(e);
-		return;
-	}
-
 	u32string unicode_text = UTF8toUNICODE(string(e->text.text));
 	for (auto ch : unicode_text)
 	{
@@ -1189,46 +1080,6 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			settings->tabsToSpaces = !settings->tabsToSpaces;
 		else
 			settings->overwriteMode = !settings->overwriteMode;
-		return;
-	}
-
-	if (m_inputCapture == IC_Search)
-	{
-		if (e->key.keysym.sym == SDLK_TAB)
-		{
-			m_searchBox->SetActive(false);
-			m_replaceBox->SetActive(true);
-			m_inputCapture = IC_Replace;
-		}
-		else if (e->key.keysym.sym == SDLK_ESCAPE)
-		{
-			m_searchBox->SetActive(false);
-			m_inputCapture = IC_None;
-		}
-		else
-		{
-			m_searchBox->OnKeyDown(e);
-		}
-		return;
-	}
-	
-	if (m_inputCapture == IC_Replace)
-	{
-		if (e->key.keysym.sym == SDLK_TAB)
-		{
-			m_searchBox->SetActive(true);
-			m_replaceBox->SetActive(false);
-			m_inputCapture = IC_Search;
-		}
-		else if (e->key.keysym.sym == SDLK_ESCAPE)
-		{
-			m_replaceBox->SetActive(false);
-			m_inputCapture = IC_None;
-		}
-		else
-		{
-			m_replaceBox->OnKeyDown(e);
-		}
 		return;
 	}
 
@@ -1261,6 +1112,9 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		case SDLK_f:
 			if (e->key.keysym.mod & KMOD_CTRL)
 			{
+				auto winSar = gApp->GetWindowSearchAndReplace();
+				winSar->SelectSearchBox();
+
 				// if a single token is marked, copy it over as the new search string
 				if (m_marked)
 				{
@@ -1268,14 +1122,15 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 					{
 						auto &chars = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars();
 						string token = chars.substr(m_markStartColumn, m_markEndColumn - m_markStartColumn);
-						m_searchBox->SetText(token);
+						winSar->SetSearchText(token);
 						m_marked = false;
 					}
 				}
-
-				m_searchBox->SetActive(true);
-				m_replaceBox->SetActive(false);
-				m_inputCapture = IC_Search;
+				else
+				{
+					winSar->SetSearchText("");
+					winSar->SetReplaceText("");
+				}
 				return;
 			}
 			break;
@@ -1283,6 +1138,9 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 		case SDLK_r:
 			if (e->key.keysym.mod & KMOD_CTRL)
 			{
+				auto winSar = gApp->GetWindowSearchAndReplace();
+				winSar->SelectSearchBox();
+
 				// if a single token is marked, copy it over as the new search string
 				if (m_marked)
 				{
@@ -1290,14 +1148,15 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 					{
 						auto& chars = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine]->GetChars();
 						string token = chars.substr(m_markStartColumn, m_markEndColumn - m_markStartColumn);
-						m_searchBox->SetText(token);
-						m_replaceBox->SetText("");
+						winSar->SetSearchText(token);
+						winSar->SetReplaceText("");
 						m_marked = false;
-
-						m_searchBox->SetActive(false);
-						m_replaceBox->SetActive(true);
-						m_inputCapture = IC_Replace;
 					}
+				}
+				else
+				{
+					winSar->SetSearchText("");
+					winSar->SetReplaceText("");
 				}
 				return;
 			}

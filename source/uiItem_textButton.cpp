@@ -60,9 +60,9 @@ void UIItem_TextButton::SetPos(int x, int y)
 {
     auto settings = gApp->GetSettings();
     m_area.x = x;
-    m_area.y = y;
+    m_area.y = y+2;
     m_area.w = GetWidth();
-    m_area.h = GetHeight();
+    m_area.h = settings->lineHeight - 4;
 }
 
 void UIItem_TextButton::SetArea(const SDL_Rect& area)
@@ -70,4 +70,9 @@ void UIItem_TextButton::SetArea(const SDL_Rect& area)
     m_area = area;
 }
 
+void UIItem_TextButton::UpdateCursor(int x, int y)
+{
+    if (Overlaps(x, y))
+        gApp->SetCursor(Cursor_Hand);
+}
 

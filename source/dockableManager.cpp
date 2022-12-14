@@ -53,6 +53,19 @@ bool DockableManager::IsWindowEnabled(DockableWindow* window)
     return false;
 }
 
+void DockableManager::EnableWindow(DockableWindow* window)
+{
+    for (auto& it : m_windows)
+    {
+        if (it.m_window == window)
+        {
+            it.m_enabled = true;
+            return;
+        }
+    }
+}
+
+
 bool DockableManager::OnMouseDown(SDL_Event* e)
 {
     auto settings = gApp->GetSettings();
@@ -161,6 +174,26 @@ bool DockableManager::OnMouseUp(SDL_Event* e)
     return false;
 }
 
+void DockableManager::UpdateCursor(int windowID, int x, int y)
+{
+    for (auto& win : m_windows)
+    {
+        if (win.m_window->IsDocked())
+        {
+            if (Contains(win.m_window->GetArea(), x, y))
+            {
+                win.m_window->UpdateCursor(x, y);
+            }
+        }
+        else if (win.m_window->GetID() == windowID)
+        {
+            win.m_window->UpdateCursor(x, y);
+        }
+        if (Contains(win.m_geTitle->GetRect(), x, y))
+            gApp->SetCursor(Cursor_Hand);
+    }
+}
+
 bool DockableManager::OnMouseMotion(SDL_Event* e)
 {
     auto settings = gApp->GetSettings();
@@ -256,6 +289,12 @@ void DockableManager::Draw()
     SDL_Rect titleRect = { m_area.x, m_area.y, m_area.w, settings->lineHeight };
     SDL_RenderFillRect(r, &titleRect);
 
+    SDL_SetRenderDrawColor(r, 64 + 32, 64 + 32, 64 + 32, 255);
+    SDL_RenderDrawLine(r, m_area.x, m_area.y, m_area.x + m_area.w, m_area.y);
+    SDL_SetRenderDrawColor(r, 64 - 32, 64 - 32, 64 - 32, 255);
+    SDL_RenderDrawLine(r, m_area.x, m_area.y + settings->lineHeight - 1, m_area.x + m_area.w, m_area.y + settings->lineHeight - 1);
+
+
     int titleX = m_area.x + settings->textXMargin;
     for (auto& win : m_windows)
     {
@@ -273,29 +312,30 @@ void DockableManager::Draw()
     }
 
     m_renderedContentWidth = 64;
-    SDL_RenderSetClipRect(r, &m_contentArea);
-    SDL_Rect area = { m_contentArea.x - m_horizScroll, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
-    SDL_Rect titleArea = { m_contentArea.x, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
-    for (auto &win : m_windows)
+
     {
-        if (win.m_enabled && win.m_window->IsDocked())
+        ClipRectScope crs(r, &m_contentArea);
+        SDL_Rect area = { m_contentArea.x - m_horizScroll, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
+        SDL_Rect titleArea = { m_contentArea.x, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
+        for (auto& win : m_windows)
         {
-            area.h = win.m_window->GetContentHeight() + settings->lineHeight;
-            if (((area.y + area.h) >= m_contentArea.y) && (area.y <= (m_contentArea.y + m_contentArea.h)))
+            if (win.m_enabled && win.m_window->IsDocked())
             {
-                SDL_RenderSetClipRect(r, &m_contentArea);
-                win.m_window->SetRect(titleArea);
-                win.m_window->DrawTitle();
-                win.m_window->SetRect(area);
-                win.m_window->DrawContent();
-                m_renderedContentWidth = SDL_max(m_renderedContentWidth, win.m_window->GetContentWidth());
+                area.h = win.m_window->GetContentHeight() + settings->lineHeight;
+                if (((area.y + area.h) >= m_contentArea.y) && (area.y <= (m_contentArea.y + m_contentArea.h)))
+                {
+                    win.m_window->SetRect(titleArea);
+                    win.m_window->DrawTitle();
+                    win.m_window->SetRect(area);
+                    win.m_window->DrawContent();
+                    m_renderedContentWidth = SDL_max(m_renderedContentWidth, win.m_window->GetContentWidth());
+                }
+                area.y += area.h;
+                titleArea.y += area.h;
             }
-            area.y += area.h;
-            titleArea.y += area.h;
         }
+        m_renderedContentHeight = area.y - (m_contentArea.y - m_vertScroll);
     }
-    SDL_RenderSetClipRect(r, nullptr);
-    m_renderedContentHeight = area.y - (m_contentArea.y - m_vertScroll);
 
     CalcScrollBars();
 

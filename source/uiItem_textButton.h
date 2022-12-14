@@ -20,6 +20,8 @@ public:
     void OnRendererChange(SDL_Renderer* r);
     void SetPos(int x, int y);
     void SetArea(const SDL_Rect& area);
+    void UpdateCursor(int x, int y);
+    
     bool Overlaps(int x, int y)
     {
         return Contains(m_area, x, y);

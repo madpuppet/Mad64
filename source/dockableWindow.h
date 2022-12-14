@@ -12,6 +12,7 @@ public:
     void DrawTitle();
     void DrawContent();
     void OnRendererChange();
+    void UpdateCursor(int x, int y);
 
     virtual void OnMouseButtonDown(int button, int x, int y);
     virtual void OnMouseButtonUp(int button, int x, int y);
@@ -42,6 +43,7 @@ public:
 protected:
     virtual void CreateChildIcons() = 0;
     virtual void OnChildRendererChange() = 0;
+    virtual void UpdateChildCursor(int x, int y) {}
 
     void OnResize();
     SDL_Renderer* GetRenderer();

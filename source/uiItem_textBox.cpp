@@ -12,45 +12,48 @@ UIItem_TextBox::~UIItem_TextBox()
 
 void UIItem_TextBox::Draw(SDL_Renderer* r)
 {
-    m_cursorAnim = fmodf(m_cursorAnim + TIMEDELTA, 1.0f);
+	m_cursorAnim += TIMEDELTA * 5.0f;
 
     BuildGE(r);
 
     auto settings = gApp->GetSettings();
-    SDL_RenderSetClipRect(r, &m_area);
-	if (m_isSelected)
-		SDL_SetRenderDrawColor(r, 0, 0, 64, 255);
-	else
-		SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
-	SDL_RenderFillRect(r, &m_area);
-    if (m_text.empty() && !m_isSelected)
-    {
-        int offset = (m_area.w - m_geHintText->GetRect().w) / 2;
-        m_geHintText->RenderAt(r, m_area.x + offset, m_area.y);
-    }
-	else if (!m_text.empty())
 	{
-		m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
+		ClipRectScope crs(r, &m_area);
+		if (m_isSelected)
+			SDL_SetRenderDrawColor(r, 0, 0, 64, 255);
+		else
+			SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+		SDL_RenderFillRect(r, &m_area);
+
+		if (m_text.empty() && !m_isSelected)
+		{
+			int offset = (m_area.w - m_geHintText->GetRect().w) / 2;
+			m_geHintText->RenderAt(r, m_area.x + offset, m_area.y);
+		}
+		else if (!m_text.empty())
+		{
+			m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
+		}
+
+		if (m_isSelected)
+		{
+			string sub = m_text.substr(0, m_cursorPos);
+			int textWidth;
+			int x = TTF_SizeText(gApp->GetFont(), sub.c_str(), &textWidth, nullptr);
+			SDL_Rect cursorRect = { m_area.x + settings->textXMargin + textWidth - 2, m_area.y, 4, m_area.h };
+			int brightness = max(0, (int)(100 + cosf(m_cursorAnim) * 128));
+			SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+			SDL_SetRenderDrawColor(r, 255, 255, 255, brightness);
+			SDL_RenderFillRect(r, &cursorRect);
+			SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
+		}
 	}
 
-	if (m_isSelected)
-	{
-		string sub = m_text.substr(0, m_cursorPos);
-		int textWidth;
-		int x = TTF_SizeText(gApp->GetFont(), sub.c_str(), &textWidth, nullptr);
-		SDL_Rect cursorRect = { m_area.x + settings->textXMargin + textWidth, m_area.y, 4, m_area.h };
-		int brightness = max(0, (int)(100 + cosf(m_cursorAnim) * 128));
-		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-		SDL_SetRenderDrawColor(r, 255, 255, 255, brightness);
-		SDL_RenderFillRect(r, &cursorRect);
-		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-	}
-
-	SDL_RenderSetClipRect(r, nullptr);
 	m_geTitleText->RenderAt(r, m_area.x + m_area.w + SPACING, m_area.y);
 }
 void UIItem_TextBox::OnButtonDown(int button, int x, int y)
 {
+	auto settings = gApp->GetSettings();
     if (Contains(m_area, x, y))
     {
 		if (button == 1)
@@ -61,21 +64,34 @@ void UIItem_TextBox::OnButtonDown(int button, int x, int y)
 				m_cursorAnim = 0;
 				gApp->SetCaptureTextInput(DELEGATE(UIItem_TextBox::OnCapturedTextInput));
 				gApp->SetCaptureKeyInput(DELEGATE(UIItem_TextBox::OnCapturedKeyInput));
+
+				// calculate cursor pos
+				m_cursorPos = 0;
+				while (m_cursorPos < m_text.size())
+				{
+					string sub = m_text.substr(0, m_cursorPos+1);
+					int textWidth;
+					TTF_SizeText(gApp->GetFont(), sub.c_str(), &textWidth, nullptr);
+					int letterX = m_area.x + settings->textXMargin + textWidth;
+					if (x < letterX)
+						break;
+					m_cursorPos++;
+				}
 			}
 		}
 		else if (button == 3)
 		{
-			m_text = "";
-			m_cursorPos = 0;
-			m_cursorAnim = 0;
-			DeleteClear(m_geText);
+			SetText("");
 		}
     }
 }
-void UIItem_TextBox::OnButtonUp(int button, int x, int y)
+void UIItem_TextBox::UpdateCursor(int x, int y)
 {
-
+	if (Overlaps(x, y))
+		gApp->SetCursor(Cursor_IBeam);
 }
+
+
 int UIItem_TextBox::GetWidth()
 {
     return m_boxWidth + m_geTitleText->GetRect().w + SPACING*3;
@@ -214,6 +230,34 @@ void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, u32 sym, u32 mod)
 		}
 	}
 }
+
+void UIItem_TextBox::SetText(const string& text)
+{
+	m_text = text;
+	m_cursorPos = (int)text.size();
+	DeleteClear(m_geText);
+	if (m_onChange)
+		m_onChange(m_text);
+}
+
+void UIItem_TextBox::SetSelected(bool selected)
+{
+	if (selected != m_isSelected)
+	{
+		m_isSelected = selected;
+		if (selected)
+		{
+			gApp->SetCaptureTextInput(DELEGATE(UIItem_TextBox::OnCapturedTextInput));
+			gApp->SetCaptureKeyInput(DELEGATE(UIItem_TextBox::OnCapturedKeyInput));
+		}
+		else
+		{
+			gApp->SetCaptureTextInput(nullptr);
+			gApp->SetCaptureKeyInput(nullptr);
+		}
+	}
+}
+
 
 
 

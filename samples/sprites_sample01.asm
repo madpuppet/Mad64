@@ -16,7 +16,7 @@ start:
     sei
     lda #50
     sta vic.sprite0Y
-    lda #0
+    lda #0d
     sta vic.backgroundColor0
     lda #1
     sta vic.borderColor
@@ -186,7 +186,7 @@ loop2:
 
 *=$1000
 sinewave:
-.generate.b 0,255,sin(I/256*PI*16)*10+240
+.generate.b 0,255,sin(I/256*PI*)*10+240
 
 sinewaveHigh:
 .generate.b 0,255,((sin(I/256*PI*16)*10+240)/256)

@@ -129,6 +129,18 @@ void DockableWindow::OnMouseButtonUp(int button, int x, int y)
     }
 }
 
+void DockableWindow::UpdateCursor(int x, int y)
+{
+    for (auto titleItem : m_titleIconsLeft)
+    {
+        titleItem->UpdateCursor(x, y);
+    }
+    for (auto titleItem : m_titleIconsRight)
+    {
+        titleItem->UpdateCursor(x, y);
+    }
+}
+
 void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
 {
     switch (m_grabMode)
@@ -274,14 +286,14 @@ void DockableWindow::LayoutIcons()
     for (auto item : m_titleIconsLeft)
     {
         int w = item->GetWidth();
-        item->SetPos(leftX, m_renderArea.y + 2);
+        item->SetPos(leftX, m_renderArea.y);
         leftX += w + settings->textXMargin;
     }
     int rightX = m_renderArea.x + m_renderArea.w - 4;
     for (auto item : m_titleIconsRight)
     {
         int w = item->GetWidth();
-        item->SetPos(rightX - w, m_renderArea.y + 2);
+        item->SetPos(rightX - w, m_renderArea.y);
         rightX -= w + settings->textXMargin;
     }
 }
@@ -330,6 +342,12 @@ void DockableWindow::DrawTitle()
     SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
     SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
     SDL_RenderFillRect(r, &titleRect);
+
+    SDL_SetRenderDrawColor(r, 32+32, 64+32, 128+32, 255);
+    SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y, m_renderArea.x + m_renderArea.w, m_renderArea.y);
+
+    SDL_SetRenderDrawColor(r, 32-32, 64-32, 128-32, 255);
+    SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y+settings->lineHeight-1, m_renderArea.x + m_renderArea.w, m_renderArea.y + settings->lineHeight - 1);
 
     SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
     GenerateTitleGE();
@@ -404,9 +422,10 @@ void DockableWindow::DrawContent()
 
     if (!m_isDocked)
     {
-        SDL_RenderSetClipRect(r, &m_contentArea);
-        DrawChild();
-        SDL_RenderSetClipRect(r, nullptr);
+        {
+            ClipRectScope crs(r, &m_contentArea);
+            DrawChild();
+        }
         SDL_RenderPresent(r);
     }
     else

@@ -5,7 +5,7 @@
 class UIItem_TextBox : public UIItem
 {
 public:
-    UIItem_TextBox(const string& title, const string& hintText, int boxWidth, const TextHook& onChange, const TextHook& onEnter)
+    UIItem_TextBox(const string& title, const string& hintText, int boxWidth, const TextHook& onEnter, const TextHook& onChange)
     {
         m_titleText = title;
         m_hintText = hintText;
@@ -25,12 +25,17 @@ public:
     // virtuals
     void Draw(SDL_Renderer* renderer);
     void OnButtonDown(int button, int x, int y);
-    void OnButtonUp(int button, int x, int y);
     int GetWidth();
     int GetHeight();
     void OnRendererChange(SDL_Renderer* r);
     void SetPos(int x, int y);
     bool Overlaps(int x, int y);
+    void UpdateCursor(int x, int y);
+
+    // accessors
+    void SetText(const string& text);
+    const string& GetText() { return m_text; }
+    void SetSelected(bool selected);
 
 protected:
     void BuildGE(SDL_Renderer* r);
