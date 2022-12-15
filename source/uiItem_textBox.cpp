@@ -27,12 +27,18 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
 
 		if (m_text.empty() && !m_isSelected)
 		{
-			int offset = (m_area.w - m_geHintText->GetRect().w) / 2;
-			m_geHintText->RenderAt(r, m_area.x + offset, m_area.y);
+			if (m_geHintText)
+			{
+				int offset = (m_area.w - m_geHintText->GetRect().w) / 2;
+				m_geHintText->RenderAt(r, m_area.x + offset, m_area.y);
+			}
 		}
 		else if (!m_text.empty())
 		{
-			m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
+			if (m_geText)
+			{
+				m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
+			}
 		}
 
 		if (m_isSelected)
@@ -49,7 +55,8 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
 		}
 	}
 
-	m_geTitleText->RenderAt(r, m_area.x + m_area.w + SPACING, m_area.y);
+	if (m_geTitleText)
+		m_geTitleText->RenderAt(r, m_area.x + m_area.w + SPACING, m_area.y);
 }
 void UIItem_TextBox::OnButtonDown(int button, int x, int y)
 {
@@ -94,7 +101,7 @@ void UIItem_TextBox::UpdateCursor(int x, int y)
 
 int UIItem_TextBox::GetWidth()
 {
-    return m_boxWidth + m_geTitleText->GetRect().w + SPACING*3;
+    return m_geTitleText ? m_boxWidth + m_geTitleText->GetRect().w + SPACING*3 : m_boxWidth;
 }
 int UIItem_TextBox::GetHeight()
 {
@@ -124,11 +131,11 @@ void UIItem_TextBox::BuildGE(SDL_Renderer* r)
     auto font = gApp->GetFont();
     SDL_Color col = { 255, 255, 255, 255 };
     SDL_Color dark = { 128, 128, 128, 255 };
-    if (!m_geText)
+    if (!m_geText && !m_text.empty())
         m_geText = GraphicElement::CreateFromText(r, font, m_text.c_str(), col, 0, 0);
-    if (!m_geHintText)
+    if (!m_geHintText && !m_hintText.empty())
         m_geHintText = GraphicElement::CreateFromText(r, font, m_hintText.c_str(), dark, 0, 0);
-    if (!m_geTitleText)
+    if (!m_geTitleText && !m_titleText.empty())
         m_geTitleText = GraphicElement::CreateFromText(r, font, m_titleText.c_str(), col, 0, 0);
 }
 
@@ -196,6 +203,10 @@ void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, u32 sym, u32 mod)
 						m_onChange(m_text);
 					DeleteClear(m_geText);
 				}
+				return;
+			case SDLK_ESCAPE:
+				gApp->SetCaptureKeyInput(nullptr);
+				gApp->SetCaptureTextInput(nullptr);
 				return;
 			case SDLK_DELETE:
 				if (m_cursorPos < m_text.size())

@@ -21,7 +21,9 @@ public:
 
     virtual int GetContentHeight() = 0;
     virtual int GetContentWidth() = 0;
-    virtual void SetRect(const SDL_Rect& rect);
+    virtual void SetDockedRect(const SDL_Rect& rect);
+
+    void SetClipRect(const SDL_Rect& rect) { m_clipArea = rect; }
 
     bool IsDocked() { return m_isDocked; }
 
@@ -33,6 +35,7 @@ public:
 
     int GetID();
     SDL_Rect& GetArea() { return m_renderArea; }
+    SDL_Rect& GetWindowArea() { return m_windowArea; }
 
     // hide or show the window if undocked
     void ShowWindow(bool enable);
@@ -68,6 +71,7 @@ protected:
 
     SDL_Rect m_renderArea;      // entire render area (including title line & scroll bars)
     SDL_Rect m_contentArea;     // render area of just the content
+    SDL_Rect m_clipArea;        // area that is visible
 
     SDL_Rect m_dockedArea;      // entire docked render area
     SDL_Rect m_windowArea;      // entire undocked render area (window size)

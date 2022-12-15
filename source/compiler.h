@@ -344,7 +344,7 @@ public:
     bool CompileLinePass2(CompilerLineInfo* li, TokenisedLine* tokenLine);
 
     // find a label defined in this compiled source
-    CompilerLabel* FindLabel(CompilerSourceInfo* csi, string& name, LabelResolve resolve, u32 resolveStartAddr);
+    CompilerLabel* FindLabel(CompilerSourceInfo* csi, const string& name, LabelResolve resolve, u32 resolveStartAddr);
 
     // expression opcodes that follow a value - ie.  a * b,  a + b
     CompilerExpressionOpcode *FindExprOpcode(string& token);

@@ -13,6 +13,7 @@
 class DockableWindow_Log;
 class DockableWindow_EmulatorScreen;
 class DockableWindow_SearchAndReplace;
+class DockableWindow_MemoryDump;
 
 
 enum CursorType
@@ -49,7 +50,7 @@ public:
     DockableWindow_Log* GetWindowCompiler() { return m_windowCompiler; }
     DockableWindow_Log* GetWindowHelp() { return m_windowHelp; }
     DockableWindow_Log* GetWindowRegisters() { return m_windowRegisters; }
-    DockableWindow_Log* GetWindowMemoryDump() { return m_windowMemoryDump; }
+    DockableWindow_MemoryDump* GetWindowMemoryDump() { return m_windowMemoryDump; }
     DockableWindow_EmulatorScreen* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
     DockableWindow_Log* GetWindowLabels() { return m_windowLabels; }
     DockableWindow_SearchAndReplace* GetWindowSearchAndReplace() { return m_windowSearchAndReplace; }
@@ -89,6 +90,7 @@ public:
 
     void PushClippingRect(SDL_Renderer *r, SDL_Rect *rect);
     void PopClippingRect(SDL_Renderer* r);
+    SDL_Rect GetActiveClipRect(SDL_Renderer* r);
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -137,7 +139,7 @@ protected:
     DockableWindow_Log* m_windowCompiler;
     DockableWindow_Log* m_windowHelp;
     DockableWindow_Log* m_windowRegisters;
-    DockableWindow_Log* m_windowMemoryDump;
+    DockableWindow_MemoryDump* m_windowMemoryDump;
     DockableWindow_EmulatorScreen* m_windowEmulatorScreen;
     DockableWindow_Log* m_windowLabels;
     DockableWindow_SearchAndReplace* m_windowSearchAndReplace;

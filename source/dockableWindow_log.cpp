@@ -23,6 +23,7 @@ void DockableWindow_Log::Clear()
 void DockableWindow_Log::DrawChild()
 {
     m_renderedWidth = 64;
+    m_renderedHeight = 0;
     m_renderedItems.clear();
 
     auto r = GetRenderer();
@@ -30,8 +31,12 @@ void DockableWindow_Log::DrawChild()
 
     int y = m_contentArea.y - m_vertScroll;
     int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+    const string& filter = m_filterBox->GetText();
     for (auto& it : m_items)
     {
+        if (!filter.empty() && StrFind(it.text.c_str(), filter) == string::npos)
+            continue;
+
         if (!it.ge)
         {
             SDL_Color col = { 255, 255, 255, 255 };
@@ -57,13 +62,22 @@ void DockableWindow_Log::DrawChild()
             }
             m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + it.ge->GetRect().w);
             y += settings->lineHeight;
+            m_renderedHeight += settings->lineHeight;
         }
     }
 }
 
+void DockableWindow_Log::OnFilterStringEnter(const string& text)
+{
+}
+void DockableWindow_Log::OnFilterStringChange(const string& text)
+{
+}
+
 void DockableWindow_Log::CreateChildIcons()
 {
-
+    m_filterBox = new UIItem_TextBox("Filter", "<filter>", 200, DELEGATE(DockableWindow_Log::OnFilterStringEnter), DELEGATE(DockableWindow_Log::OnFilterStringChange));
+    m_titleIconsLeft.push_back(m_filterBox);
 }
 
 void DockableWindow_Log::LogText(const string& text, int lineNmbr, int color, int addr)

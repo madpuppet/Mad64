@@ -219,8 +219,7 @@ void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
     }
 }
 
-DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked(true), m_grabMode(None), m_geTitle(nullptr), 
-                                                                m_windowArea({ 100,100,640,480 }), m_dockedArea({ 0,0,640,480 })
+DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked(true), m_grabMode(None), m_geTitle(nullptr), m_windowArea({ 100,100,640,480 })
 {
     m_window = SDL_CreateWindow(m_title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_windowArea.w, m_windowArea.h, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
@@ -236,6 +235,9 @@ DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked
     m_horizScroll = 0;
     m_targetVertScroll = 0;
     m_targetHorizScroll = 0;
+
+    m_clipArea = { 0, 0, -1, -1 };
+    m_dockedArea = m_clipArea;
 }
 
 void DockableWindow::OnRendererChange()
@@ -282,7 +284,7 @@ void DockableWindow::LayoutIcons()
     auto settings = gApp->GetSettings();
     GenerateTitleGE();
     m_geTitle->SetPos(m_renderArea.x + settings->textXMargin, m_renderArea.y + settings->textYMargin);
-    int leftX = m_isDocked ? m_geTitle->GetRect().x + m_geTitle->GetRect().w + settings->textXMargin : settings->textXMargin;
+    int leftX = m_geTitle->GetRect().x + m_geTitle->GetRect().w + settings->textXMargin;
     for (auto item : m_titleIconsLeft)
     {
         int w = item->GetWidth();
@@ -339,27 +341,31 @@ void DockableWindow::DrawTitle()
 {
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
-    SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
-    SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
-    SDL_RenderFillRect(r, &titleRect);
 
-    SDL_SetRenderDrawColor(r, 32+32, 64+32, 128+32, 255);
-    SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y, m_renderArea.x + m_renderArea.w, m_renderArea.y);
-
-    SDL_SetRenderDrawColor(r, 32-32, 64-32, 128-32, 255);
-    SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y+settings->lineHeight-1, m_renderArea.x + m_renderArea.w, m_renderArea.y + settings->lineHeight - 1);
-
-    SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
-    GenerateTitleGE();
-    m_geTitle->Render(r);
-
-    for (auto icon : m_titleIconsLeft)
+    if ((m_renderArea.y + m_renderArea.h > m_clipArea.y) && (m_renderArea.y <= m_clipArea.y + m_clipArea.h))
     {
-        icon->Draw(r);
-    }
-    for (auto icon : m_titleIconsRight)
-    {
-        icon->Draw(r);
+        SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
+        SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
+        SDL_RenderFillRect(r, &titleRect);
+
+        SDL_SetRenderDrawColor(r, 32 + 32, 64 + 32, 128 + 32, 255);
+        SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y, m_renderArea.x + m_renderArea.w, m_renderArea.y);
+
+        SDL_SetRenderDrawColor(r, 32 - 32, 64 - 32, 128 - 32, 255);
+        SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y + settings->lineHeight - 1, m_renderArea.x + m_renderArea.w, m_renderArea.y + settings->lineHeight - 1);
+
+        SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
+        GenerateTitleGE();
+        m_geTitle->Render(r);
+
+        for (auto icon : m_titleIconsLeft)
+        {
+            icon->Draw(r);
+        }
+        for (auto icon : m_titleIconsRight)
+        {
+            icon->Draw(r);
+        }
     }
 }
 
@@ -432,9 +438,12 @@ void DockableWindow::DrawContent()
     {
         DrawChild();
     }
+
+    if (!m_isDocked)
+        SDL_RenderPresent(r);
 }
 
-void DockableWindow::SetRect(const SDL_Rect& rect)
+void DockableWindow::SetDockedRect(const SDL_Rect& rect)
 {
     auto settings = gApp->GetSettings();
     m_dockedArea = rect;

@@ -324,9 +324,10 @@ void DockableManager::Draw()
                 area.h = win.m_window->GetContentHeight() + settings->lineHeight;
                 if (((area.y + area.h) >= m_contentArea.y) && (area.y <= (m_contentArea.y + m_contentArea.h)))
                 {
-                    win.m_window->SetRect(titleArea);
+                    win.m_window->SetClipRect(m_area);
+                    win.m_window->SetDockedRect(titleArea);
                     win.m_window->DrawTitle();
-                    win.m_window->SetRect(area);
+                    win.m_window->SetDockedRect(area);
                     win.m_window->DrawContent();
                     m_renderedContentWidth = SDL_max(m_renderedContentWidth, win.m_window->GetContentWidth());
                 }
@@ -351,6 +352,8 @@ void DockableManager::Draw()
     {
         if (win.m_enabled && !win.m_window->IsDocked())
         {
+            SDL_Rect rect = { 0, 0, win.m_window->GetWindowArea().w, win.m_window->GetWindowArea().h };
+            win.m_window->SetClipRect(rect);
             win.m_window->DrawTitle();
             win.m_window->DrawContent();
         }

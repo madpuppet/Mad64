@@ -5,6 +5,7 @@
 #include "dockableWindow_log.h"
 #include "dockableWindow_emulatorScreen.h"
 #include "dockableWindow_searchAndReplace.h"
+#include "dockableWindow_memoryDump.h"
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
@@ -100,7 +101,7 @@ Application::Application()
         m_windowRegisters = new DockableWindow_Log("System Registers");
         m_windowLabels = new DockableWindow_Log("Labels");
         m_windowEmulatorScreen = new DockableWindow_EmulatorScreen("Emulator Screen");
-        m_windowMemoryDump = new DockableWindow_Log("Memory Dump");
+        m_windowMemoryDump = new DockableWindow_MemoryDump("Memory Dump");
         m_windowSearchAndReplace = new DockableWindow_SearchAndReplace("Search and Replace");
 
         Log("Set open logs");
@@ -1559,6 +1560,13 @@ void Application::ApplyClippingStack(ClippingStack *stack)
         SDL_RenderSetClipRect(stack->m_renderer, &activeRect);
     }
 }
+SDL_Rect Application::GetActiveClipRect(SDL_Renderer *r)
+{
+    SDL_Rect rect;
+    SDL_RenderGetClipRect(r, &rect);
+    return rect;
+}
+
 void Application::PushClippingRect(SDL_Renderer* r, SDL_Rect* rect)
 {
     ClippingStack* stack = FindClippingStack(r);

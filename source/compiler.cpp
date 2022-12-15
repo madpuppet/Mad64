@@ -329,7 +329,7 @@ CompilerExpressionOpcode* Compiler::FindPrefixExprOpcode(string& token)
     return nullptr;
 }
 
-bool HexToNumber(string& token, int& value)
+bool HexToNumber(const string& token, int& value)
 {
     value = 0;
     for (int i = 0; i < (int)token.size(); i++)
@@ -344,7 +344,7 @@ bool HexToNumber(string& token, int& value)
     return true;
 }
 
-bool BinaryToNumber(string& token, int& value)
+bool BinaryToNumber(const string& token, int& value)
 {
     value = 0;
     for (int i = 0; i < (int)token.size(); i++)
@@ -359,7 +359,7 @@ bool BinaryToNumber(string& token, int& value)
     return true;
 }
 
-bool Base4ToNumber(string& token, int& value)
+bool Base4ToNumber(const string& token, int& value)
 {
     value = 0;
     for (int i = 0; i < (int)token.size(); i++)
@@ -394,7 +394,7 @@ Compiler::~Compiler()
     delete m_activeFile;
 }
 
-CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* csi, string& name, LabelResolve resolve, u32 resolveStartAddr)
+CompilerLabel* Compiler::FindLabel(CompilerSourceInfo* csi, const string& name, LabelResolve resolve, u32 resolveStartAddr)
 {
     if (resolve == LabelResolve_Global)
     {

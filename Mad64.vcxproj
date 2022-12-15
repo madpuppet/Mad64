@@ -167,6 +167,7 @@
     <ClCompile Include="source\dockableWindow.cpp" />
     <ClCompile Include="source\dockableWindow_emulatorScreen.cpp" />
     <ClCompile Include="source\dockableWindow_log.cpp" />
+    <ClCompile Include="source\dockableWindow_memoryDump.cpp" />
     <ClCompile Include="source\dockableWindow_searchAndReplace.cpp" />
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\emulatorc64.cpp" />
@@ -294,6 +295,7 @@
     <ClInclude Include="source\contextualHelp.h" />
     <ClInclude Include="source\dockableManager.h" />
     <ClInclude Include="source\dockableWindow.h" />
+    <ClInclude Include="source\dockableWindow_memoryDump.h" />
     <ClInclude Include="source\dockableWindow_searchAndReplace.h" />
     <ClInclude Include="source\dockableWindow_emulatorScreen.h" />
     <ClInclude Include="source\dockableWindow_log.h" />

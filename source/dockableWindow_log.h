@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dockableWindow.h"
+#include "uiItem_textBox.h"
 
 class DockableWindow_Log : public DockableWindow
 {
@@ -22,6 +23,9 @@ public:
     void OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel);
 
 protected:
+    void OnFilterStringEnter(const string& text);
+    void OnFilterStringChange(const string& text);
+
     struct LineItem
     {
         int y;
@@ -39,6 +43,8 @@ protected:
     vector<LineItem> m_items;
     vector<RenderedItem> m_renderedItems;
     int m_renderedWidth;
+    int m_renderedHeight;
+    UIItem_TextBox* m_filterBox;
 };
 
 
