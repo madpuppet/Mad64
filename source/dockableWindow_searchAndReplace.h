@@ -43,6 +43,9 @@ protected:
     void LogFoundItems();
     void ReSearch(const string& text, int minSize);
 
+    void ActivateSearch();
+    void ActivateReplace();
+
     struct LineItem
     {
         int y;

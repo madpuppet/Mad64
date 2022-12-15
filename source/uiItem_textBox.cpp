@@ -25,6 +25,19 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
 			SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 		SDL_RenderFillRect(r, &m_area);
 
+		if (m_isSelected)
+		{
+			SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
+			SDL_Point points[5] = {
+				{m_area.x, m_area.y},
+				{m_area.x + m_area.w - 1, m_area.y},
+				{m_area.x + m_area.w - 1, m_area.y + m_area.h - 1},
+				{m_area.x, m_area.y + m_area.h - 1},
+				{m_area.x, m_area.y}
+			};
+			SDL_RenderDrawLines(r, points, 5);
+		}
+
 		if (m_text.empty() && !m_isSelected)
 		{
 			if (m_geHintText)
@@ -221,6 +234,18 @@ void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, u32 sym, u32 mod)
 			case SDLK_RETURN:
 				m_cursorAnim = 0;
 				m_onEnter(m_text);
+				return;
+			case SDLK_TAB:
+				if (mod & KMOD_SHIFT)
+				{
+					if (m_onShiftTab)
+						m_onShiftTab();
+				}
+				else
+				{
+					if (m_onTab)
+						m_onTab();
+				}
 				return;
 			case SDLK_v:
 				if (mod & KMOD_CTRL)

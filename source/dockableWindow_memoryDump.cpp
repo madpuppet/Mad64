@@ -90,9 +90,23 @@ void DockableWindow_MemoryDump::CreateChildIcons()
     int width = gApp->GetWhiteSpaceWidth() * 12;
     m_memoryStartBox = new UIItem_TextBox("", "<start>", width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
     m_memoryEndBox = new UIItem_TextBox("", "<end>", width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
+    m_memoryStartBox->SetTabCallbacks(DELEGATE(DockableWindow_MemoryDump::ActivateEndBox), DELEGATE(DockableWindow_MemoryDump::ActivateEndBox));
+    m_memoryEndBox->SetTabCallbacks(DELEGATE(DockableWindow_MemoryDump::ActivateStartBox), DELEGATE(DockableWindow_MemoryDump::ActivateStartBox));
+
     m_titleIconsLeft.push_back(m_memoryStartBox);
     m_titleIconsLeft.push_back(m_memoryEndBox);
 }
+
+void DockableWindow_MemoryDump::ActivateStartBox() 
+{
+    m_memoryStartBox->SetSelected(true);
+}
+
+void DockableWindow_MemoryDump::ActivateEndBox()
+{
+    m_memoryEndBox->SetSelected(true);
+}
+
 
 int DockableWindow_MemoryDump::GetContentHeight()
 {

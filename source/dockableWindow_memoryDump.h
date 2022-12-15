@@ -21,6 +21,9 @@ public:
 protected:
     void OnRangeChange(const string& text);
 
+    void ActivateStartBox();
+    void ActivateEndBox();
+
     int m_renderedWidth;
     int m_renderedHeight;
     UIItem_TextBox* m_memoryStartBox;

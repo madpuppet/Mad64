@@ -73,10 +73,22 @@ void DockableWindow_SearchAndReplace::DrawChild()
 void DockableWindow_SearchAndReplace::CreateChildIcons()
 {
     m_searchBox = new UIItem_TextBox("S", "<search>", 200, DELEGATE(DockableWindow_SearchAndReplace::OnSearchStringEnter), DELEGATE(DockableWindow_SearchAndReplace::OnSearchStringChange));
+    m_searchBox->SetTabCallbacks(DELEGATE(DockableWindow_SearchAndReplace::ActivateReplace), DELEGATE(DockableWindow_SearchAndReplace::ActivateReplace));
     m_replaceBox = new UIItem_TextBox("R", "<replace>", 200, DELEGATE(DockableWindow_SearchAndReplace::OnReplaceStringEnter), DELEGATE(DockableWindow_SearchAndReplace::OnReplaceStringChange));
+    m_replaceBox->SetTabCallbacks(DELEGATE(DockableWindow_SearchAndReplace::ActivateSearch), DELEGATE(DockableWindow_SearchAndReplace::ActivateSearch));
     m_titleIconsLeft.push_back(m_searchBox);
     m_titleIconsLeft.push_back(m_replaceBox);
 }
+
+void DockableWindow_SearchAndReplace::ActivateSearch()
+{
+    m_searchBox->SetSelected(true);
+}
+void DockableWindow_SearchAndReplace::ActivateReplace()
+{
+    m_replaceBox->SetSelected(true);
+}
+
 
 void DockableWindow_SearchAndReplace::LogText(const string& text, int lineNmbr, int color, int addr)
 {

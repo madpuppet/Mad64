@@ -22,6 +22,12 @@ public:
 
     ~UIItem_TextBox();
 
+    void SetTabCallbacks(const EventHook& onTab, const EventHook& onShiftTab)
+    {
+        m_onTab = onTab;
+        m_onShiftTab = onShiftTab;
+    }
+
     // virtuals
     void Draw(SDL_Renderer* renderer);
     void OnButtonDown(int button, int x, int y);
@@ -49,6 +55,8 @@ protected:
 
     TextHook m_onEnter;
     TextHook m_onChange;
+    EventHook m_onTab;
+    EventHook m_onShiftTab;
 
     GraphicElement* m_geTitleText;
     GraphicElement* m_geHintText;
