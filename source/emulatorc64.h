@@ -48,8 +48,8 @@ public:
 	Cpu6502* GetCpu() { return m_cpu; }
 	Vic* GetVic() { return m_vic; }
 
-	void OnKeyDown(SDL_Event* e) { m_cia1->OnKeyDown(e); }
-	void OnKeyUp(SDL_Event* e) { m_cia1->OnKeyUp(e); }
+	void OnKeyDown(u32 sym, u32 mod) { m_cia1->OnKeyDown(sym, mod); }
+	void OnKeyUp(u32 sym, u32 mod) { m_cia1->OnKeyUp(sym, mod); }
 
 	void OnJoystickButtonDown(SDL_Event* e) { m_cia1->OnJoystickButtonDown(e); }
 	void OnJoystickButtonUp(SDL_Event* e) { m_cia1->OnJoystickButtonUp(e); }

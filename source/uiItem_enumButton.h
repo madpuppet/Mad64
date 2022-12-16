@@ -1,17 +1,19 @@
 #pragma once
 #include "uiItem.h"
 
-class UIItem_TextButton : public UIItem
+class UIItem_EnumButton : public UIItem
 {
 public:
-    UIItem_TextButton(const string& text, const ButtonPressHook& onPress)
+    UIItem_EnumButton(int initialOption, const vector<string> &options, int fixedWidth, const EnumChangeHook& onChange)
     {
-        m_text = text;
-        m_onButtonPress = onPress;
+        m_options = options;
+        m_onChange = onChange;
         m_geButtonText = nullptr;
+        m_currentOption = initialOption;
+        m_fixedWidth = fixedWidth;
     }
 
-    ~UIItem_TextButton();
+    ~UIItem_EnumButton();
     void Draw(SDL_Renderer* renderer);
     void OnButtonDown(int button, int x, int y);
     void OnButtonUp(int button, int x, int y);
@@ -30,8 +32,10 @@ public:
 protected:
     void BuildGE(SDL_Renderer* r);
 
-    string m_text;
-    ButtonPressHook m_onButtonPress;
+    int m_currentOption;
+    int m_fixedWidth;
+    vector<string> m_options;
+    EnumChangeHook m_onChange;
     GraphicElement* m_geButtonText;
     SDL_Rect m_area;
     bool m_highlight;

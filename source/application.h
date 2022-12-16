@@ -14,7 +14,7 @@ class DockableWindow_Log;
 class DockableWindow_EmulatorScreen;
 class DockableWindow_SearchAndReplace;
 class DockableWindow_MemoryDump;
-
+class DockableWindow_MemoryImage;
 
 enum CursorType
 {
@@ -38,6 +38,7 @@ public:
     bool IsEmulatorRunning() { return m_runEmulation; }
 
     TTF_Font* GetFont() { return m_font; }
+    TTF_Font* GetFontC64() { return m_fontC64; }
     SDL_Renderer* GetRenderer() { return m_renderer; }
     SDL_Window* GetWindow() { return m_window; }
     AppSettings* GetSettings() { return m_settings; }
@@ -54,6 +55,7 @@ public:
     DockableWindow_EmulatorScreen* GetWindowEmulatorScreen() { return m_windowEmulatorScreen; }
     DockableWindow_Log* GetWindowLabels() { return m_windowLabels; }
     DockableWindow_SearchAndReplace* GetWindowSearchAndReplace() { return m_windowSearchAndReplace; }
+    DockableWindow_MemoryImage* GetWindowMemoryImage() { return m_windowMemoryImage; }
 
     int GetWhiteSpaceWidth() { return m_whiteSpaceWidth; }
     float GetTimeDelta() { return m_timeDelta; }
@@ -92,6 +94,9 @@ public:
     void PopClippingRect(SDL_Renderer* r);
     SDL_Rect GetActiveClipRect(SDL_Renderer* r);
 
+    void DoEmuColdReset();
+    void DoEmuTogglePlay();
+
 protected:
     vector<SourceFile*> m_sourceFiles;
     vector<u16> m_memoryBreakpoints;
@@ -124,6 +129,7 @@ protected:
     // RESOURCES
     SDL_Window* m_window;
     TTF_Font* m_font;
+    TTF_Font* m_fontC64;
     int m_whiteSpaceWidth;
     SDL_Renderer* m_renderer;
     EditWindow* m_editWindow;
@@ -143,6 +149,7 @@ protected:
     DockableWindow_EmulatorScreen* m_windowEmulatorScreen;
     DockableWindow_Log* m_windowLabels;
     DockableWindow_SearchAndReplace* m_windowSearchAndReplace;
+    DockableWindow_MemoryImage* m_windowMemoryImage;
 
     enum InputCapture
     {

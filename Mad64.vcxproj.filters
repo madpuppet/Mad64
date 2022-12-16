@@ -98,6 +98,12 @@
     <ClCompile Include="source\dockableWindow_memoryDump.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="source\dockableWindow_memoryImage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\uiItem_enumButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="source\common.h">
@@ -458,6 +464,12 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\dockableWindow_memoryDump.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\dockableWindow_memoryImage.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="source\uiItem_enumButton.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

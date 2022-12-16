@@ -175,13 +175,13 @@ void UIItem_TextBox::OnCapturedTextInput(bool lostCapture, const string &text)
 	}
 }
 
-void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, u32 sym, u32 mod)
+void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym, u32 mod)
 {
 	if (lostCapture)
 	{
 		m_isSelected = false;
 	}
-	else
+	else if (keyDown)
 	{
 		switch (sym)
 		{

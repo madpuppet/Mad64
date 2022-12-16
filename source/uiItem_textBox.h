@@ -46,7 +46,7 @@ public:
 protected:
     void BuildGE(SDL_Renderer* r);
     void OnCapturedTextInput(bool lostCapture, const string& text);
-    void OnCapturedKeyInput(bool lostCapture, u32 sym, u32 mod);
+    void OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym, u32 mod);
 
     string m_titleText;
     string m_hintText;

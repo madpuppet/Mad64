@@ -6,6 +6,7 @@
 #include "dockableWindow_emulatorScreen.h"
 #include "dockableWindow_searchAndReplace.h"
 #include "dockableWindow_memoryDump.h"
+#include "dockableWindow_memoryImage.h"
 
 // todo - cross platform way to launch the emulator
 #if defined(_WIN32)
@@ -74,6 +75,9 @@ Application::Application()
         }
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
 
+        m_fontC64 = TTF_OpenFont("fontc64.ttf", m_settings->fontSize);
+
+
         Log("Create Renderer");
 
 #if defined(__APPLE__)
@@ -103,6 +107,7 @@ Application::Application()
         m_windowEmulatorScreen = new DockableWindow_EmulatorScreen("Emulator Screen");
         m_windowMemoryDump = new DockableWindow_MemoryDump("Memory Dump");
         m_windowSearchAndReplace = new DockableWindow_SearchAndReplace("Search and Replace");
+        m_windowMemoryImage = new DockableWindow_MemoryImage("Memory Usage");
 
         Log("Set open logs");
         m_logWindow->SetOpenLogs(m_settings->openLogs);
@@ -138,6 +143,7 @@ Application::Application()
     m_dockableMgr->AddWindow(m_windowHelp, "HLP", true, true);
     m_dockableMgr->AddWindow(m_windowLabels, "LAB", true, true);
     m_dockableMgr->AddWindow(m_windowRegisters, "REG", true, true);
+    m_dockableMgr->AddWindow(m_windowMemoryImage, "MEM", true, true);
     m_dockableMgr->AddWindow(m_windowEmulatorScreen, "EMU", true, true);
     m_dockableMgr->AddWindow(m_windowMemoryDump, "DMP", true, true);
 }
@@ -151,6 +157,9 @@ void Application::ReloadFont()
         m_font = newFont;
         TTF_GlyphMetrics(m_font, ' ', nullptr, nullptr, nullptr, nullptr, &m_whiteSpaceWidth);
     }
+
+    TTF_CloseFont(m_fontC64);
+    m_fontC64 = TTF_OpenFont("fontc64.ttf", m_settings->fontSize);
 
     m_editWindow->ClearVisuals();
 
@@ -685,9 +694,10 @@ void Application::OnKeyDown(SDL_Event* e)
 {
     if (m_keyInputCapture)
     {
-        m_keyInputCapture(false, (u32)e->key.keysym.sym, (u32)e->key.keysym.mod);
+        m_keyInputCapture(false, true, (u32)e->key.keysym.sym, (u32)e->key.keysym.mod);
     }
-    else
+
+    if (!m_keyInputCapture || e->key.keysym.mod & KMOD_ALT)
     {
         switch (e->key.keysym.sym)
         {
@@ -824,14 +834,7 @@ void Application::OnKeyDown(SDL_Event* e)
                 return;
             case SDLK_F6:
                 {
-                    if (m_editWindow->IsActiveAsmFile())
-                    {
-                        auto file = m_editWindow->GetActiveFile();
-                        auto compiledFile = file->GetCompileInfo();
-                        ApplyBreakpoints();
-                        m_emulator->ColdReset(compiledFile->m_ramDataMap, compiledFile->m_ramMask);
-                        m_runEmulation = false;
-                    }
+                    DoEmuColdReset();
                 }
                 break;
 
@@ -891,11 +894,33 @@ void Application::OnKeyDown(SDL_Event* e)
     }
 }
 
+void Application::DoEmuTogglePlay()
+{
+    m_runEmulation = !m_runEmulation;
+}
+
+void Application::DoEmuColdReset()
+{
+    if (m_editWindow->IsActiveAsmFile())
+    {
+        auto file = m_editWindow->GetActiveFile();
+        auto compiledFile = file->GetCompileInfo();
+        ApplyBreakpoints();
+        m_emulator->ColdReset(compiledFile->m_ramDataMap, compiledFile->m_ramMask);
+        m_runEmulation = false;
+    }
+}
+
 void Application::OnKeyUp(SDL_Event* e)
 {
-//        m_emulator->OnKeyUp(e);
-
-    m_editWindow->OnKeyUp(e);
+    if (m_keyInputCapture)
+    {
+        m_keyInputCapture(false, false, (u32)e->key.keysym.sym, (u32)e->key.keysym.mod);
+    }
+    else
+    {
+        m_editWindow->OnKeyUp(e);
+    }
 }
 
 int Application::GetCurrentIndent(string& chars)
@@ -1508,7 +1533,7 @@ void Application::SetCaptureTextInput(TextCaptureHook hook)
 void Application::SetCaptureKeyInput(KeyCaptureHook hook)
 {
     if (m_keyInputCapture != nullptr)
-        m_keyInputCapture(true, 0, 0);
+        m_keyInputCapture(true, false, 0, 0);
 
     m_keyInputCapture = hook;
 }

@@ -4,6 +4,7 @@
 #include "contextualHelp.h"
 #include "emulatorc64.h"
 #include "dockableWindow_log.h"
+#include "dockableWindow_memoryImage.h"
 
 char s_asciiToScreenCode[] = {
     0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,       // 00
@@ -1442,8 +1443,7 @@ void Compiler::Update()
                     winLabels->LogText(FormatString("%s : %1.2f", l->m_name.c_str(), l->m_value), l->m_lineNmbr, 0, 0);
             }
 
-            auto lw = gApp->GetLogWindow();
-            lw->SetMemMap(m_compiledFile->m_ramColorMap);
+            gApp->GetWindowMemoryImage()->SetMemMap(m_compiledFile->m_ramColorMap);
 
             auto winCom = gApp->GetWindowCompiler();
             winCom->Clear();

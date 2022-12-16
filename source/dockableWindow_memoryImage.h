@@ -2,10 +2,10 @@
 
 #include "dockableWindow.h"
 
-class DockableWindow_EmulatorScreen : public DockableWindow
+class DockableWindow_MemoryImage : public DockableWindow
 {
 public:
-    DockableWindow_EmulatorScreen(const string& title) : DockableWindow(title) {}
+    DockableWindow_MemoryImage(const string& title);
 
     int GetContentHeight();
     int GetContentWidth();
@@ -19,14 +19,15 @@ public:
 
     int m_zoomLevel = 2;
 
-    void OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym, u32 mod);
-    void OnCapturedTextInput(bool lostCapture, const string& text) {}
+    void SetMemMap(u8* colorMap) { memcpy(m_memMap, colorMap, 65536); m_memMapDirty = true; }
 
 protected:
-    void OnResetPress();
-    void OnPlayPress();
-
     int GetScreenRenderWidth();
     int GetScreenRenderHeight();
-    bool m_capturingInput;
+
+    u8* m_memMap;
+    SDL_Texture* m_memMapTexture;
+    bool m_memMapDirty;
+    float m_markerAnim;
 };
+

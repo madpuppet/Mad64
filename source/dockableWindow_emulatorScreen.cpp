@@ -1,5 +1,6 @@
 #include "common.h"
 #include "dockableWindow_emulatorScreen.h"
+#include "uiItem_textButton.h"
 
 #define BORDER_SIZE 2
 
@@ -45,6 +46,13 @@ void DockableWindow_EmulatorScreen::DrawChild()
 	SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
 	SDL_RenderCopy(r, tex, nullptr, &area);
 
+	if (m_capturingInput)
+	{
+		SDL_Point points[5] = { {area.x,area.y}, {area.x + area.w - 1,area.y}, {area.x + area.w,area.y + area.h - 1}, {area.x, area.y + area.h - 1}, {area.x, area.y} };
+		SDL_SetRenderDrawColor(r, 255, 255, 0, 255);
+		SDL_RenderDrawLines(r, points, 5);
+	}
+
 	if (!gApp->IsEmulatorRunning())
 	{
 		// draw flashing box at current raster line / raster byte
@@ -75,17 +83,50 @@ void DockableWindow_EmulatorScreen::OnChildRendererChange()
 
 void DockableWindow_EmulatorScreen::CreateChildIcons()
 {
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Reset", DELEGATE(DockableWindow_EmulatorScreen::OnResetPress)));
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Play", DELEGATE(DockableWindow_EmulatorScreen::OnPlayPress)));
+}
 
+void DockableWindow_EmulatorScreen::OnResetPress()
+{
+	gApp->DoEmuColdReset();
+	if (!gApp->IsEmulatorRunning())
+		gApp->DoEmuTogglePlay();
+}
+
+void DockableWindow_EmulatorScreen::OnPlayPress()
+{
+	gApp->DoEmuTogglePlay();
 }
 
 void DockableWindow_EmulatorScreen::OnMouseButtonDown(int button, int x, int y)
 {
+	gApp->SetCaptureKeyInput(DELEGATE(DockableWindow_EmulatorScreen::OnCapturedKeyInput));
+	gApp->SetCaptureTextInput(DELEGATE(DockableWindow_EmulatorScreen::OnCapturedTextInput));
+	m_capturingInput = true;
+
     DockableWindow::OnMouseButtonDown(button, x, y);
 }
 
 void DockableWindow_EmulatorScreen::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
 {
     DockableWindow::OnMouseMotion(xAbs, yAbs, xRel, yRel);
+}
+
+void DockableWindow_EmulatorScreen::OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym, u32 mod)
+{
+	if (lostCapture)
+	{
+		m_capturingInput = false;
+	}
+	else if (keyDown)
+	{
+		gApp->GetEmulator()->OnKeyDown(sym, mod);
+	}
+	else
+	{
+		gApp->GetEmulator()->OnKeyUp(sym, mod);
+	}
 }
 
 

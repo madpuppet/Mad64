@@ -190,4 +190,4 @@ sinewave:
 
 sinewaveHigh:
 .generate.b 0,255,((sin(I/256*PI*16)*10+240)/256)
-
+    

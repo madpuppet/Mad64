@@ -219,12 +219,12 @@ void Cia1::WriteReg(u16 addr, u8 val)
     }
 }
 
-void Cia1::OnKeyDown(SDL_Event* e)
+void Cia1::OnKeyDown(u32 symbol, u32 mod)
 {
     // check for special keys
     for (auto &k : m_keys)
     {
-        if (e->key.keysym.sym == k.symbol && e->key.keysym.mod == k.modifier)
+        if (symbol == k.symbol && mod == k.modifier)
         {
             m_keyStateAnd[(k.code >> 4)] &= ~(1 << (k.code & 7));
             if (k.secondary)
@@ -239,7 +239,7 @@ void Cia1::OnKeyDown(SDL_Event* e)
         }
     }
 
-    int sym = (e->key.keysym.sym >> 22) | (e->key.keysym.sym & 255);
+    int sym = (symbol >> 22) | (symbol & 255);
     int dat = m_keyMap[sym];
     if (dat != -1)
     {
@@ -249,13 +249,13 @@ void Cia1::OnKeyDown(SDL_Event* e)
     }
 }
 
-void Cia1::OnKeyUp(SDL_Event* e)
+void Cia1::OnKeyUp(u32 symbol, u32 mod)
 {
     // check for special keys
     for (auto it = m_keyDown.begin(); it != m_keyDown.end(); it++)
     {
         auto &k = *it;
-        if (e->key.keysym.sym == k.symbol)
+        if (symbol == k.symbol)
         {
             m_keyStateAnd[(k.code >> 4)] |= (1 << (k.code & 7));
             if (k.secondary)
@@ -270,7 +270,7 @@ void Cia1::OnKeyUp(SDL_Event* e)
         }
     }
 
-    int sym = (e->key.keysym.sym >> 22) | (e->key.keysym.sym & 255);
+    int sym = (symbol >> 22) | (symbol & 255);
     int dat = m_keyMap[sym];
     if (dat != -1)
     {

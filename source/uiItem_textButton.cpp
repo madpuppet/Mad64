@@ -10,25 +10,38 @@ void UIItem_TextButton::Draw(SDL_Renderer* r)
     BuildGE(r);
 
     auto settings = gApp->GetSettings();
-    SDL_SetRenderDrawColor(r, 255, 255, 255, 128);
+    if (m_highlight)
+        SDL_SetRenderDrawColor(r, 128, 128, 0, 128);
+    else
+        SDL_SetRenderDrawColor(r, 0, 0, 0, 128);
+
     SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
     SDL_RenderFillRect(r, &m_area);
+    SDL_SetRenderDrawColor(r, 255, 255, 255, 128);
+    SDL_RenderDrawLine(r, m_area.x, m_area.y, m_area.x + m_area.w - 1, m_area.y);
+    SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+    SDL_RenderDrawLine(r, m_area.x, m_area.y + m_area.h - 1, m_area.x + m_area.w - 1, m_area.y + m_area.h - 1);
 
     if (m_geButtonText)
     {
-        SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
         m_geButtonText->RenderAt(r, m_area.x + 4, m_area.y + settings->textYMargin);
     }
+
 }
 
 void UIItem_TextButton::OnButtonDown(int button, int x, int y)
 {
     if (button == 1)
+    {
         m_onButtonPress();
+        m_highlight = true;
+    }
 }
 
 void UIItem_TextButton::OnButtonUp(int button, int x, int y) 
 {
+    m_highlight = false;
 }
 
 int UIItem_TextButton::GetWidth()

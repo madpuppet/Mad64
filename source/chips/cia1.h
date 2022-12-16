@@ -124,8 +124,8 @@ public:
     void SetTriggerInterrupt(const InterruptHook& hook) { TriggerInterrupt = hook; }
 
     // capture keyboard
-    void OnKeyDown(SDL_Event* e);
-    void OnKeyUp(SDL_Event* e);
+    void OnKeyDown(u32 sym, u32 mod);
+    void OnKeyUp(u32 sym, u32 mod);
 
     // capture joystick state
     void OnJoystickButtonDown(SDL_Event* e);
