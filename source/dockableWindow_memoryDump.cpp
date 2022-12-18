@@ -3,7 +3,7 @@
 
 void DockableWindow_MemoryDump::OnChildRendererChange()
 {
-    RecreateTexture();
+    FreeTexture();
 }
 
 void DockableWindow_MemoryDump::DrawChild()
@@ -26,22 +26,16 @@ void DockableWindow_MemoryDump::DrawChild()
             DrawPetsci();
             break;
         case MODE_Sprite:
+        case MODE_SpriteMC:
             DrawSprite();
             break;
-        case MODE_SpriteMC:
-            DrawSpriteMC();
-            break;
         case MODE_CharSet:
+        case MODE_CharSetMC:
             DrawCharSet();
             break;
-        case MODE_CharSetMC:
-            DrawCharSetMC();
-            break;
         case MODE_Bitmap:
-            DrawBitmap();
-            break;
         case MODE_BitmapMC:
-            DrawBitmapMC();
+            DrawBitmap();
             break;
     }
 }
@@ -77,82 +71,67 @@ int TextToNumber(const string& token)
 void DockableWindow_MemoryDump::OnModeChange(int mode)
 {
     m_currentMode = (Mode)mode;
-
-    RecreateTexture();
-}
-
-void DockableWindow_MemoryDump::RecreateTexture()
-{
-    if (m_memMapTexture)
-    {
-        SDL_DestroyTexture(m_memMapTexture);
-        delete[] m_memMap;
-        m_memMapTexture = nullptr;
-        m_memMap = nullptr;
-    }
-
-    switch (m_currentMode)
-    {
-        case MODE_Sprite:
-        case MODE_SpriteMC:
-            {
-                int width = 24;
-                int height = ((m_memoryEnd - m_memoryStart + 63) / 64) * 21;
-                m_memMapTexture = SDL_CreateTexture(GetRenderer(), SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, width, height);
-                m_memMap = (u8*)malloc(width * height * 3);
-            }
-            break;
-
-        case MODE_CharSet:
-        case MODE_CharSetMC:
-            break;
-
-        case MODE_Bitmap:
-        case MODE_BitmapMC:
-            break;
-    }
 }
 
 void DockableWindow_MemoryDump::OnRangeChange(const string& text)
 {
-    m_memoryStart = 0x0000;
-    m_memoryEnd = 0xffff;
-    m_dataCount = 16;
+    int dataCount = m_dataCount;
+    int memStart = m_memoryStart;
+    int memEnd = m_memoryEnd;
 
     const string& startStr = m_memoryStartBox->GetText();
     const string& endStr = m_memoryEndBox->GetText();
     const string& dataStr = m_dataCountBox->GetText();
     if (!startStr.empty())
     {
-        m_memoryStart = TextToNumber(startStr);
+        memStart = TextToNumber(startStr);
     }
     if (!endStr.empty())
     {
-        m_memoryEnd = TextToNumber(endStr);
+        memEnd = TextToNumber(endStr);
     }
     if (!dataStr.empty())
     {
-        m_dataCount = SDL_clamp(TextToNumber(dataStr), 1, 256);
+        dataCount = SDL_clamp(TextToNumber(dataStr), 1, 256);
+    }
+    if (memEnd > memStart && dataCount > 0)
+    {
+        m_memoryStart = memStart;
+        m_memoryEnd = memEnd;
+        m_dataCount = dataCount;
     }
 }
 
 void DockableWindow_MemoryDump::CreateChildIcons()
 {
     int width = gApp->GetWhiteSpaceWidth() * 12;
-    m_memoryStartBox = new UIItem_TextBox("", "<start>", width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
-    m_memoryEndBox = new UIItem_TextBox("", "<end>", width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
+    m_memoryStartBox = new UIItem_TextBox("", FormatString("$%04x",m_memoryStart), width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
+    m_memoryEndBox = new UIItem_TextBox("", FormatString("$%04x", m_memoryEnd), width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
     m_memoryStartBox->SetTabCallbacks(DELEGATE(DockableWindow_MemoryDump::ActivateEndBox), DELEGATE(DockableWindow_MemoryDump::ActivateEndBox));
     m_memoryEndBox->SetTabCallbacks(DELEGATE(DockableWindow_MemoryDump::ActivateStartBox), DELEGATE(DockableWindow_MemoryDump::ActivateStartBox));
-    m_dataCountBox = new UIItem_TextBox("Count", "<cnt>", width, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
+
+    int cntWidth = gApp->GetWhiteSpaceWidth() * 6;
+    m_dataCountBox = new UIItem_TextBox("", "<col>", cntWidth, DELEGATE(DockableWindow_MemoryDump::OnRangeChange), DELEGATE(DockableWindow_MemoryDump::OnRangeChange));
 
     int modeButtonWidth = gApp->GetWhiteSpaceWidth() * 10;
     vector<string> modes = { "Hex8", "Hex16", "Bin8", "Bin16", "Petsci", "Sprite", "SpriteMC", "CharSet", "CharSetMC", "Bitmap", "BitmapMC", };
     m_modeButton = new UIItem_EnumButton(0, modes, modeButtonWidth, DELEGATE(DockableWindow_MemoryDump::OnModeChange));
 
+    int zoomButtonWidth = gApp->GetWhiteSpaceWidth() * 6;
+    vector<string> zoomLevels = { "x1", "x4", "x8", "x16" };
+    m_zoomButton = new UIItem_EnumButton(0, zoomLevels, zoomButtonWidth, DELEGATE(DockableWindow_MemoryDump::OnZoomChanged));
+    m_titleIconsRight.push_back(m_zoomButton);
+
     m_titleIconsLeft.push_back(m_memoryStartBox);
     m_titleIconsLeft.push_back(m_memoryEndBox);
     m_titleIconsLeft.push_back(m_dataCountBox);
     m_titleIconsLeft.push_back(m_modeButton);
+}
+
+void DockableWindow_MemoryDump::OnZoomChanged(int option)
+{
+    int zoom[] = { 1, 4, 8, 16 };
+    m_zoomLevel = zoom[option];
 }
 
 void DockableWindow_MemoryDump::ActivateStartBox() 
@@ -379,17 +358,111 @@ void DockableWindow_MemoryDump::DrawPetsci()
 
 void DockableWindow_MemoryDump::DrawSprite()
 {
-    // calculate area of screen that is visible
-}
-void DockableWindow_MemoryDump::DrawSpriteMC()
-{
+    auto emu = gApp->GetEmulator();
+    auto settings = gApp->GetSettings();
 
+    int memStart, memEnd;
+    CalcClampedMemoryRange(memStart, memEnd);
+
+    int spriteMin = memStart / 64;
+    int spriteMax = SDL_min(memEnd / 64, 1024);
+
+    // calculate area of screen that needs updating
+    int rowStart = SDL_max(0, spriteMin*21 + (m_clipArea.y - m_contentArea.y + m_vertScroll) / m_zoomLevel);
+    int rowEnd = SDL_max(0, spriteMin*21 + ((m_clipArea.y + m_clipArea.h) - m_contentArea.y + m_vertScroll) / m_zoomLevel);
+
+    int spriteStart = SDL_clamp(rowStart / 21, spriteMin, spriteMax);
+    int spriteEnd = SDL_clamp((rowEnd+20) / 21, spriteMin, spriteMax);
+
+    int visMemStart = spriteStart * 64;
+    int visMemEnd = spriteEnd * 64;
+    if (visMemStart >= visMemEnd)
+        return;
+
+    if (m_textureMode != m_currentMode || visMemStart != m_visMemoryStart || visMemEnd != m_visMemoryEnd)
+    {
+        FreeTexture();
+
+        m_textureMode = m_currentMode;
+        m_visMemoryStart = visMemStart;
+        m_visMemoryEnd = visMemEnd;
+
+        m_textureWidth = 24;
+        m_textureHeight = ((m_visMemoryEnd - m_visMemoryStart) / 64) * 21;
+
+        m_memMapTexture = SDL_CreateTexture(GetRenderer(), SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, m_textureWidth, m_textureHeight);
+        m_memMapSize = m_textureWidth * m_textureHeight;
+        m_memMap = (u8*)malloc(m_memMapSize);
+        memset(m_memMap, 255, m_memMapSize);
+    }
+
+    for (int i = spriteStart; i < spriteEnd; i++)
+    {
+        SDL_Color col = { 255, 255, 255, 255 };
+        GraphicElement::RenderText(GetRenderer(), gApp->GetFont(), FormatString("%04x", i * 64).c_str(), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - spriteMin) * 21 * m_zoomLevel - m_vertScroll);
+    }
+
+    u8* out = m_memMap;
+    u8* outEnd = m_memMap + m_memMapSize;
+    int in = m_visMemoryStart;
+    int inEnd = m_visMemoryEnd;
+
+    if (m_currentMode == MODE_Sprite)
+    {
+        while (in < inEnd)
+        {
+            for (int i = 0; i < 63; i++)
+            {
+                u8 pixel = emu->GetByte(in++);
+                for (int p = 0; p < 8; p++)
+                {
+                    if (pixel & (1 << (7 - p)))
+                    {
+                        *out++ = 255;
+                    }
+                    else
+                    {
+                        *out++ = 0;
+                    }
+                }
+            }
+            in++;
+        }
+    }
+    else
+    {
+        u8 color[] = { 0x00, 0xf0, 0x0f, 0x44 };
+
+        while (in < inEnd)
+        {
+            for (int i = 0; i < 63; i++)
+            {
+                u8 pixel = emu->GetByte(in++);
+                for (int p = 0; p < 4; p++)
+                {
+                    u8 c = color[(pixel >> (6 - p * 2)) & 3];
+                    *out++ = c;
+                    *out++ = c;
+                }
+            }
+            in++;
+        }
+    }
+
+    SDL_assert(out == outEnd);
+    SDL_assert(in == inEnd);
+
+    int xOffset = gApp->GetWhiteSpaceWidth() * 8 + settings->textXMargin;
+    SDL_UpdateTexture(m_memMapTexture, nullptr, m_memMap, 24);
+    SDL_Rect dest = { m_contentArea.x + xOffset - m_horizScroll, m_contentArea.y + (spriteStart-spriteMin)*21*m_zoomLevel - m_vertScroll, m_textureWidth * m_zoomLevel, m_textureHeight * m_zoomLevel };
+
+    SDL_RenderCopy(GetRenderer(), m_memMapTexture, nullptr, &dest);
+
+    m_renderedWidth = dest.w + xOffset;
+    m_renderedHeight = ((memEnd - memStart) / 64) * 21 * m_zoomLevel;
 }
+
 void DockableWindow_MemoryDump::DrawCharSet()
-{
-
-}
-void DockableWindow_MemoryDump::DrawCharSetMC()
 {
 
 }
@@ -397,8 +470,45 @@ void DockableWindow_MemoryDump::DrawBitmap()
 {
 
 }
-void DockableWindow_MemoryDump::DrawBitmapMC()
-{
 
+void DockableWindow_MemoryDump::FreeTexture()
+{
+    if (m_memMapTexture)
+    {
+        SDL_DestroyTexture(m_memMapTexture);
+        delete[] m_memMap;
+        m_memMapTexture = nullptr;
+        m_memMap = nullptr;
+    }
 }
+
+void DockableWindow_MemoryDump::CalcClampedMemoryRange(int& startMem, int& endMem)
+{
+    startMem = SDL_clamp(m_memoryStart, 0, 0x10000);
+    endMem = SDL_clamp(m_memoryEnd, 0, 0x10000);
+
+    switch (m_currentMode)
+    {
+        case MODE_Sprite:
+        case MODE_SpriteMC:
+            {
+                startMem = m_memoryStart & 0x1ffc0;
+                endMem = (m_memoryEnd + 63) & 0x1ffc0;
+                int startSprite = m_memoryStart / 64;
+                int endSprite = (m_memoryEnd+63) / 64;
+                startMem = startSprite * 64;
+                endMem = endSprite * 64;
+            }
+            break;
+
+        case MODE_CharSet:
+        case MODE_CharSetMC:
+            break;
+
+        case MODE_Bitmap:
+        case MODE_BitmapMC:
+            break;
+    }
+}
+
 

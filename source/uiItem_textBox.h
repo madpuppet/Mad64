@@ -40,6 +40,8 @@ public:
 
     // accessors
     void SetText(const string& text);
+    void SetHint(const string& text);
+
     const string& GetText() { return m_text; }
     void SetSelected(bool selected);
 

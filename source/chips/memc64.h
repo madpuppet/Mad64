@@ -8,6 +8,7 @@ public:
     void Step() {};
 
     u8 ReadByte(u16 addr);
+    u8 ReadByteVic(u16 addr);
     void WriteByte(u16 addr, u8 value);
 
     // read byte from current vic 16k bank 0000..3fff

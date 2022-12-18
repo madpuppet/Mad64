@@ -276,6 +276,12 @@ void UIItem_TextBox::SetText(const string& text)
 		m_onChange(m_text);
 }
 
+void UIItem_TextBox::SetHint(const string& text)
+{
+	m_hintText = text;
+	DeleteClear(m_geHintText);
+}
+
 void UIItem_TextBox::SetSelected(bool selected)
 {
 	if (selected != m_isSelected)

@@ -29,6 +29,8 @@ public:
 	// helper to set/get memory in the current emulation
 	u8 GetByte(u16 addr) { return m_mem->ReadByte(addr); }
 	void SetByte(u16 addr, u8 val) { m_mem->WriteByte(addr,val); }
+	u8 GetByteVic(u16 addr) { return m_mem->ReadByteVic(addr); }
+
 
 	void AddBreakpoint(u16 addr, u16 size, u8 breakpointType);
 	void RemoveBreakpoint(u16 addr, u16 size, u8 breakpointType);

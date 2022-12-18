@@ -8,8 +8,8 @@ class DockableWindow_MemoryDump : public DockableWindow
 {
 public:
     DockableWindow_MemoryDump(const string& title) : 
-        m_renderedWidth(64), m_renderedHeight(64), m_memoryStart(0), m_memoryEnd(2048), m_dataCount(16), m_currentMode(MODE_Hex8),
-        m_memMap(nullptr), m_memMapTexture(nullptr),
+        m_renderedWidth(64), m_renderedHeight(64), m_memoryStart(0x800), m_memoryEnd(0x2000), m_dataCount(16), m_currentMode(MODE_Hex8),
+        m_memMap(nullptr), m_memMapSize(0), m_memMapTexture(nullptr), m_zoomLevel(8),
         DockableWindow(title) {}
 
     int GetContentHeight();
@@ -25,7 +25,7 @@ public:
 protected:
     void OnRangeChange(const string& text);
     void OnModeChange(int option);
-    void RecreateTexture();
+    void FreeTexture();
 
     void ActivateStartBox();
     void ActivateEndBox();
@@ -61,16 +61,23 @@ protected:
     void DrawBin16();
     void DrawPetsci();
     void DrawSprite();
-    void DrawSpriteMC();
     void DrawCharSet();
-    void DrawCharSetMC();
     void DrawBitmap();
-    void DrawBitmapMC();
 
-    // for sprite/bitmap modes
+    void CalcClampedMemoryRange(int &startMem, int &endMem);
+    void OnZoomChanged(int option);
+
+    // for sprite memory dump
+    int m_textureMode;
     u8* m_memMap;
+    int m_memMapSize;
     SDL_Texture* m_memMapTexture;
-
+    int m_zoomLevel;
+    int m_textureWidth;
+    int m_textureHeight;
+    int m_visMemoryStart;
+    int m_visMemoryEnd;
+    UIItem_EnumButton* m_zoomButton;
 };
 
 
