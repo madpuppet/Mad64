@@ -38,6 +38,8 @@ int DockableWindow_EmulatorScreen::GetContentWidth()
 
 void DockableWindow_EmulatorScreen::DrawChild()
 {
+	m_animTimer += TIMEDELTA*5.0f;
+
 	auto settings = gApp->GetSettings();
 	auto r = GetRenderer();
 	auto vic = gApp->GetEmulator()->GetVic();
@@ -56,14 +58,13 @@ void DockableWindow_EmulatorScreen::DrawChild()
 	if (!gApp->IsEmulatorRunning())
 	{
 		// draw flashing box at current raster line / raster byte
-#if 0
 		int rasterLine = vic->CurrentRasterLine();
 		int rasterCol = vic->CurrentRasterRow();
-		int sx = 8 * m_emulatorZoom;
+		int sx = 8 * m_zoomLevel;
 		int sy = 2;
-		int xx = item.area.x + rasterCol * 8 * m_emulatorZoom;
-		int yy = item.area.y + rasterLine * m_emulatorZoom;
-		int brightness = (int)(sinf(m_markerAnim * 3.1452f * 2) * 120) + 128;
+		int xx = area.x + rasterCol * 8 * m_zoomLevel;
+		int yy = area.y + rasterLine * m_zoomLevel;
+		int brightness = (int)(sinf(m_animTimer * 3.1452f * 2) * 120) + 128;
 		SDL_SetRenderDrawColor(r, brightness, brightness, brightness, brightness);
 		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
 		SDL_RenderDrawLine(r, xx, yy - sy, xx + sx, yy - sy);
@@ -71,7 +72,6 @@ void DockableWindow_EmulatorScreen::DrawChild()
 		SDL_RenderDrawLine(r, xx + sx, yy + sy, xx, yy + sy);
 		SDL_RenderDrawLine(r, xx, yy + sy, xx, yy - sy);
 		SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_NONE);
-#endif
 	}
 }
 

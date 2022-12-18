@@ -64,7 +64,7 @@ protected:
     void DrawCharSet();
     void DrawBitmap();
 
-    void CalcClampedMemoryRange(int &startMem, int &endMem);
+    void CalcClampedMemoryRange(int &startMem, int &endMem, int &dataCount);
     void OnZoomChanged(int option);
 
     // for sprite memory dump
@@ -77,6 +77,7 @@ protected:
     int m_textureHeight;
     int m_visMemoryStart;
     int m_visMemoryEnd;
+    int m_visDataCount;
     UIItem_EnumButton* m_zoomButton;
 };
 

@@ -37,5 +37,6 @@ protected:
     int GetScreenRenderHeight();
     bool m_capturingInput;
     UIItem_EnumButton* m_zoomButton;
+    float m_animTimer;
 };
 
