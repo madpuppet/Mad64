@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dockableWindow.h"
+#include "uiItem_enumButton.h"
 
 class DockableWindow_EmulatorScreen : public DockableWindow
 {
@@ -23,10 +24,18 @@ public:
     void OnCapturedTextInput(bool lostCapture, const string& text) {}
 
 protected:
+    void OnColdPress();
     void OnResetPress();
     void OnPlayPress();
+    void OnSingleCyclePress();
+    void OnSingleInstructionPress();
+    void OnSingleRowPress();
+    void OnSingleFramePress();
+    void OnZoomChanged(int option);
 
     int GetScreenRenderWidth();
     int GetScreenRenderHeight();
     bool m_capturingInput;
+    UIItem_EnumButton* m_zoomButton;
 };
+

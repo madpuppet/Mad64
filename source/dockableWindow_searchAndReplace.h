@@ -33,9 +33,11 @@ public:
     void OnSearchStringChange(const string& text);
     void OnReplaceStringEnter(const string& text);
     void OnReplaceStringChange(const string& text);
+    void OnFileChange() { ClearAll(); }
 
     vector<int>& GetFoundLines() { return m_searchFoundLines; }
     bool ContainsLine(int lineIdx);
+    void ClearAll();
 
 protected:
     void Clear();

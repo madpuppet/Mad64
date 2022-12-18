@@ -21,6 +21,7 @@ void DockableManager::AddWindow(class DockableWindow* window, const char* iconTe
     DockableWindowItem item;
 
     SDL_Color col = { 255,255,255 };
+    item.m_titleCode = iconText;
     item.m_geTitle = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), iconText, col, 0, 0);
     item.m_window = window;
     item.m_enabled = enabled;
@@ -91,7 +92,7 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
             // check docked windows
             for (auto& win : m_windows)
             {
-                if (win.m_enabled && win.m_window->IsDocked() && Contains(win.m_window->GetArea(), e->button.x, e->button.y))
+                if (win.m_enabled && win.m_window->IsDocked() && (Contains(win.m_window->GetTitleArea(), e->button.x, e->button.y) || Contains(win.m_window->GetRenderArea(), e->button.x, e->button.y)))
                 {
                     win.m_window->OnMouseButtonDown(e->button.button, e->button.x, e->button.y);
                     return true;
@@ -180,7 +181,7 @@ void DockableManager::UpdateCursor(int windowID, int x, int y)
     {
         if (win.m_window->IsDocked())
         {
-            if (Contains(win.m_window->GetArea(), x, y))
+            if (Contains(win.m_window->GetTitleArea(), x, y) || Contains(win.m_window->GetRenderArea(), x, y))
             {
                 win.m_window->UpdateCursor(x, y);
             }
@@ -205,7 +206,7 @@ bool DockableManager::OnMouseMotion(SDL_Event* e)
             // check docked windows
             for (auto& win : m_windows)
             {
-                if (Contains(win.m_window->GetArea(), e->button.x, e->button.y))
+                if (Contains(win.m_window->GetTitleArea(), e->button.x, e->button.y) || Contains(win.m_window->GetRenderArea(), e->button.x, e->button.y))
                 {
                     win.m_window->OnMouseMotion(e->motion.x, e->motion.y, e->motion.xrel, e->motion.yrel);
                     return true;
@@ -239,7 +240,7 @@ bool DockableManager::OnMouseWheel(int windowID, int mouseX, int mouseY, int whe
             // check docked windows
             for (auto& win : m_windows)
             {
-                if (Contains(win.m_window->GetArea(), mouseX, mouseY))
+                if (Contains(win.m_window->GetTitleArea(), mouseX, mouseY) || Contains(win.m_window->GetRenderArea(), mouseX, mouseY))
                 {
                     win.m_window->OnMouseWheel(mouseX, mouseY, wheelX, wheelY);
                     return true;
@@ -315,27 +316,23 @@ void DockableManager::Draw()
 
     {
         ClipRectScope crs(r, &m_contentArea);
-        SDL_Rect area = { m_contentArea.x - m_horizScroll, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
-        SDL_Rect titleArea = { m_contentArea.x, m_contentArea.y - m_vertScroll, m_contentArea.w, m_contentArea.h };
+        SDL_Rect titleArea = { m_contentArea.x, m_contentArea.y - m_vertScroll, m_contentArea.w, settings->lineHeight };
+        SDL_Rect winArea = { m_contentArea.x - m_horizScroll, m_contentArea.y + settings->lineHeight - m_vertScroll, m_contentArea.w, m_contentArea.h - settings->lineHeight };
         for (auto& win : m_windows)
         {
             if (win.m_enabled && win.m_window->IsDocked())
             {
-                area.h = win.m_window->GetContentHeight() + settings->lineHeight;
-                if (((area.y + area.h) >= m_contentArea.y) && (area.y <= (m_contentArea.y + m_contentArea.h)))
-                {
-                    win.m_window->SetClipRect(m_area);
-                    win.m_window->SetDockedRect(titleArea);
-                    win.m_window->DrawTitle();
-                    win.m_window->SetDockedRect(area);
-                    win.m_window->DrawContent();
-                    m_renderedContentWidth = SDL_max(m_renderedContentWidth, win.m_window->GetContentWidth());
-                }
-                area.y += area.h;
-                titleArea.y += area.h;
+                winArea.h = win.m_window->GetContentHeight();
+                win.m_window->SetClipRect(m_area);
+                win.m_window->SetDockedArea(titleArea, winArea);
+                win.m_window->DrawTitle();
+                win.m_window->DrawContent();
+                m_renderedContentWidth = SDL_max(m_renderedContentWidth, win.m_window->GetContentWidth());
+                winArea.y += winArea.h + settings->lineHeight;
+                titleArea.y += winArea.h + settings->lineHeight;
             }
         }
-        m_renderedContentHeight = area.y - (m_contentArea.y - m_vertScroll);
+        m_renderedContentHeight = winArea.y - (m_contentArea.y - m_vertScroll);
     }
 
     CalcScrollBars();
@@ -415,6 +412,22 @@ void DockableManager::CalcScrollBars()
     m_horizBarArea = { hBarStart, m_horizBarFullArea.y, hBarEnd - hBarStart + 1, m_horizBarFullArea.h };
 }
 
+void DockableManager::OnFileChange()
+{
+    for (auto win : m_windows)
+    {
+        win.m_window->OnFileChange();
+    }
+}
+
+void DockableManager::OnContentChange()
+{
+    for (auto win : m_windows)
+    {
+        win.m_window->OnContentChange();
+    }
+}
+
 void DockableManager::OnMouseMotionCaptured(bool lostCapture, int x, int y)
 {
     auto settings = gApp->GetSettings();
@@ -437,5 +450,52 @@ void DockableManager::OnMouseMotionCaptured(bool lostCapture, int x, int y)
                 ClampTargetHorizScroll();
             }
             break;
+    }
+}
+
+void DockableManager::WriteWindowDefaults(FILE* fh)
+{
+    for (auto win : m_windows)
+    {
+        fprintf(fh, "; settings for '%s'\n", win.m_window->GetTitle().c_str());
+        fprintf(fh, "windowSettings=%s\n", win.m_titleCode.c_str());
+        fprintf(fh, "enabled=%s\n", win.m_enabled ? "true" : "false");
+        win.m_window->WriteDefaults(fh);
+        fprintf(fh, "windowSettingsEnd\n");
+    }
+}
+
+void DockableManager::ParseSettings(AppFile& appFile)
+{
+    DockableWindowItem* winItem = nullptr;
+    for (auto l : appFile.lines)
+    {
+        if (l->IsToken("windowSettings"))
+        {
+            string match = l->GetString();
+            for (auto &item : m_windows)
+            {
+                if (item.m_titleCode == match)
+                {
+                    winItem = &item;
+                    break;
+                }
+            }
+        }
+        else if (l->IsToken("windowSettingsEnd"))
+        {
+            winItem = nullptr;
+        }
+        else if (winItem)
+        {
+            if (l->IsToken("enabled"))
+            {
+                winItem->m_enabled = l->GetBool();
+            }
+            else
+            {
+                winItem->m_window->ParseSettings(l);
+            }
+        }
     }
 }

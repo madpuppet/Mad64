@@ -40,7 +40,7 @@ void UIItem_EnumButton::OnButtonDown(int button, int x, int y)
     }
     else if (button == 3)
     {
-        m_currentOption = (m_currentOption + m_options.size() - 1) % m_options.size();
+        m_currentOption = (m_currentOption + m_options.size() - 1) % (int)m_options.size();
         m_onChange(m_currentOption);
         DeleteClear(m_geButtonText);
         m_highlight = true;
@@ -68,6 +68,7 @@ void UIItem_EnumButton::OnRendererChange(SDL_Renderer* r)
     Log("UI TextButton Destroy");
     DeleteClear(m_geButtonText);
     BuildGE(r);
+    m_highlight = false;
 }
 
 void UIItem_EnumButton::BuildGE(SDL_Renderer *r)

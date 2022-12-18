@@ -18,10 +18,8 @@ add_executable(Mad64
 	source/contextualHelp.cpp
 	source/editWindow.cpp
 	source/graphicChunk.cpp
-	source/logWindow.cpp
 	source/main.cpp
 	source/sourcefile.cpp
-	source/textInput.cpp
 	source/thread.cpp
 	source/emulatorc64.cpp
 	source/tinyfiledialogs.c
@@ -37,8 +35,11 @@ add_executable(Mad64
 	source/dockableWindow_log.cpp
 	source/dockableWindow_emulatorScreen.cpp
 	source/dockableWindow_searchAndReplace.cpp
+	source/dockableWindow_memoryImage.cpp
+	source/dockableWindow_memoryDump.cpp
 	source/uiItem_textButton.cpp
 	source/uiItem_textBox.cpp
+	source/uiItem_enumButton.cpp
 	
 )
 

@@ -91,6 +91,7 @@ loop2:
     cpy #100
     bne loop2
 
+
 @lp:
     lda vic.control1
     bpl @lp-

@@ -21,6 +21,7 @@ public:
 
     void OnMouseButtonDown(int button, int x, int y);
     void OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel);
+    void OnFileChange() { Clear(); }
 
 protected:
     void OnFilterStringEnter(const string& text);

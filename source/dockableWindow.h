@@ -18,10 +18,15 @@ public:
     virtual void OnMouseButtonUp(int button, int x, int y);
     virtual void OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel);
     virtual void OnMouseWheel(int mouseX, int mouseY, int wheelX, int wheelY);
+    virtual void OnFileChange() {}
+    virtual void OnContentChange() {}
+    virtual void WriteDefaults(FILE* fh);
+    virtual void ParseSettings(AppFile::Line* line);
 
     virtual int GetContentHeight() = 0;
     virtual int GetContentWidth() = 0;
-    virtual void SetDockedRect(const SDL_Rect& rect);
+
+    virtual void SetDockedArea(const SDL_Rect& titleRect, const SDL_Rect& renderRect);
 
     void SetClipRect(const SDL_Rect& rect) { m_clipArea = rect; }
 
@@ -34,7 +39,10 @@ public:
     void Dock();
 
     int GetID();
-    SDL_Rect& GetArea() { return m_renderArea; }
+    string GetTitle() { return m_title; }
+    SDL_Rect& GetTitleArea() { return m_titleArea; }
+    SDL_Rect& GetContentArea() { return m_contentArea; }
+    SDL_Rect& GetRenderArea() { return m_renderArea; }
     SDL_Rect& GetWindowArea() { return m_windowArea; }
 
     // hide or show the window if undocked
@@ -50,7 +58,6 @@ protected:
 
     void OnResize();
     SDL_Renderer* GetRenderer();
-    void UpdateContentArea();
 
     virtual void DrawChild() = 0;
 
@@ -69,12 +76,12 @@ protected:
 
     SDL_Point m_dragMouseGrab;
 
-    SDL_Rect m_renderArea;      // entire render area (including title line & scroll bars)
+    SDL_Rect m_titleArea;       // just title area (doesn't use horiz scroll when docked)
+    SDL_Rect m_renderArea;      // content area plus scroll bars - not including title area
     SDL_Rect m_contentArea;     // render area of just the content
     SDL_Rect m_clipArea;        // area that is visible
 
-    SDL_Rect m_dockedArea;      // entire docked render area
-    SDL_Rect m_windowArea;      // entire undocked render area (window size)
+    SDL_Rect m_windowArea;      // size of window when we switch to undocked mode
 
     string m_title;
     GraphicElement* m_geTitle;

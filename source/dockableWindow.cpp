@@ -154,6 +154,9 @@ void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
                 windowPosX = mouseX - m_dragMouseGrab.x;
                 windowPosY = mouseY - m_dragMouseGrab.y;
                 SDL_SetWindowPosition(m_window, windowPosX, windowPosY);
+
+                m_windowArea.x = windowPosX;
+                m_windowArea.y = windowPosY;
             }
             break;
         case ResizeLeft:
@@ -178,6 +181,8 @@ void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
                 SDL_SetWindowSize(m_window, w, h);
                 SDL_SetWindowPosition(m_window, x, y);
 
+                m_windowArea.x = x;
+                m_windowArea.y = y;
                 m_windowArea.w = m_renderArea.w = w;
                 m_windowArea.h = m_renderArea.h = h;
 
@@ -221,13 +226,12 @@ void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
 
 DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked(true), m_grabMode(None), m_geTitle(nullptr), m_windowArea({ 100,100,640,480 })
 {
-    m_window = SDL_CreateWindow(m_title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, m_windowArea.w, m_windowArea.h, SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    m_window = SDL_CreateWindow(m_title.c_str(), m_windowArea.x, m_windowArea.y, m_windowArea.w, m_windowArea.h, SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
     {
         Log("ERROR: Cannot create undocked window for %s",m_title.c_str());
         return;
     }
-    SDL_SetWindowPosition(m_window, m_windowArea.x, m_windowArea.y);
     m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
@@ -237,7 +241,11 @@ DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked
     m_targetHorizScroll = 0;
 
     m_clipArea = { 0, 0, -1, -1 };
-    m_dockedArea = m_clipArea;
+
+    // these will get resized, so no need to get them perfect
+    m_titleArea = m_windowArea;
+    m_renderArea = m_windowArea;
+    m_contentArea = m_windowArea;
 }
 
 void DockableWindow::OnRendererChange()
@@ -283,19 +291,19 @@ void DockableWindow::LayoutIcons()
 {
     auto settings = gApp->GetSettings();
     GenerateTitleGE();
-    m_geTitle->SetPos(m_renderArea.x + settings->textXMargin, m_renderArea.y + settings->textYMargin);
+    m_geTitle->SetPos(m_titleArea.x + settings->textXMargin, m_titleArea.y + settings->textYMargin);
     int leftX = m_geTitle->GetRect().x + m_geTitle->GetRect().w + settings->textXMargin;
     for (auto item : m_titleIconsLeft)
     {
         int w = item->GetWidth();
-        item->SetPos(leftX, m_renderArea.y);
+        item->SetPos(leftX, m_titleArea.y);
         leftX += w + settings->textXMargin;
     }
-    int rightX = m_renderArea.x + m_renderArea.w - 4;
+    int rightX = m_titleArea.x + m_titleArea.w - 4;
     for (auto item : m_titleIconsRight)
     {
         int w = item->GetWidth();
-        item->SetPos(rightX - w, m_renderArea.y);
+        item->SetPos(rightX - w, m_titleArea.y);
         rightX -= w + settings->textXMargin;
     }
 }
@@ -342,17 +350,16 @@ void DockableWindow::DrawTitle()
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
 
-    if ((m_renderArea.y + m_renderArea.h > m_clipArea.y) && (m_renderArea.y <= m_clipArea.y + m_clipArea.h))
+    if ((m_titleArea.y + m_titleArea.h > m_clipArea.y) && (m_titleArea.y <= m_clipArea.y + m_clipArea.h))
     {
-        SDL_Rect titleRect = { m_renderArea.x, m_renderArea.y, m_renderArea.w, settings->lineHeight };
         SDL_SetRenderDrawColor(r, 32, 64, 128, 255);
-        SDL_RenderFillRect(r, &titleRect);
+        SDL_RenderFillRect(r, &m_titleArea);
 
         SDL_SetRenderDrawColor(r, 32 + 32, 64 + 32, 128 + 32, 255);
-        SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y, m_renderArea.x + m_renderArea.w, m_renderArea.y);
+        SDL_RenderDrawLine(r, m_titleArea.x, m_titleArea.y, m_titleArea.x + m_titleArea.w, m_titleArea.y);
 
         SDL_SetRenderDrawColor(r, 32 - 32, 64 - 32, 128 - 32, 255);
-        SDL_RenderDrawLine(r, m_renderArea.x, m_renderArea.y + settings->lineHeight - 1, m_renderArea.x + m_renderArea.w, m_renderArea.y + settings->lineHeight - 1);
+        SDL_RenderDrawLine(r, m_titleArea.x, m_titleArea.y + m_titleArea.h - 1, m_titleArea.x + m_titleArea.w, m_titleArea.y + m_titleArea.h - 1);
 
         SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
         GenerateTitleGE();
@@ -443,13 +450,14 @@ void DockableWindow::DrawContent()
         SDL_RenderPresent(r);
 }
 
-void DockableWindow::SetDockedRect(const SDL_Rect& rect)
+void DockableWindow::SetDockedArea(const SDL_Rect& titleRect, const SDL_Rect& renderRect)
 {
     auto settings = gApp->GetSettings();
-    m_dockedArea = rect;
     if (m_isDocked)
     {
-        m_renderArea = rect;
+        m_titleArea = titleRect;
+        m_renderArea = renderRect;
+        m_contentArea = renderRect;
         OnResize();
     }
 }
@@ -461,7 +469,18 @@ SDL_Renderer* DockableWindow::GetRenderer()
 
 void DockableWindow::OnResize()
 {
-    UpdateContentArea();
+    if (!m_isDocked)
+    {
+        auto settings = gApp->GetSettings();
+        m_titleArea = { 0, 0, m_renderArea.w, settings->lineHeight };
+        m_contentArea = { m_renderArea.x, m_renderArea.y + settings->lineHeight, m_renderArea.w - settings->lineHeight, m_renderArea.h - settings->lineHeight * 2 };
+    
+        int x, y, w, h;
+        SDL_GetWindowPosition(m_window, &x, &y);
+        SDL_GetWindowSize(m_window, &w, &h);
+        m_windowArea = { x,y,w,h };
+    }
+
     LayoutIcons();
     ClampTargetVertScroll();
     ClampTargetHorizScroll();
@@ -484,33 +503,20 @@ void DockableWindow::GenerateTitleGE()
     }
 }
 
-void DockableWindow::UpdateContentArea()
-{
-    auto settings = gApp->GetSettings();
-    if (m_isDocked)
-    {
-        m_contentArea = { m_renderArea.x, m_renderArea.y + settings->lineHeight, m_renderArea.w, m_renderArea.h - settings->lineHeight };
-    }
-    else
-    {
-        m_contentArea = { m_renderArea.x, m_renderArea.y + settings->lineHeight, m_renderArea.w - settings->lineHeight, m_renderArea.h - settings->lineHeight * 2 };
-    }
-}
-
 void DockableWindow::Undock()
 {
     SDL_ShowWindow(m_window);
 
     m_isDocked = false;
 
+    auto settings = gApp->GetSettings();
     m_renderArea.x = 0;
     m_renderArea.y = 0;
     m_renderArea.w = m_windowArea.w;
     m_renderArea.h = m_windowArea.h;
 
-    UpdateContentArea();
     OnRendererChange();
-    LayoutIcons();
+    OnResize();
 }
 
 int DockableWindow::GetID()
@@ -536,12 +542,10 @@ void DockableWindow::Dock()
 
     SDL_HideWindow(m_window);
 
+    // note that full layout happens in docked mode each frame during docked draw
+    // we could do a docked layout function for DockableWindow if doing it during draw becomes problematic
     m_isDocked = true;
-    m_renderArea = m_dockedArea;
-
-    UpdateContentArea();
     OnRendererChange();
-    LayoutIcons();
 }
 
 void DockableWindow::ClampTargetVertScroll()
@@ -558,4 +562,36 @@ void DockableWindow::ClampTargetHorizScroll()
     m_targetHorizScroll = SDL_clamp(m_targetHorizScroll, 0.0f, (float)maxScroll);
     m_horizScroll = (int)m_targetHorizScroll;
 }
+
+void DockableWindow::WriteDefaults(FILE* fh)
+{
+    fprintf(fh, "docked=%s\n", m_isDocked ? "true" : "false");
+    fprintf(fh, "windowArea=%d,%d,%d,%d\n", m_windowArea.x, m_windowArea.y, m_windowArea.w, m_windowArea.h);
+}
+
+void DockableWindow::ParseSettings(AppFile::Line* line)
+{
+    if (line->IsToken("windowArea"))
+    {
+        m_windowArea.x = line->GetInt(0);
+        m_windowArea.y = line->GetInt(1);
+        m_windowArea.w = line->GetInt(2);
+        m_windowArea.h = line->GetInt(3);
+        SDL_SetWindowPosition(m_window, m_windowArea.x, m_windowArea.y);
+        SDL_SetWindowSize(m_window, m_windowArea.w, m_windowArea.h);
+        if (!m_isDocked)
+        {
+            m_renderArea = { 0, 0, m_windowArea.w, m_windowArea.h };
+            OnResize();
+        }
+    }
+    else if (line->IsToken("docked"))
+    {
+        if (!line->GetBool())
+        {
+            Undock();
+        }
+    }
+}
+
 

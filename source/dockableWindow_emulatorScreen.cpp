@@ -83,15 +83,53 @@ void DockableWindow_EmulatorScreen::OnChildRendererChange()
 
 void DockableWindow_EmulatorScreen::CreateChildIcons()
 {
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Cold", DELEGATE(DockableWindow_EmulatorScreen::OnColdPress)));
 	m_titleIconsLeft.push_back(new UIItem_TextButton("Reset", DELEGATE(DockableWindow_EmulatorScreen::OnResetPress)));
 	m_titleIconsLeft.push_back(new UIItem_TextButton("Play", DELEGATE(DockableWindow_EmulatorScreen::OnPlayPress)));
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Cyc", DELEGATE(DockableWindow_EmulatorScreen::OnSingleCyclePress)));
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Ins", DELEGATE(DockableWindow_EmulatorScreen::OnSingleInstructionPress)));
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Row", DELEGATE(DockableWindow_EmulatorScreen::OnSingleRowPress)));
+	m_titleIconsLeft.push_back(new UIItem_TextButton("Frm", DELEGATE(DockableWindow_EmulatorScreen::OnSingleFramePress)));
+
+	int zoomButtonWidth = gApp->GetWhiteSpaceWidth() * 6;
+	vector<string> modes = { "Auto", "x1", "x2", "x4", "x8" };
+	m_zoomButton = new UIItem_EnumButton(0, modes, zoomButtonWidth, DELEGATE(DockableWindow_EmulatorScreen::OnZoomChanged));
+	m_titleIconsRight.push_back(m_zoomButton);
 }
 
-void DockableWindow_EmulatorScreen::OnResetPress()
+void DockableWindow_EmulatorScreen::OnZoomChanged(int option)
+{
+	int zoomLevel[] = { 0, 1, 2, 4, 8 };
+	m_zoomLevel = zoomLevel[option];
+}
+
+void DockableWindow_EmulatorScreen::OnSingleCyclePress()
+{
+	gApp->DoEmuSingleCycle();
+}
+void DockableWindow_EmulatorScreen::OnSingleInstructionPress()
+{
+	gApp->DoEmuSingleInstruction();
+}
+void DockableWindow_EmulatorScreen::OnSingleRowPress()
+{
+	gApp->DoEmuSingleRow();
+}
+void DockableWindow_EmulatorScreen::OnSingleFramePress()
+{
+	gApp->DoEmuSingleFrame();
+}
+
+void DockableWindow_EmulatorScreen::OnColdPress()
 {
 	gApp->DoEmuColdReset();
 	if (!gApp->IsEmulatorRunning())
 		gApp->DoEmuTogglePlay();
+}
+
+void DockableWindow_EmulatorScreen::OnResetPress()
+{
+	gApp->DoEmuResetAndPlay();
 }
 
 void DockableWindow_EmulatorScreen::OnPlayPress()

@@ -1,5 +1,57 @@
 #pragma once
 
+struct AppFile
+{
+    ~AppFile()
+    {
+    }
+
+    void Clear()
+    {
+        for (auto l : lines)
+            delete l;
+        lines.clear();
+    }
+
+    struct Line
+    {
+        string token;
+        vector<string> params;
+        bool GetBool(int p = 0)
+        {
+            return (p < params.size()) ? (params[p] == "1" || params[p] == "true") : false;
+        }
+        int GetInt(int p = 0)
+        {
+            return (p < params.size()) ? atoi(params[p].c_str()) : 0;
+        }
+        u8 GetInt8(int p = 0)
+        {
+            return (u8)((p < params.size()) ? atoi(params[p].c_str()) : 0);
+        }
+        float GetFloat(int p = 0)
+        {
+            return (p < params.size()) ? (float)atof(params[p].c_str()) : 0.0f;
+        }
+        string GetString(int p = 0)
+        {
+            return (p < params.size()) ? params[p] : "";
+        }
+        bool IsToken(const char* val)
+        {
+            return SDL_strcasecmp(token.c_str(), val) == 0;
+        }
+        SDL_Color GetColRGB(int p = 0)
+        {
+            return { GetInt8(p), GetInt8(p + 1), GetInt8(p + 2), 255 };
+        }
+    };
+    vector<Line*> lines;
+    int currentLine;
+    void Parse(const char* mem, size_t size);
+};
+
+
 class AppSettings
 {
 public:
@@ -39,7 +91,8 @@ public:
     vector<string> loadedFilePaths;
     string activeFilePath;
     int activeLoadedFilePath;
-    string openLogs;
+
+    AppFile appFile;
 
     bool Load();
     bool Save();

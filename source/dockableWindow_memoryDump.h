@@ -9,6 +9,7 @@ class DockableWindow_MemoryDump : public DockableWindow
 public:
     DockableWindow_MemoryDump(const string& title) : 
         m_renderedWidth(64), m_renderedHeight(64), m_memoryStart(0), m_memoryEnd(2048), m_dataCount(16), m_currentMode(MODE_Hex8),
+        m_memMap(nullptr), m_memMapTexture(nullptr),
         DockableWindow(title) {}
 
     int GetContentHeight();
@@ -24,6 +25,7 @@ public:
 protected:
     void OnRangeChange(const string& text);
     void OnModeChange(int option);
+    void RecreateTexture();
 
     void ActivateStartBox();
     void ActivateEndBox();
@@ -64,6 +66,11 @@ protected:
     void DrawCharSetMC();
     void DrawBitmap();
     void DrawBitmapMC();
+
+    // for sprite/bitmap modes
+    u8* m_memMap;
+    SDL_Texture* m_memMapTexture;
+
 };
 
 

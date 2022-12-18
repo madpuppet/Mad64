@@ -3,6 +3,7 @@
 
 void DockableWindow_MemoryDump::OnChildRendererChange()
 {
+    RecreateTexture();
 }
 
 void DockableWindow_MemoryDump::DrawChild()
@@ -76,6 +77,40 @@ int TextToNumber(const string& token)
 void DockableWindow_MemoryDump::OnModeChange(int mode)
 {
     m_currentMode = (Mode)mode;
+
+    RecreateTexture();
+}
+
+void DockableWindow_MemoryDump::RecreateTexture()
+{
+    if (m_memMapTexture)
+    {
+        SDL_DestroyTexture(m_memMapTexture);
+        delete[] m_memMap;
+        m_memMapTexture = nullptr;
+        m_memMap = nullptr;
+    }
+
+    switch (m_currentMode)
+    {
+        case MODE_Sprite:
+        case MODE_SpriteMC:
+            {
+                int width = 24;
+                int height = ((m_memoryEnd - m_memoryStart + 63) / 64) * 21;
+                m_memMapTexture = SDL_CreateTexture(GetRenderer(), SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, width, height);
+                m_memMap = (u8*)malloc(width * height * 3);
+            }
+            break;
+
+        case MODE_CharSet:
+        case MODE_CharSetMC:
+            break;
+
+        case MODE_Bitmap:
+        case MODE_BitmapMC:
+            break;
+    }
 }
 
 void DockableWindow_MemoryDump::OnRangeChange(const string& text)
@@ -344,7 +379,7 @@ void DockableWindow_MemoryDump::DrawPetsci()
 
 void DockableWindow_MemoryDump::DrawSprite()
 {
-
+    // calculate area of screen that is visible
 }
 void DockableWindow_MemoryDump::DrawSpriteMC()
 {

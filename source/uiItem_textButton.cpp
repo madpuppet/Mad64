@@ -34,8 +34,8 @@ void UIItem_TextButton::OnButtonDown(int button, int x, int y)
 {
     if (button == 1)
     {
-        m_onButtonPress();
         m_highlight = true;
+        m_onButtonPress();
     }
 }
 
@@ -61,6 +61,7 @@ void UIItem_TextButton::OnRendererChange(SDL_Renderer* r)
     Log("UI TextButton Destroy");
     DeleteClear(m_geButtonText);
     BuildGE(r);
+    m_highlight = false;
 }
 
 void UIItem_TextButton::BuildGE(SDL_Renderer *r)

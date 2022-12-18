@@ -11,6 +11,12 @@ void DockableWindow_SearchAndReplace::OnChildRendererChange()
     }
 }
 
+void DockableWindow_SearchAndReplace::ClearAll()
+{
+    m_replaceBox->SetText("");
+    m_searchBox->SetText("");
+}
+
 void DockableWindow_SearchAndReplace::Clear()
 {
     for (auto& it : m_items)

@@ -6,7 +6,6 @@
 #include "compiler.h"
 #include "cmdManager.h"
 #include "appSettings.h"
-#include "logWindow.h"
 #include "dockableManager.h"
 #include "emulatorc64.h"
 
@@ -45,7 +44,6 @@ public:
     Compiler* GetCompiler() { return m_compiler; }
     EmulatorC64* GetEmulator() { return m_emulator; }
     EditWindow* GetEditWindow() { return m_editWindow; }
-    LogWindow* GetLogWindow() { return m_logWindow; }
     DockableManager* GetDockableMgr() { return m_dockableMgr; }
 
     DockableWindow_Log* GetWindowCompiler() { return m_windowCompiler; }
@@ -94,8 +92,13 @@ public:
     void PopClippingRect(SDL_Renderer* r);
     SDL_Rect GetActiveClipRect(SDL_Renderer* r);
 
+    void DoEmuResetAndPlay();
     void DoEmuColdReset();
     void DoEmuTogglePlay();
+    void DoEmuSingleCycle();
+    void DoEmuSingleInstruction();
+    void DoEmuSingleRow();
+    void DoEmuSingleFrame();
 
 protected:
     vector<SourceFile*> m_sourceFiles;
@@ -133,7 +136,6 @@ protected:
     int m_whiteSpaceWidth;
     SDL_Renderer* m_renderer;
     EditWindow* m_editWindow;
-    LogWindow* m_logWindow;
     Compiler* m_compiler;
     EmulatorC64* m_emulator;
     DockableManager* m_dockableMgr;

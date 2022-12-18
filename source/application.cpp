@@ -95,7 +95,6 @@ Application::Application()
 
         Log("Create Modules");
         m_dockableMgr = new DockableManager();
-        m_logWindow = new LogWindow();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
         m_emulator = new EmulatorC64();
@@ -108,9 +107,15 @@ Application::Application()
         m_windowMemoryDump = new DockableWindow_MemoryDump("Memory Dump");
         m_windowSearchAndReplace = new DockableWindow_SearchAndReplace("Search and Replace");
         m_windowMemoryImage = new DockableWindow_MemoryImage("Memory Usage");
-
-        Log("Set open logs");
-        m_logWindow->SetOpenLogs(m_settings->openLogs);
+        m_dockableMgr->AddWindow(m_windowSearchAndReplace, "S&R", true, true);
+        m_dockableMgr->AddWindow(m_windowCompiler, "COM", true, true);
+        m_dockableMgr->AddWindow(m_windowHelp, "HLP", true, true);
+        m_dockableMgr->AddWindow(m_windowLabels, "LAB", true, true);
+        m_dockableMgr->AddWindow(m_windowRegisters, "REG", true, true);
+        m_dockableMgr->AddWindow(m_windowMemoryImage, "MEM", true, true);
+        m_dockableMgr->AddWindow(m_windowEmulatorScreen, "EMU", true, true);
+        m_dockableMgr->AddWindow(m_windowMemoryDump, "DMP", true, true);
+        m_dockableMgr->ParseSettings(m_settings->appFile);
 
         Log("Reload files");
         int loadIdx = 0;
@@ -137,15 +142,6 @@ Application::Application()
     SDL_StartTextInput();
 
     m_editWindow->CalcRects();
-
-    m_dockableMgr->AddWindow(m_windowSearchAndReplace, "S&R", true, true);
-    m_dockableMgr->AddWindow(m_windowCompiler, "COM", true, true);
-    m_dockableMgr->AddWindow(m_windowHelp, "HLP", true, true);
-    m_dockableMgr->AddWindow(m_windowLabels, "LAB", true, true);
-    m_dockableMgr->AddWindow(m_windowRegisters, "REG", true, true);
-    m_dockableMgr->AddWindow(m_windowMemoryImage, "MEM", true, true);
-    m_dockableMgr->AddWindow(m_windowEmulatorScreen, "EMU", true, true);
-    m_dockableMgr->AddWindow(m_windowMemoryDump, "DMP", true, true);
 }
 
 void Application::ReloadFont()
@@ -226,7 +222,6 @@ int Application::MainLoop()
     delete m_editWindow;
     delete m_compiler;
     delete m_emulator;
-    delete m_logWindow;
     delete m_settings;
     return 0;
 }
@@ -234,18 +229,18 @@ int Application::MainLoop()
 void Application::Update()
 {
     m_editWindow->Update();
-    m_logWindow->Update();
     m_compiler->Update();
     m_emulator->Update();
 
     if (m_runEmulation && m_editWindow->IsActiveAsmFile())
     {
-        m_timeDelta = SDL_min(m_timeDelta, 1 / 30.0f);
+//        m_timeDelta = SDL_min(m_timeDelta, 1 / 30.0f);
 
         int cycles = (int)(m_emulator->CyclesPerSecond() * m_timeDelta);
+        bool complete = false;
         for (int i = 0; i < cycles; i++)
         {
-            while (!m_emulator->Step());
+            complete = m_emulator->Step();
             if (m_emulator->WasBreakpointHit())
             {
                 m_emulator->ClearBreakpointHit();
@@ -255,6 +250,8 @@ void Application::Update()
                 break;
             }
         }
+        if (!complete)
+            while (!m_emulator->Step());
     }
 
     m_flashScreenRed = max(0.0f, m_flashScreenRed - TIMEDELTA*5.0f);
@@ -292,7 +289,6 @@ void Application::HandleEvent(SDL_Event *e)
     case SDL_MOUSEBUTTONDOWN:
         {
             u64 time = SDL_GetTicks();
-
             // we got a double click, so ignore further clicks until a delay
             if (m_latchDoubleClick && ((time - m_clickTime) < 400))
                 return;
@@ -522,6 +518,7 @@ void Application::AddFile(SourceFile* sf)
 
     // alert renderer of update
     m_editWindow->OnFileLoaded(sf);
+    m_dockableMgr->OnFileChange();
 
     bool exists = false;
     for (auto& p : m_settings->loadedFilePaths)
@@ -543,10 +540,7 @@ void Application::AddFile(SourceFile* sf)
         m_compiler->Compile(sf);
         m_compiler->LogContextualHelp(sf, m_editWindow->GetActiveLine());
     }
-    else
-    {
-        m_logWindow->ClearAllLogs();
-    }
+
     m_editWindow->CalcRects();
 }
 
@@ -791,32 +785,19 @@ void Application::OnKeyDown(SDL_Event* e)
             case SDLK_F10:
                 if (e->key.keysym.mod & KMOD_CTRL)
                 {
-                    // frame step
-                    while (m_emulator->GetCurrentRasterline() == 0)
-                        m_emulator->Step();
-                    while (m_emulator->GetCurrentRasterline() != 0)
-                        m_emulator->Step();
-                    m_editWindow->GotoEmuPC();
+                    DoEmuSingleFrame();
                 }
                 else if (e->key.keysym.mod & KMOD_SHIFT)
                 {
-                    // rasterline step
-                    int line = m_emulator->GetCurrentRasterline();
-                    while (line == m_emulator->GetCurrentRasterline())
-                        m_emulator->Step();
-                    m_editWindow->GotoEmuPC();
+                    DoEmuSingleRow();
                 }
                 else if (e->key.keysym.mod & KMOD_ALT)
                 {
-                    // rasterline step
-                    m_emulator->Step();
-                    m_editWindow->GotoEmuPC();
+                    DoEmuSingleCycle();
                 }
                 else
                 {
-                    // single step
-                    while (!m_emulator->Step());
-                    m_editWindow->GotoEmuPC();
+                    DoEmuSingleInstruction();
                 }
                 return;
 
@@ -869,17 +850,7 @@ void Application::OnKeyDown(SDL_Event* e)
                         }
                         else if (e->key.keysym.mod & KMOD_CTRL)
                         {
-                            auto file = m_editWindow->GetActiveFile();
-                            auto compiledFile = file->GetCompileInfo();
-                            // CTRL F5 - restart emulator
-                            // reset emulator
-                            auto startLabel = gApp->GetCompiler()->FindMatchingLabel(compiledFile, "start");
-                            if (startLabel)
-                            {
-                                ApplyBreakpoints();
-                                m_emulator->Reset(compiledFile->m_ramDataMap, compiledFile->m_ramMask, (u16)startLabel->m_value);
-                                m_runEmulation = true;
-                            }
+                            DoEmuResetAndPlay();
                         }
                         else
                         {
@@ -891,6 +862,63 @@ void Application::OnKeyDown(SDL_Event* e)
                 break;
         }
         m_editWindow->OnKeyDown(e);
+    }
+}
+
+
+void Application::DoEmuSingleCycle()
+{
+    // rasterline step
+    m_runEmulation = false;
+    m_emulator->Step();
+    m_editWindow->GotoEmuPC();
+}
+void Application::DoEmuSingleInstruction()
+{
+    // single step
+    m_runEmulation = false;
+    while (!m_emulator->Step());
+    m_editWindow->GotoEmuPC();
+}
+void Application::DoEmuSingleRow()
+{
+    // rasterline step
+    m_runEmulation = false;
+    int line = m_emulator->GetCurrentRasterline();
+    while (line == m_emulator->GetCurrentRasterline())
+        m_emulator->Step();
+    m_editWindow->GotoEmuPC();
+}
+void Application::DoEmuSingleFrame()
+{
+    // frame step
+    m_runEmulation = false;
+    while (m_emulator->GetCurrentRasterline() == 0)
+        m_emulator->Step();
+    while (m_emulator->GetCurrentRasterline() != 0)
+        m_emulator->Step();
+    m_editWindow->GotoEmuPC();
+}
+
+
+void Application::DoEmuResetAndPlay()
+{
+    if (m_editWindow->IsActiveAsmFile())
+    {
+        auto file = m_editWindow->GetActiveFile();
+        auto compiledFile = file->GetCompileInfo();
+        if (compiledFile)
+        {
+            // CTRL F5 - restart emulator
+            // reset emulator
+            auto startLabel = gApp->GetCompiler()->FindMatchingLabel(compiledFile, "start");
+            if (startLabel)
+            {
+                ApplyBreakpoints();
+                m_emulator->Reset(compiledFile->m_ramDataMap, compiledFile->m_ramMask, (u16)startLabel->m_value);
+                m_runEmulation = true;
+            }
+        }
     }
 }
 
@@ -1627,4 +1655,3 @@ void Application::PopClippingRect(SDL_Renderer* r)
         ApplyClippingStack(stack);
     }
 }
-

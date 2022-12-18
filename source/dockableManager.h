@@ -26,6 +26,12 @@ public:
     bool OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, int wheelY);
     void UpdateCursor(int windowID, int x, int y);
 
+    void OnFileChange();
+    void OnContentChange();
+
+    void WriteWindowDefaults(FILE* fh);
+    void ParseSettings(AppFile& appFile);
+
 protected:
     void OnMouseMotionCaptured(bool lostCapture, int x, int y);
 
@@ -39,6 +45,7 @@ protected:
         ~DockableWindowItem() {}
 
         bool m_enabled;
+        string m_titleCode;
         GraphicElement* m_geTitle;
         DockableWindow* m_window;
     };

@@ -557,8 +557,6 @@ void EditWindow::SetActiveFileIdx(int idx)
 			}
 			else
 			{
-				gApp->GetLogWindow()->ClearAllLogs();
-
 				gApp->GetWindowCompiler()->Clear();
 				gApp->GetWindowLabels()->Clear();
 				gApp->GetWindowHelp()->Clear();
@@ -614,10 +612,6 @@ void EditWindow::OnMouseWheel(int windowID, int mouseX, int mouseY, int wheelX, 
 			m_targetVertScroll += (wheelY * -80);
 			ClampTargetVertScroll();
 		}
-	}
-	else if (Contains(m_contextHelpRect, m_mouseX, m_mouseY))
-	{
-		gApp->GetLogWindow()->OnMouseWheel(windowID, mouseX, mouseY, wheelX, wheelY);
 	}
 }
 
@@ -825,11 +819,6 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 			}
 		}
 	}
-	else if (Contains(m_contextHelpRect, e->button.x, e->button.y))
-	{
-		gApp->GetLogWindow()->OnMouseDown(e);
-		return;
-	}
 	else if (Contains(m_sourceEditRect, e->button.x, e->button.y))
 	{
 		int line, col;
@@ -884,7 +873,6 @@ void EditWindow::OnMouseUp(SDL_Event* e)
 	m_marked = m_mouseMarking && !(m_markStartLine == m_markEndLine && m_markStartColumn == m_markEndColumn);
 	m_mouseMarking = false;
 	m_dragMode = DRAG_None;
-	gApp->GetLogWindow()->OnMouseUp(e);
 }
 
 void EditWindow::ProcessMouseMarking(int x, int y)
@@ -1669,7 +1657,7 @@ void EditWindow::UpdateContextualHelp()
 	}
 	else
 	{
-		gApp->GetLogWindow()->ClearLog(LogWindow::LF_InstructionHelp);
+		gApp->GetWindowHelp()->Clear();
 	}
 
 }

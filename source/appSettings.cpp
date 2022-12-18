@@ -87,7 +87,6 @@ AppSettings::AppSettings()
     renderLineBackgrounds = true;
     swapJoystickPorts = false;
     vicePath = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
-    openLogs = "CHLMRE";
     lineHeight = 24;
     fontPath = "font.ttf";
     fontSize = 16;
@@ -111,6 +110,7 @@ AppSettings::AppSettings()
     activeLoadedFilePath = 0;
 }
 
+
 bool AppSettings::Load()
 {
     char *pref = SDL_GetPrefPath("madpuppet", "mad64");
@@ -123,158 +123,140 @@ bool AppSettings::Load()
     void *data = SDL_LoadFile(path.c_str(), &size);
     if (data)
     {
-        char* src = (char*)data;
-        char* end = src + size;
-
-        char token[256];
-        char value[4096];
-        while (ReadLine(src, end, token, value, 256, 4096))
+        appFile.Parse((char *)data, size);
+        bool windowSettings = false;
+        for (auto l : appFile.lines)
         {
-            if (token[0] && value[0])
+            // skip windowSettings..windowSettingsEnd  sections - they get parsed by the dockableManager later
+            if (windowSettings)
             {
-                int val = atoi(value);
-                if (SDL_strcasecmp(token, "tabsToSpaces") == 0)
-                {
-                    tabsToSpaces = val ? true : false;
-                }
-                else if (SDL_strcasecmp(token, "overwriteMode") == 0)
-                {
-                    overwriteMode = val ? true : false;
-                }
-                else if (SDL_strcasecmp(token, "autoIndent") == 0)
-                {
-                    autoIndent = val ? true : false;
-                }
-                else if (SDL_strcasecmp(token, "renderLineBackgrounds") == 0)
-                {
-                    renderLineBackgrounds = val ? true : false;
-                }
-                else if (SDL_strcasecmp(token, "lowCPUMode") == 0)
-                {
-                    swapJoystickPorts = val ? true : false;
-                }
-                else if (SDL_strcasecmp(token, "swapJoystickPorts") == 0)
-                {
-                    swapJoystickPorts = val ? true : false;
-                }
-                else if (SDL_strcasecmp(token, "FontSize") == 0)
-                {
-                    fontSize = val;
-                }
-                else if (SDL_strcasecmp(token, "FontPath") == 0)
-                {
-                    fontPath = value;
-                }
-                else if (SDL_strcasecmp(token, "LineHeight") == 0)
-                {
-                    lineHeight = val;
-                }
-                else if (SDL_strcasecmp(token, "tabWidth") == 0)
-                {
-                    tabWidth = SDL_clamp(val, 1, 32);
-                }
-                else if (SDL_strcasecmp(token, "textXMargin") == 0)
-                {
-                    textXMargin = val;
-                }
-                else if (SDL_strcasecmp(token, "textYMargin") == 0)
-                {
-                    textYMargin = val;
-                }
-                else if (SDL_strcasecmp(token, "scrollBarWidth") == 0)
-                {
-                    scrollBarWidth = val;
-                }
-                else if (SDL_strcasecmp(token, "xPosDecode") == 0)
-                {
-                    xPosDecode = val;
-                }
-                else if (SDL_strcasecmp(token, "xPosText") == 0)
-                {
-                    xPosText = val;
-                }
-                else if (SDL_strcasecmp(token, "xPosContextHelp") == 0)
-                {
-                    xPosContextHelp = val;
-                }
-                else if (SDL_strcasecmp(token, "backColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    backColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "textColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    textColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "opCodeColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    opCodeColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "commentColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    commentColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "numericColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    numericColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "helpGroupColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    helpGroupColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "helpTitleColor") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    helpTitleColor = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "helpBodyColor1") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    helpBodyColor1 = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "helpBodyColor2") == 0)
-                {
-                    u8 r, g, b;
-                    ReadColor(value, r, g, b);
-                    helpBodyColor2 = { r, g, b, 255 };
-                }
-                else if (SDL_strcasecmp(token, "vicePath") == 0)
-                {
-                    ReadString(value, vicePath);
-                }
-                else if (SDL_strcasecmp(token, "openLogs") == 0)
-                {
-                    ReadString(value, openLogs);
-                }
-                else if (SDL_strcasecmp(token, "loadedFilePaths") == 0)
-                {
-                    loadedFilePaths.clear();
-                    ReadStringArray(value, loadedFilePaths);
-                }
-                else if (SDL_strcasecmp(token, "activeFilePath") == 0)
-                {
-                    activeFilePath = value;
-                }
-                else if (SDL_strcasecmp(token, "activeLoadedFilePath") == 0)
-                {
-                    activeLoadedFilePath = val;
-                }
+                if (l->IsToken("windowSettingsEnd"))
+                    windowSettings = false;
+            }
+            else if (l->IsToken("windowSettings"))
+            {
+                windowSettings = true;
+            }
+            else if (l->IsToken("tabsToSpaces"))
+            {
+                tabsToSpaces = l->GetBool();
+            }
+            else if (l->IsToken("overwriteMode"))
+            {
+                overwriteMode = l->GetBool();
+            }
+            else if (l->IsToken("autoIndent"))
+            {
+                autoIndent = l->GetBool();
+            }
+            else if (l->IsToken("renderLineBackgrounds"))
+            {
+                renderLineBackgrounds = l->GetBool();
+            }
+            else if (l->IsToken("lowCPUMode"))
+            {
+                swapJoystickPorts = l->GetBool();
+            }
+            else if (l->IsToken("swapJoystickPorts"))
+            {
+                swapJoystickPorts = l->GetBool();
+            }
+            else if (l->IsToken("FontSize"))
+            {
+                fontSize = l->GetInt();
+            }
+            else if (l->IsToken("FontPath"))
+            {
+                fontPath = l->GetString();
+            }
+            else if (l->IsToken("LineHeight"))
+            {
+                lineHeight = l->GetInt();
+            }
+            else if (l->IsToken("tabWidth"))
+            {
+                tabWidth = SDL_clamp(l->GetInt(), 1, 32);
+            }
+            else if (l->IsToken("textXMargin"))
+            {
+                textXMargin = l->GetInt();
+            }
+            else if (l->IsToken("textYMargin"))
+            {
+                textYMargin = l->GetInt();
+            }
+            else if (l->IsToken("scrollBarWidth"))
+            {
+                scrollBarWidth = l->GetInt();
+            }
+            else if (l->IsToken("xPosDecode"))
+            {
+                xPosDecode = l->GetInt();
+            }
+            else if (l->IsToken("xPosText"))
+            {
+                xPosText = l->GetInt();
+            }
+            else if (l->IsToken("xPosContextHelp"))
+            {
+                xPosContextHelp = l->GetInt();
+            }
+            else if (l->IsToken("backColor"))
+            {
+                backColor = l->GetColRGB();
+            }
+            else if (l->IsToken("textColor"))
+            {
+                textColor = l->GetColRGB();
+            }
+            else if (l->IsToken("opCodeColor"))
+            {
+                opCodeColor = l->GetColRGB();
+            }
+            else if (l->IsToken("commentColor"))
+            {
+                commentColor = l->GetColRGB();
+            }
+            else if (l->IsToken("numericColor"))
+            {
+                numericColor = l->GetColRGB();
+            }
+            else if (l->IsToken("helpGroupColor"))
+            {
+                helpGroupColor = l->GetColRGB();
+            }
+            else if (l->IsToken("helpTitleColor"))
+            {
+                helpTitleColor = l->GetColRGB();
+            }
+            else if (l->IsToken("helpBodyColor1"))
+            {
+                helpBodyColor1 = l->GetColRGB();
+            }
+            else if (l->IsToken("helpBodyColor2"))
+            {
+                helpBodyColor2 = l->GetColRGB();
+            }
+            else if (l->IsToken("vicePath"))
+            {
+                vicePath = l->GetString();
+            }
+            else if (l->IsToken("loadedFilePaths"))
+            {
+                loadedFilePaths = l->params;
+            }
+            else if (l->IsToken("activeFilePath"))
+            {
+                activeFilePath = l->GetString();
+            }
+            else if (l->IsToken("activeLoadedFilePath"))
+            {
+                activeLoadedFilePath = l->GetInt();
+            }
+            else if (l->IsToken("windowsSettings"))
+            {
             }
         }
-        SDL_free(data);
         return true;
     }
     return false;
@@ -375,12 +357,7 @@ bool AppSettings::Save()
             fprintf(fh, "vicePath=%s\n\n", vicePath.c_str());
         }
 
-        if (gApp->GetLogWindow())
-        {
-            openLogs = gApp->GetLogWindow()->GetOpenLogs();
-            fprintf(fh, "; each letter indicates a log group that is open  \n");
-            fprintf(fh, "openLogs=%s\n\n", openLogs.c_str());
-        }
+        gApp->GetDockableMgr()->WriteWindowDefaults(fh);
 
         if (!loadedFilePaths.empty())
         {
@@ -418,5 +395,51 @@ bool AppSettings::Save()
 }
 
 
+void AppFile::Parse(const char* mem, size_t size)
+{
+    // delete old data
 
 
+
+    size_t idx = 0;
+    auto line = new Line();
+    while (idx < size)
+    {
+        // skip white space
+        while (idx < size && (mem[idx] == ' ' || mem[idx] == '/t') && mem[idx] != 0xd && mem[idx] != 0xa)
+            idx++;
+        // skip comment lines
+        if (mem[idx] != ';' && mem[idx] != 0xd && mem[idx] != 0xa)
+        {
+            // grab token
+            while (idx < size && (mem[idx] != '=' && mem[idx] != 0xd && mem[idx] != 0xa))
+            {
+                line->token += tolower(mem[idx++]);
+            }
+            // grab params
+            if (mem[idx] == '=')
+            {
+                idx++;
+                while (idx < size && mem[idx] != 0xd && mem[idx] != 0xa)
+                {
+                    string param = "";
+                    while (idx < size && mem[idx] != ',' && mem[idx] != 0xd && mem[idx] != 0xa)
+                        param += mem[idx++];
+                    line->params.push_back(param);
+                    if (mem[idx] == ',')
+                        idx++;
+                }
+            }
+            lines.push_back(line);
+            line = new Line();
+        }
+        // scan for eol
+        while (idx < size && mem[idx] != 0xd && mem[idx] != 0xa)
+            idx++;
+        // skip eol
+        while (idx < size && (mem[idx] == 0xd || mem[idx] == 0xa))
+            idx++;
+    }
+    delete line;
+    currentLine = 0;
+}

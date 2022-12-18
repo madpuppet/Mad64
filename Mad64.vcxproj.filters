@@ -41,9 +41,6 @@
     <ClCompile Include="source\thread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\logWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="source\contextualHelp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -401,9 +398,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\thread.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="source\logWindow.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="source\contextualHelp.h">

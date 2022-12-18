@@ -173,7 +173,6 @@
     <ClCompile Include="source\editWindow.cpp" />
     <ClCompile Include="source\emulatorc64.cpp" />
     <ClCompile Include="source\graphicChunk.cpp" />
-    <ClCompile Include="source\logWindow.cpp" />
     <ClCompile Include="source\main.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">common.h</PrecompiledHeaderFile>
@@ -306,7 +305,6 @@
     <ClInclude Include="source\emulatorc64.h" />
     <ClInclude Include="source\graphicChunk.h" />
     <ClInclude Include="source\appSettings.h" />
-    <ClInclude Include="source\logWindow.h" />
     <ClInclude Include="source\sourceFile.h" />
     <ClInclude Include="source\thread.h" />
     <ClInclude Include="source\tinyfiledialogs.h" />
