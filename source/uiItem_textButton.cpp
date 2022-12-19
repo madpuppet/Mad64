@@ -25,7 +25,7 @@ void UIItem_TextButton::Draw(SDL_Renderer* r)
     if (m_geButtonText)
     {
         SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-        m_geButtonText->RenderAt(r, m_area.x + 4, m_area.y + settings->textYMargin);
+        m_geButtonText->RenderAt(r, m_area.x + 4, m_area.y);
     }
 
 }

@@ -499,7 +499,7 @@ void DockableWindow::GenerateTitleGE()
     {
         auto settings = gApp->GetSettings();
         auto r = GetRenderer();
-        m_geTitle = GraphicElement::CreateFromText(r, gApp->GetFont(), m_title.c_str(), settings->helpGroupColor, m_renderArea.x + settings->textXMargin, m_renderArea.y + settings->textYMargin);
+        m_geTitle = GraphicElement::CreateFromText(r, gApp->GetFont(), m_title.c_str(), settings->helpGroupColor, m_renderArea.x + settings->textXMargin, m_renderArea.y);
     }
 }
 

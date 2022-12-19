@@ -92,7 +92,7 @@ AppSettings::AppSettings()
     fontSize = 16;
     tabWidth = 4;
     textXMargin = 8;
-    textYMargin = 4;
+    textYMargin = 2;
     backColor = { 0, 0, 64, 255 };
     textColor = { 0, 255, 255, 255 };
     commentColor = { 0, 255, 64, 255 };
