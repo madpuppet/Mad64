@@ -379,7 +379,7 @@ void DockableWindow_MemoryDump::DrawSprite()
     if (visMemStart >= visMemEnd)
         return;
 
-    if (m_textureMode != m_currentMode || visMemStart != m_visMemoryStart || visMemEnd != m_visMemoryEnd)
+    if (m_memMap == nullptr || m_textureMode != m_currentMode || visMemStart != m_visMemoryStart || visMemEnd != m_visMemoryEnd)
     {
         FreeTexture();
 
@@ -487,7 +487,7 @@ void DockableWindow_MemoryDump::DrawCharSet()
     if (visMemStart >= visMemEnd)
         return;
 
-    if (m_textureMode != m_currentMode || visMemStart != m_visMemoryStart || visMemEnd != m_visMemoryEnd || dataCount != m_visDataCount)
+    if (m_memMap == nullptr || m_textureMode != m_currentMode || visMemStart != m_visMemoryStart || visMemEnd != m_visMemoryEnd || dataCount != m_visDataCount)
     {
         FreeTexture();
 
@@ -568,7 +568,107 @@ void DockableWindow_MemoryDump::DrawCharSet()
 }
 void DockableWindow_MemoryDump::DrawBitmap()
 {
+    auto emu = gApp->GetEmulator();
+    auto settings = gApp->GetSettings();
 
+    int memStart, memEnd, dataCount;
+    CalcClampedMemoryRange(memStart, memEnd, dataCount);
+
+    int bitmapMin = memStart / 8192;
+    int bitmapMax = SDL_min(memEnd / 8192, 0x10000 / 8192);
+
+    int linesPerBitmap = 200;
+
+    // calculate area of screen that needs updating
+    int lineStart = SDL_max(0, bitmapMin * linesPerBitmap + (m_clipArea.y - m_contentArea.y + m_vertScroll) / m_zoomLevel);
+    int lineEnd = SDL_max(0, bitmapMin * linesPerBitmap + ((m_clipArea.y + m_clipArea.h) - m_contentArea.y + m_vertScroll) / m_zoomLevel);
+
+    int bitmapStart = SDL_clamp(lineStart / linesPerBitmap, bitmapMin, bitmapMax);
+    int bitmapEnd = SDL_clamp((lineEnd + linesPerBitmap - 1) / linesPerBitmap, bitmapMin, bitmapMax);
+
+    int visMemStart = bitmapStart * 8192;
+    int visMemEnd = bitmapEnd * 8192;
+    if (visMemStart >= visMemEnd)
+        return;
+
+    if (m_memMap == nullptr || m_textureMode != m_currentMode || visMemStart != m_visMemoryStart || visMemEnd != m_visMemoryEnd || dataCount != m_visDataCount)
+    {
+        FreeTexture();
+
+        m_textureMode = m_currentMode;
+        m_visMemoryStart = visMemStart;
+        m_visMemoryEnd = visMemEnd;
+        m_visDataCount = dataCount;
+
+        m_textureWidth = dataCount * 8;
+        m_textureHeight = (bitmapEnd - bitmapStart) * 200;
+
+        m_memMapTexture = SDL_CreateTexture(GetRenderer(), SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, m_textureWidth, m_textureHeight);
+        m_memMapSize = m_textureWidth * m_textureHeight;
+        m_memMap = (u8*)malloc(m_memMapSize);
+        memset(m_memMap, 255, m_memMapSize);
+    }
+
+    for (int i = bitmapStart; i < bitmapEnd; i++)
+    {
+        SDL_Color col = { 255, 255, 255, 255 };
+        GraphicElement::RenderText(GetRenderer(), gApp->GetFont(), FormatString("%04x", i * 8192).c_str(), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - bitmapMin) * linesPerBitmap * m_zoomLevel - m_vertScroll);
+    }
+
+    if (m_currentMode == MODE_Bitmap)
+    {
+        for (int bitmap = bitmapStart; bitmap < bitmapEnd; bitmap++)
+        {
+            for (int ch = 0; ch < 1000; ch++)
+            {
+                for (int r = 0; r < 8; r++)
+                {
+                    int in = bitmap * 8192 + ch * 8 + r;
+                    int row = (bitmap - bitmapStart) * linesPerBitmap + (ch / dataCount) * 8 + r;
+                    int col = (ch % dataCount) * 8;
+                    u8* out = m_memMap + row * dataCount * 8 + col;
+                    u8 pixel = emu->GetByteVic(in++);
+                    for (int p = 0; p < 8; p++)
+                    {
+                        *out++ = (pixel & (1 << (7 - p))) ? 255 : 0;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        u8 color[] = { 0x00, 0xf0, 0x0f, 0x44 };
+        for (int bitmap = bitmapStart; bitmap < bitmapEnd; bitmap++)
+        {
+            for (int ch = 0; ch < 1000; ch++)
+            {
+                for (int r = 0; r < 8; r++)
+                {
+                    int in = bitmap * 8192 + ch * 8 + r;
+                    int row = (bitmap - bitmapStart) * linesPerBitmap + (ch / dataCount) * 8 + r;
+                    int col = (ch % dataCount) * 8;
+                    u8* out = m_memMap + row * dataCount * 8 + col;
+                    u8 pixel = emu->GetByteVic(in++);
+                    for (int p = 0; p < 4; p++)
+                    {
+                        u8 c = color[(pixel >> (6 - p * 2)) & 3];
+                        *out++ = c;
+                        *out++ = c;
+                    }
+                }
+            }
+        }
+    }
+
+    int xOffset = gApp->GetWhiteSpaceWidth() * 8 + settings->textXMargin;
+    SDL_UpdateTexture(m_memMapTexture, nullptr, m_memMap, dataCount * 8);
+    SDL_Rect dest = { m_contentArea.x + xOffset - m_horizScroll, m_contentArea.y + (bitmapStart - bitmapMin) * linesPerBitmap * m_zoomLevel - m_vertScroll, m_textureWidth * m_zoomLevel, m_textureHeight * m_zoomLevel };
+
+    SDL_RenderCopy(GetRenderer(), m_memMapTexture, nullptr, &dest);
+
+    m_renderedWidth = dest.w + xOffset;
+    m_renderedHeight = ((memEnd - memStart) / 8192) * linesPerBitmap * m_zoomLevel;
 }
 
 void DockableWindow_MemoryDump::FreeTexture()
@@ -629,6 +729,15 @@ void DockableWindow_MemoryDump::CalcClampedMemoryRange(int& startMem, int& endMe
 
         case MODE_Bitmap:
         case MODE_BitmapMC:
+            {
+                startMem = m_memoryStart & 0x1e000;
+                endMem = (m_memoryEnd + 2047) & 0x1e000;
+                int startCharSet = m_memoryStart / 8192;
+                int endCharSet = (m_memoryEnd + 8191) / 8192;
+                startMem = startCharSet * 8192;
+                endMem = endCharSet * 8192;
+                dataCount = 40;
+            }
             break;
     }
 }
