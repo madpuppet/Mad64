@@ -10,6 +10,7 @@ xcopy ..\x64\release\mad64.exe Mad64Win_%build%\
 xcopy ..\readme.txt Mad64Win_%build%\
 xcopy ..\font.otf Mad64Win_%build%\
 xcopy ..\font.ttf Mad64Win_%build%\
+xcopy ..\fontc64.ttf Mad64Win_%build%\
 xcopy ..\*.dll Mad64Win_%build%\
 xcopy ..\samples Mad64Win_%build%\samples\
 del Mad64Win_%build%.zip

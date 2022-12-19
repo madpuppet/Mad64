@@ -6,6 +6,7 @@ mkdir $bp
 cp build/Mad64 $bp
 cp font.ttf $bp
 cp font.otf $bp
+cp fontc64.ttf $bp
 cp readme.txt $bp
 cp -r samples $bp/samples
 tar -czvf ${bp}.tar.gz $bp
