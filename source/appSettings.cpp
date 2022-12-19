@@ -406,7 +406,7 @@ void AppFile::Parse(const char* mem, size_t size)
     while (idx < size)
     {
         // skip white space
-        while (idx < size && (mem[idx] == ' ' || mem[idx] == '/t') && mem[idx] != 0xd && mem[idx] != 0xa)
+        while (idx < size && (mem[idx] == ' ' || mem[idx] == '\t') && mem[idx] != 0xd && mem[idx] != 0xa)
             idx++;
         // skip comment lines
         if (mem[idx] != ';' && mem[idx] != 0xd && mem[idx] != 0xa)

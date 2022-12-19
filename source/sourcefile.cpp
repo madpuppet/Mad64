@@ -246,12 +246,14 @@ SourceLine::SourceLine(const char* start, const char* end)
     {
         m_chars.push_back(*start++);
     }
+    m_breakpoint = false;
 }
 
 SourceLine::SourceLine(string line)
 {
     m_gcText = new GraphicChunk();
     m_chars = line;
+    m_breakpoint = false;
 }
 
 SourceLine::SourceLine()
