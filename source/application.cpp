@@ -77,7 +77,6 @@ Application::Application()
 
         m_fontC64 = TTF_OpenFont("fontc64.ttf", m_settings->fontSize);
 
-
         Log("Create Renderer");
 
 #if defined(__APPLE__)
@@ -94,6 +93,7 @@ Application::Application()
         }
 
         Log("Create Modules");
+        m_cachedFontRenderer = new CachedFontRenderer();
         m_dockableMgr = new DockableManager();
         m_editWindow = new EditWindow();
         m_compiler = new Compiler();
@@ -107,6 +107,7 @@ Application::Application()
         m_windowMemoryDump = new DockableWindow_MemoryDump("Memory Dump");
         m_windowSearchAndReplace = new DockableWindow_SearchAndReplace("Search and Replace");
         m_windowMemoryImage = new DockableWindow_MemoryImage("Memory Usage");
+
         m_dockableMgr->AddWindow(m_windowSearchAndReplace, "S&R", true, true);
         m_dockableMgr->AddWindow(m_windowCompiler, "COM", true, true);
         m_dockableMgr->AddWindow(m_windowHelp, "HLP", true, true);
@@ -187,6 +188,7 @@ int Application::MainLoop()
     SDL_Event e;
     while (!m_quit)
     {
+#if 0
         if (m_settings->lowCPUMode || m_focusedWindowID == -1)
         {
             int timeout = (m_runEmulation || m_editWindow->IsAutoScrolling()) ? 10 : 200;
@@ -194,6 +196,7 @@ int Application::MainLoop()
                 HandleEvent(&e);
         }
         else
+#endif
         {
             if (SDL_PollEvent(&e))
                 HandleEvent(&e);

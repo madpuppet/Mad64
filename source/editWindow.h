@@ -122,7 +122,6 @@ protected:
 	struct SourceFileItem
 	{
 		SourceFile* file;
-		GraphicElement* geText;
 		int vertScroll;
 		int horizScroll;
 		int activeLine, activeColumn, activeTargetX;
@@ -130,6 +129,8 @@ protected:
 
 		int editWindowHScrollWidth;    // locked scroll width = don't reduce unless the HorizScroll == 0
 		int editWindowTextWidth;       // 
+
+		SDL_Rect titleRect;
 	};
 	vector<SourceFileItem*> m_fileTabs;
 	SourceFileItem* m_activeSourceFileItem;
@@ -188,7 +189,6 @@ protected:
 	// status bar
 	struct StatusInfo
 	{
-		GraphicElement* m_ge;
 		float m_avgTimeDelta;
 	} m_status;
 	void InitStatus();

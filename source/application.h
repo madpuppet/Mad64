@@ -7,6 +7,7 @@
 #include "cmdManager.h"
 #include "appSettings.h"
 #include "dockableManager.h"
+#include "cachedFontRenderer.h"
 #include "emulatorc64.h"
 
 class DockableWindow_Log;
@@ -45,6 +46,7 @@ public:
     EmulatorC64* GetEmulator() { return m_emulator; }
     EditWindow* GetEditWindow() { return m_editWindow; }
     DockableManager* GetDockableMgr() { return m_dockableMgr; }
+    CachedFontRenderer* GetFontRenderer() { return m_cachedFontRenderer; }
 
     DockableWindow_Log* GetWindowCompiler() { return m_windowCompiler; }
     DockableWindow_Log* GetWindowHelp() { return m_windowHelp; }
@@ -139,6 +141,7 @@ protected:
     Compiler* m_compiler;
     EmulatorC64* m_emulator;
     DockableManager* m_dockableMgr;
+    CachedFontRenderer* m_cachedFontRenderer;
     bool m_quit;
     bool m_fullscreen;
     bool m_emulatorCaptureInput;

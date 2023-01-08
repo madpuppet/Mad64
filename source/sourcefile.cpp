@@ -241,7 +241,6 @@ bool ScanToken(const char * &src, string &out)
 
 SourceLine::SourceLine(const char* start, const char* end)
 {
-    m_gcText = new GraphicChunk();
     while (start != end)
     {
         m_chars.push_back(*start++);
@@ -251,20 +250,17 @@ SourceLine::SourceLine(const char* start, const char* end)
 
 SourceLine::SourceLine(string line)
 {
-    m_gcText = new GraphicChunk();
     m_chars = line;
     m_breakpoint = false;
 }
 
 SourceLine::SourceLine()
 {
-    m_gcText = new GraphicChunk();
     m_breakpoint = false;
 }
 
 SourceLine::~SourceLine()
 {
-    delete m_gcText;
 }
 
 void SourceLine::Tokenize()
@@ -280,14 +276,14 @@ void SourceLine::Tokenize()
             m_tokens.push_back(token);
         }
     }
-    m_gcText->Clear();
     m_charXOffset.clear();
     m_charXOffset.push_back(0);
+    m_renderText.clear();
 }
 
 void SourceLine::GetCharX(int column, int& xStart, int& xEnd)
 {
-    VisualizeIfNecessary();
+    LayoutRenderText();
     if (m_charXOffset.empty())
     {
         xStart = 0;
@@ -310,7 +306,7 @@ void SourceLine::GetCharX(int column, int& xStart, int& xEnd)
 
 int SourceLine::GetColumnAtX(int x)
 {
-    VisualizeIfNecessary();
+    LayoutRenderText();
     for (int i = 0; i < m_charXOffset.size()-1; i++)
     {
         if (m_charXOffset[i+1] > x)
@@ -321,18 +317,20 @@ int SourceLine::GetColumnAtX(int x)
 
 void SourceLine::ClearAllVisuals()
 {
+    m_renderText.clear();
     m_charXOffset.clear();
     m_charXOffset.push_back(0);
-    m_gcText->Clear();
 }
 
-void SourceLine::VisualizeIfNecessary()
+void SourceLine::LayoutRenderText()
 {
     if (m_tokens.empty() || m_charXOffset.size() > 1)
         return;
 
     auto settings = gApp->GetSettings();
     auto cpu = gApp->GetEmulator()->GetCpu();
+    auto r = gApp->GetRenderer();
+    auto fr = gApp->GetFontRenderer();
 
     int whiteSpaceWidth = gApp->GetWhiteSpaceWidth();
     if (!m_tokens.empty())
@@ -386,7 +384,12 @@ void SourceLine::VisualizeIfNecessary()
                 else if (token[0] == '$' || (token[0] >= '0' && token[0] <= '9'))
                     col = settings->numericColor;
 
-                m_gcText->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), token.c_str(), col, xLoc, 0));
+                RenderText rt;
+                rt.col = col;
+                rt.x = xLoc;
+                rt.y = 0;
+                rt.text = token;
+                m_renderText.push_back(rt);
                 xLoc += textWidth;
             }
             charIdx += len;

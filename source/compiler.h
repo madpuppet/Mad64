@@ -152,7 +152,6 @@ public:
 
     // get visuals on demand
     GraphicChunk* GetMemAddrGC(int line);
-    GraphicChunk* GetDecodeGC(int line);
 
     // update the memory maps - done on thread at end of compile
     void BuildMemoryMap();

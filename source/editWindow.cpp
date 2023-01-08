@@ -61,14 +61,6 @@ void DrawColouredLine(int x, int y1, int y2, bool highlighted)
 
 void EditWindow::ClearVisuals()
 {
-	delete m_status.m_ge;
-	m_status.m_ge = nullptr;
-
-	for (auto sfi : m_fileTabs)
-	{
-		delete sfi->geText;
-		sfi->geText = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), sfi->file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
-	}
 	LayoutTabs();
 	CalcRects();
 }
@@ -90,6 +82,7 @@ void EditWindow::Draw()
 {
 	auto r = gApp->GetRenderer();
 	auto settings = gApp->GetSettings();
+	auto fr = gApp->GetFontRenderer();
 	SourceFile* file = m_activeSourceFileItem ? m_activeSourceFileItem->file : nullptr;
 	CompilerSourceInfo* csi = file ? file->GetCompileInfo() : nullptr;
 
@@ -121,11 +114,10 @@ void EditWindow::Draw()
 			else
 				fore = { 96,96,96,255 };
 		}
-		SDL_Rect border = sfi->geText->GetRect();
+		SDL_Rect border = sfi->titleRect;
 		SDL_SetRenderDrawColor(r, back.r, back.g, back.b, back.a);
 		SDL_RenderFillRect(r, &border);
-		SDL_SetTextureColorMod(sfi->geText->GetTexture(), fore.r, fore.g, fore.b);
-		SDL_RenderCopy(r, sfi->geText->GetTexture(), NULL, &sfi->geText->GetRect());
+		fr->RenderText(r, sfi->file->GetName(), fore, sfi->titleRect.x, sfi->titleRect.y, CachedFontRenderer::StandardFont, nullptr, false);
 	}
 
 	// draw lines
@@ -182,11 +174,13 @@ void EditWindow::Draw()
 
 		// draw decode
 		{
+			SDL_Color dataCol = { 255, 64, 64, 255 };
+			SDL_Color cycleCol = { 255, 255, 0, 255 };
+
 			ClipRectScope src(r, &m_decodeRect);
 			for (int i = startLine; i < endLine; i++)
 			{
 				int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
-				auto gc = csi ? csi->GetDecodeGC(i) : nullptr;
 				int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
 				SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
 				bool emulating = IsEmulationAtLine(csi, i);
@@ -208,8 +202,28 @@ void EditWindow::Draw()
 					SDL_SetRenderDrawColor(r, red, green, blue, 255);
 					SDL_RenderFillRect(r, &lineQuad);
 				}
-				if (gc)
-					gc->DrawAt(m_decodeRect.x + settings->textXMargin, y + settings->textYMargin);
+				if (csi)
+				{
+					auto sl = csi->m_lines[i];
+					int x = m_decodeRect.x + settings->textXMargin;
+					if (sl->type == LT_Instruction)
+					{
+						auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
+						fr->RenderText(r, FormatString("%d", opcode->cycles), cycleCol, x, y, CachedFontRenderer::StandardFont, nullptr, false);
+					}
+					if (sl->data.size() > 0)
+					{
+						for (int d = 0; d < min((int)sl->data.size(), 16); d++)
+						{
+							fr->RenderText(r, FormatString("%02x", sl->data[d]), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + d * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+						}
+						if (sl->data.size() > 16)
+						{
+							dataCol = { 255, 255, 64, 255 };
+							fr->RenderText(r, FormatString(".. %d bytes", sl->data.size()), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+						}
+					}
+				}
 			}
 		}
 
@@ -289,12 +303,17 @@ void EditWindow::Draw()
 				}
 
 				// - text
-				if (line->GetGCText())
+				auto& renderText = line->GetRenderText();
+				if (!renderText.empty())
 				{
+					SDL_Rect outRect = { 0,0,0,0 };
 					int lineStartX = m_activeXPosText + settings->textXMargin - m_horizScroll;
 					int lineStartY = y + settings->textYMargin;
-					int maxWidth = line->GetGCText()->CalcMaxWidth();
-					line->GetGCText()->DrawAt(lineStartX, lineStartY);
+					for (auto& rt : renderText)
+					{
+						fr->RenderText(r, rt.text, rt.col, lineStartX + rt.x, lineStartY + rt.y, CachedFontRenderer::StandardFont, &outRect, false);
+					}
+					int maxWidth = outRect.w;
 					m_activeSourceFileItem->editWindowTextWidth = SDL_max(m_activeSourceFileItem->editWindowTextWidth, maxWidth);
 					if (m_horizScroll == 0)
 						m_activeSourceFileItem->editWindowHScrollWidth = 0;
@@ -490,7 +509,6 @@ void EditWindow::OnFileLoaded(SourceFile* file)
 	auto sfi = new SourceFileItem();
 	sfi->modified = false;
 	sfi->file = file;
-	sfi->geText = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), file->GetName().c_str(), { 255,255,255,255 }, 0, 0);
 	sfi->activeColumn = 0;
 	sfi->activeLine = 0;
 	sfi->activeTargetX = 0;
@@ -573,13 +591,15 @@ void EditWindow::SetActiveFileIdx(int idx)
 void EditWindow::LayoutTabs()
 {
 	auto settings = gApp->GetSettings();
+	auto renderer = gApp->GetRenderer();
+	auto fr = gApp->GetFontRenderer();
+
 	int x = m_titleTabsRect.x + settings->textXMargin;
 	int y = m_titleTabsRect.y + settings->textYMargin;
 	for (auto sfi : m_fileTabs)
 	{
-		int w = sfi->geText->GetRect().w;
-		sfi->geText->SetPos(x, settings->textYMargin);
-		x += w + 16;
+		fr->RenderText(renderer, sfi->file->GetName(), { 0,0,0,0}, x, settings->textYMargin, CachedFontRenderer::StandardFont, &sfi->titleRect, true);
+		x += sfi->titleRect.w + 16;
 	}
 }
 
@@ -591,7 +611,6 @@ void EditWindow::OnFileClosed(SourceFile* file)
 		auto sfi = *it;
 		if (sfi->file == file)
 		{
-			delete sfi->geText;
 			m_fileTabs.erase(it);
 			if (m_fileTabs.empty())
 				SetActiveFile(nullptr);
@@ -723,7 +742,7 @@ void EditWindow::OnMouseDown(SDL_Event* e)
 		// title tabs...
 		for (auto sfi : m_fileTabs)
 		{
-			if (Contains(sfi->geText->GetRect(), e->button.x, e->button.y))
+			if (Contains(sfi->titleRect, e->button.x, e->button.y))
 			{
 				if (sfi != m_activeSourceFileItem)
 				{
@@ -967,7 +986,7 @@ void EditWindow::UpdateCursor(int x, int y)
 	{
 		for (auto sfi : m_fileTabs)
 		{
-			if (Contains(sfi->geText->GetRect(), x, y))
+			if (Contains(sfi->titleRect, x, y))
 			{
 				gApp->SetCursor(Cursor_Hand);
 				return;
@@ -1529,38 +1548,10 @@ struct StatusInfo
 
 void EditWindow::InitStatus()
 {
-	auto settings = gApp->GetSettings();
-	m_status.m_ge = nullptr;
 }
 void EditWindow::UpdateStatus()
 {
-	auto settings = gApp->GetSettings();
-
-	float td = TIMEDELTA;
-	m_status.m_avgTimeDelta = (m_status.m_avgTimeDelta + td*3.0f) * 0.25f;
-
-	if (m_activeSourceFileItem)
-	{
-		SDL_Color col = { 0,255,255,255 };
-		auto cmdMgr = m_activeSourceFileItem->file->GetCmdManager();
-		auto file = m_activeSourceFileItem->file;
-		auto line = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine];
-		int totalCmds = cmdMgr->GetTotalCmds();
-		int currentCmd = cmdMgr->GetCurrentCmdIndex();
-		int totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
-
-		char fpsText[256];
-		sprintf(
-			fpsText, "%2.1f MS  %4d FPS    %s %s %s    LINE: %05d/%05d    COL %03d/%03d    CMD: %03d/%03d",
-			m_status.m_avgTimeDelta * 1000, (int)(1.0f / m_status.m_avgTimeDelta),
-			settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "IND" : "---", settings->tabsToSpaces ? "SPC" : "TAB",
-			m_activeSourceFileItem->activeLine + 1, totalLines, m_activeSourceFileItem->activeColumn + 1, (int)line->GetChars().size(),
-			currentCmd, totalCmds
-		);
-
-		delete m_status.m_ge;
-		m_status.m_ge = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), fpsText, col, 0, 0);
-	}
+	m_status.m_avgTimeDelta = (m_status.m_avgTimeDelta + TIMEDELTA *3.0f) * 0.25f;
 }
 void EditWindow::DrawStatus()
 {
@@ -1571,7 +1562,28 @@ void EditWindow::DrawStatus()
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &m_statusRect);
 
-	m_status.m_ge->RenderAt( r, settings->textXMargin, m_statusRect.y + settings->textYMargin );
+	SDL_Color col = { 0,255,255,255 };
+	auto cmdMgr = m_activeSourceFileItem->file->GetCmdManager();
+	auto file = m_activeSourceFileItem->file;
+	auto line = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine];
+	int totalCmds = cmdMgr->GetTotalCmds();
+	int currentCmd = cmdMgr->GetCurrentCmdIndex();
+	int totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
+
+	string strMS = FormatString("%2.1f MS", m_status.m_avgTimeDelta * 1000);
+	string strFPS = FormatString("%4d FPS", (int)(1.0f / m_status.m_avgTimeDelta));
+	string strMODE = FormatString("%s %s %s", settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "IND" : "---", settings->tabsToSpaces ? "SPC" : "TAB");
+	string strLINE = FormatString("LINE: %05d/%05d", m_activeSourceFileItem->activeLine + 1, totalLines);
+	string strCOL = FormatString("COL %03d/%03d", m_activeSourceFileItem->activeColumn + 1, (int)line->GetChars().size());
+	string strCMD = FormatString("CMD: %03d/%03d", currentCmd, totalCmds);
+
+	SDL_Rect rectMS, rectFPS, rectMODE, rectLINE, rectCOL, rectCMD;
+	gApp->GetFontRenderer()->RenderText(r, strMS, col, settings->textXMargin, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectMS, false);
+	gApp->GetFontRenderer()->RenderText(r, strFPS, col, rectMS.x + rectMS.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectFPS, false);
+	gApp->GetFontRenderer()->RenderText(r, strMODE, col, rectFPS.x + rectFPS.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectMODE, false);
+	gApp->GetFontRenderer()->RenderText(r, strLINE, col, rectMODE.x + rectMODE.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectLINE, false);
+	gApp->GetFontRenderer()->RenderText(r, strCOL, col, rectLINE.x + rectLINE.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectCOL, false);
+	gApp->GetFontRenderer()->RenderText(r, strCMD, col, rectCOL.x + rectCOL.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectCMD, false);
 }
 
 void EditWindow::GotoEmuPC()

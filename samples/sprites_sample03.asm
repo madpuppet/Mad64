@@ -1,4 +1,4 @@
-; Like the previous example,  except this one uses vic interrupts to detect when collisions happen
+ Like the previous example,  except this one uses vic interrupts to detect when collisions happen
 ; Interrupt routine is triggered on any collision, which increments the border and then clears the bits
 ; so further interrupts can happen if we are still in conflict
 

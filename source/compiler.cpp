@@ -1360,44 +1360,6 @@ GraphicChunk* CompilerSourceInfo::GetMemAddrGC(int line)
     return nullptr;
 }
 
-GraphicChunk* CompilerSourceInfo::GetDecodeGC(int line)
-{
-    SDL_Color dataCol = { 255, 64, 64, 255 };
-    SDL_Color cycleCol = { 255, 255, 0, 255 };
-
-    auto settings = gApp->GetSettings();
-    if (line < m_lines.size())
-    {
-        auto sl = m_lines[line];
-        if (sl->gcDecode->IsEmpty())
-        {
-            if (sl->type == LT_Instruction)
-            {
-                char buffer[16];
-                auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
-                SDL_snprintf(buffer, 16, "%d", opcode->cycles);
-                sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), buffer, cycleCol, 0, 0));
-            }
-            if (sl->data.size() > 0)
-            {
-                char buffer[16];
-                for (int i = 0; i < min((int)sl->data.size(), 16); i++)
-                {
-                    SDL_snprintf(buffer, 16, "%02x", sl->data[i]);
-                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), buffer, dataCol, gApp->GetWhiteSpaceWidth() * (3 + i * 3), 0));
-                }
-                if (sl->data.size() > 16)
-                {
-                    dataCol = { 255, 255, 64, 255 };
-                    string text = FormatString(".. %d bytes", sl->data.size());
-                    sl->gcDecode->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), text.c_str(), dataCol, gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), 0));
-                }
-            }
-        }
-        return sl->gcDecode->IsEmpty() ? nullptr : sl->gcDecode;
-    }
-    return nullptr;
-}
 
 void Compiler::StartThreadedCompile()
 {

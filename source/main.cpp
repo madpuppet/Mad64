@@ -1,6 +1,11 @@
 // Using SDL and standard IO
 #include "common.h"
 
+#if defined(_WIN64)
+#include "windows.h"
+#include "debugapi.h"
+#endif
+
 int main(int argc, char *args[])
 {
     auto app = new Application();
@@ -88,6 +93,11 @@ void Log(const char* pFormat, ...)
         fprintf(fh, "%s\n", buffer);
         fclose(fh);
     }
+
+#if defined(_WIN64)
+    OutputDebugStringA(buffer);
+    OutputDebugStringA("\n");
+#endif
 }
 
 #include <codecvt> // for std::codecvt_utf8

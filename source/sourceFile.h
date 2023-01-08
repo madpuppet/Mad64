@@ -10,33 +10,39 @@ public:
     SourceLine(string line);
     ~SourceLine();
 
+    struct RenderText
+    {
+        int x, y;
+        string text;
+        SDL_Color col;
+    };
+
     string &GetChars() { return m_chars; }
     vector<string>& GetTokens() { return m_tokens; }
-    int GetLineWidth() { VisualizeIfNecessary(); return m_charXOffset.empty() ? 0 : m_charXOffset.back(); }
+    int GetLineWidth() { LayoutRenderText(); return m_charXOffset.empty() ? 0 : m_charXOffset.back(); }
     void GetCharX(int column, int& xStart, int& xEnd);
     int GetColumnAtX(int x);
-
-    GraphicChunk* GetGCText() { VisualizeIfNecessary();  return m_gcText; }
+    vector<RenderText>& GetRenderText() { return m_renderText; }
 
     // scan the m_chars for tokens
     // this clears any previous visualization
     void Tokenize();
 
     // convert the tokens to visual elements if it hasn't already
-    void VisualizeIfNecessary();
+    void RenderLine(int x, int y);
     void ClearAllVisuals();
+    void LayoutRenderText();
 
     // Set Breakpoint (0 to clear, or use combination of BRK_xxxx flags)
     void SetBreakpoint(u8 breakpointType) { m_breakpoint = breakpointType; }
     u8 GetBreakpoint() { return m_breakpoint; }
 
 protected:
-    GraphicChunk* m_gcText;         // graphic chunk for text
-
     string m_chars;
     vector<string> m_tokens;
     vector<int> m_charXOffset;
     u8 m_breakpoint;
+    vector<RenderText> m_renderText;
 };
 
 class SourceFile

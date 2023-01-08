@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\application.cpp" />
+    <ClCompile Include="source\cachedFontRenderer.cpp" />
     <ClCompile Include="source\chips\c64ram.cpp" />
     <ClCompile Include="source\chips\cia1.cpp" />
     <ClCompile Include="source\chips\cia2.cpp" />
@@ -283,6 +284,7 @@
     <ClInclude Include="include\SDL_vulkan.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="source\application.h" />
+    <ClInclude Include="source\cachedFontRenderer.h" />
     <ClInclude Include="source\chips\c64ram.h" />
     <ClInclude Include="source\chips\cia1.h" />
     <ClInclude Include="source\chips\cia2.h" />
