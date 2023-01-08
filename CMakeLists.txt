@@ -16,6 +16,7 @@ add_executable(Mad64
 	source/cmdManager.cpp
 	source/compiler.cpp
 	source/contextualHelp.cpp
+	source/cachedFontRenderer.cpp
 	source/editWindow.cpp
 	source/graphicChunk.cpp
 	source/main.cpp
