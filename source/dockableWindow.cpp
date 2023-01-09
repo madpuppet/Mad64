@@ -224,7 +224,7 @@ void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
     }
 }
 
-DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked(true), m_grabMode(None), m_geTitle(nullptr), m_windowArea({ 100,100,640,480 })
+DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked(true), m_grabMode(None),m_windowArea({ 100,100,640,480 })
 {
     m_window = SDL_CreateWindow(m_title.c_str(), m_windowArea.x, m_windowArea.y, m_windowArea.w, m_windowArea.h, SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (m_window == NULL)
@@ -251,9 +251,6 @@ DockableWindow::DockableWindow(const string& title) : m_title(title), m_isDocked
 void DockableWindow::OnRendererChange()
 {
     auto r = GetRenderer();
-
-    DeleteClear(m_geTitle);
-    GenerateTitleGE();
 
     for (auto it : m_titleIconsLeft)
     {
@@ -290,9 +287,10 @@ void DockableWindow::CreateIcons()
 void DockableWindow::LayoutIcons()
 {
     auto settings = gApp->GetSettings();
-    GenerateTitleGE();
-    m_geTitle->SetPos(m_titleArea.x + settings->textXMargin, m_titleArea.y + settings->textYMargin);
-    int leftX = m_geTitle->GetRect().x + m_geTitle->GetRect().w + settings->textXMargin;
+    auto cs = gApp->GetFontRenderer()->PrepareRender(GetRenderer(), m_title, m_titleArea.x + settings->textXMargin, m_titleArea.y + settings->textYMargin, CachedFontRenderer::StandardFont);
+    m_titleTextArea = cs->rect;
+
+    int leftX = m_titleTextArea.x + m_titleTextArea.w + settings->textXMargin;
     for (auto item : m_titleIconsLeft)
     {
         int w = item->GetWidth();
@@ -349,6 +347,7 @@ void DockableWindow::DrawTitle()
 {
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
+    auto fs = gApp->GetFontRenderer();
 
     if ((m_titleArea.y + m_titleArea.h > m_clipArea.y) && (m_titleArea.y <= m_clipArea.y + m_clipArea.h))
     {
@@ -361,9 +360,7 @@ void DockableWindow::DrawTitle()
         SDL_SetRenderDrawColor(r, 32 - 32, 64 - 32, 128 - 32, 255);
         SDL_RenderDrawLine(r, m_titleArea.x, m_titleArea.y + m_titleArea.h - 1, m_titleArea.x + m_titleArea.w, m_titleArea.y + m_titleArea.h - 1);
 
-        SDL_SetRenderDrawColor(r, 64, 64, 128, 255);
-        GenerateTitleGE();
-        m_geTitle->Render(r);
+        fs->RenderText(r, m_title, settings->helpGroupColor, m_titleTextArea.x, m_titleTextArea.y, CachedFontRenderer::StandardFont, nullptr, false);
 
         for (auto icon : m_titleIconsLeft)
         {
@@ -489,18 +486,6 @@ void DockableWindow::OnResize()
 void DockableWindow::SetTitle(const string& str)
 {
     m_title = str;
-    delete m_geTitle;
-    m_geTitle = nullptr;
-}
-
-void DockableWindow::GenerateTitleGE()
-{
-    if (!m_geTitle)
-    {
-        auto settings = gApp->GetSettings();
-        auto r = GetRenderer();
-        m_geTitle = GraphicElement::CreateFromText(r, gApp->GetFont(), m_title.c_str(), settings->helpGroupColor, m_renderArea.x + settings->textXMargin, m_renderArea.y);
-    }
 }
 
 void DockableWindow::Undock()

@@ -41,12 +41,12 @@ protected:
 
     struct DockableWindowItem
     {
-        DockableWindowItem() : m_geTitle(0), m_window(0) {}
+        DockableWindowItem() : m_window(0) {}
         ~DockableWindowItem() {}
 
         bool m_enabled;
         string m_titleCode;
-        GraphicElement* m_geTitle;
+        SDL_Rect m_titleArea;
         DockableWindow* m_window;
     };
     vector<DockableWindowItem> m_windows;

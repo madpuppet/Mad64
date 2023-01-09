@@ -22,7 +22,8 @@ void DockableManager::AddWindow(class DockableWindow* window, const char* iconTe
 
     SDL_Color col = { 255,255,255 };
     item.m_titleCode = iconText;
-    item.m_geTitle = GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), iconText, col, 0, 0);
+    auto cs = gApp->GetFontRenderer()->PrepareRender(gApp->GetRenderer(), iconText, 0, 0, CachedFontRenderer::StandardFont);
+    item.m_titleArea = cs->rect;
     item.m_window = window;
     item.m_enabled = enabled;
     m_windows.push_back(item);
@@ -78,7 +79,7 @@ bool DockableManager::OnMouseDown(SDL_Event* e)
             // check docked windows
             for (auto& win : m_windows)
             {
-                if (Contains(win.m_geTitle->GetRect(), e->button.x, e->button.y))
+                if (Contains(win.m_titleArea, e->button.x, e->button.y))
                 {
                     win.m_enabled = !win.m_enabled;
                     if (!win.m_window->IsDocked())
@@ -190,7 +191,7 @@ void DockableManager::UpdateCursor(int windowID, int x, int y)
         {
             win.m_window->UpdateCursor(x, y);
         }
-        if (Contains(win.m_geTitle->GetRect(), x, y))
+        if (Contains(win.m_titleArea, x, y))
             gApp->SetCursor(Cursor_Hand);
     }
 }
@@ -265,7 +266,6 @@ DockableManager::~DockableManager()
 {
     for (auto& it : m_windows)
     {
-        delete it.m_geTitle;
         delete it.m_window;
     }
 }
@@ -285,6 +285,7 @@ void DockableManager::Draw()
 
     auto r = gApp->GetRenderer();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
 
     SDL_SetRenderDrawColor(r, 64, 64, 64, 255);
     SDL_Rect titleRect = { m_area.x, m_area.y, m_area.w, settings->lineHeight };
@@ -295,21 +296,16 @@ void DockableManager::Draw()
     SDL_SetRenderDrawColor(r, 64 - 32, 64 - 32, 64 - 32, 255);
     SDL_RenderDrawLine(r, m_area.x, m_area.y + settings->lineHeight - 1, m_area.x + m_area.w, m_area.y + settings->lineHeight - 1);
 
-
     int titleX = m_area.x + settings->textXMargin;
     for (auto& win : m_windows)
     {
-        win.m_geTitle->SetPos(titleX, m_area.y + settings->textYMargin);
-        if (win.m_enabled)
-        {
-            SDL_SetTextureColorMod(win.m_geTitle->GetTexture(), 255, 255, 255);
-        }
-        else
-        {
-            SDL_SetTextureColorMod(win.m_geTitle->GetTexture(), 128, 128, 128);
-        }
-        win.m_geTitle->Render(r);
-        titleX += win.m_geTitle->GetRect().w + settings->textXMargin * 2;
+        SDL_Color colEnabled = { 255,255,255,255 };
+        SDL_Color colDisabled = { 128,128,128,128 };
+
+        win.m_titleArea.x = titleX;
+        win.m_titleArea.y = m_area.y;
+        fr->RenderText(r, win.m_titleCode, win.m_enabled ? colEnabled : colDisabled, titleX, m_area.y, CachedFontRenderer::StandardFont, nullptr, false);
+        titleX += win.m_titleArea.w + settings->textXMargin * 2;
     }
 
     m_renderedContentWidth = 64;

@@ -174,25 +174,32 @@ void DockableWindow_MemoryDump::DrawHex8()
     auto settings = gApp->GetSettings();
 
     int y = m_contentArea.y - m_vertScroll;
-    int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+    int whiteSpace = gApp->GetWhiteSpaceWidth();
     auto emu = gApp->GetEmulator();
     auto font = gApp->GetFont();
-    SDL_Color col = { 255, 255, 255, 255 };
+    auto fr = gApp->GetFontRenderer();
+    SDL_Color addrCol = { 255, 255, 255, 255 };
+    SDL_Color textCol = { 128, 200, 200, 255 };
 
     for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount)
     {
         if (y + settings->lineHeight >= m_clipArea.y && y <= m_clipArea.y + m_clipArea.h)
         {
-            string text = FormatString("%04x ", addr);
+            int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+
+            string text = FormatString("%04x", addr);
+            SDL_Rect rect;
+            fr->RenderText(r, text, addrCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+
+            x += rect.w + whiteSpace*2;
             for (int i = 0; i < m_dataCount; i++)
             {
-                text += FormatString(" %02x", emu->GetByte(addr + i));
+                text = FormatString("%02x", emu->GetByte(addr + i));
+                fr->RenderText(r, text, textCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+                x += rect.w + whiteSpace;
             }
 
-            auto ge = GraphicElement::CreateFromText(r, font, text.c_str(), col, x, y + settings->textYMargin);
-            ge->Render(r);
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + ge->GetRect().w);
-            delete ge;
+            m_renderedWidth = SDL_max(m_renderedWidth, x);
         }
         y += settings->lineHeight;
         m_renderedHeight += settings->lineHeight;
@@ -208,25 +215,32 @@ void DockableWindow_MemoryDump::DrawHex16()
     auto settings = gApp->GetSettings();
 
     int y = m_contentArea.y - m_vertScroll;
-    int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+    int whiteSpace = gApp->GetWhiteSpaceWidth();
     auto emu = gApp->GetEmulator();
     auto font = gApp->GetFont();
-    SDL_Color col = { 255, 255, 255, 255 };
+    auto fr = gApp->GetFontRenderer();
+    SDL_Color addrCol = { 255, 255, 255, 255 };
+    SDL_Color textCol = { 128, 200, 200, 255 };
 
-    for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount*2)
+    for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount * 2)
     {
         if (y + settings->lineHeight >= m_clipArea.y && y <= m_clipArea.y + m_clipArea.h)
         {
-            string text = FormatString("%04x ", addr);
+            int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+
+            string text = FormatString("%04x", addr);
+            SDL_Rect rect;
+            fr->RenderText(r, text, addrCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+
+            x += rect.w + whiteSpace * 2;
             for (int i = 0; i < m_dataCount; i++)
             {
-                text += FormatString(" %04x", emu->GetByte(addr + i*2) + ((u16)emu->GetByte(addr + i*2 + 1)<<8));
+                text = FormatString("%04x", emu->GetByte(addr + i * 2) + ((u16)emu->GetByte(addr + i * 2 + 1) << 8));
+                fr->RenderText(r, text, textCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+                x += rect.w + whiteSpace;
             }
 
-            auto ge = GraphicElement::CreateFromText(r, font, text.c_str(), col, x, y + settings->textYMargin);
-            ge->Render(r);
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + ge->GetRect().w);
-            delete ge;
+            m_renderedWidth = SDL_max(m_renderedWidth, x);
         }
         y += settings->lineHeight;
         m_renderedHeight += settings->lineHeight;
@@ -239,33 +253,43 @@ void DockableWindow_MemoryDump::DrawBin8()
 
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
+    int whiteSpace = gApp->GetWhiteSpaceWidth();
 
     int y = m_contentArea.y - m_vertScroll;
     int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
     auto emu = gApp->GetEmulator();
     auto font = gApp->GetFont();
-    SDL_Color col = { 255, 255, 255, 255 };
+    auto fr = gApp->GetFontRenderer();
+    SDL_Color addrCol = { 255, 255, 255, 255 };
+    SDL_Color textCol = { 128, 200, 200, 255 };
 
     for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount)
     {
         if (y + settings->lineHeight >= m_clipArea.y && y <= m_clipArea.y + m_clipArea.h)
         {
-            string text = FormatString("%04x ", addr);
+            int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+
+            string text = FormatString("%04x", addr);
+            SDL_Rect rect;
+            fr->RenderText(r, text, addrCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+
+            x += rect.w + whiteSpace * 2;
+
             for (int i = 0; i < m_dataCount; i++)
             {
                 u8 val = emu->GetByte(addr + i);
-                char out[10];
-                out[0] = ' ';
-                out[9] = 0;
+                char out[9];
+                out[8] = 0;
                 for (int ii = 0; ii < 8; ii++)
-                    out[ii + 1] = (val & (1 << ii)) ? '1' : '0';
+                    out[ii] = (val & (1 << ii)) ? '1' : '0';
+
+                fr->RenderText(r, out, textCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+                x += rect.w + whiteSpace;
+
                 text += out;
             }
 
-            auto ge = GraphicElement::CreateFromText(r, font, text.c_str(), col, x, y + settings->textYMargin);
-            ge->Render(r);
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + ge->GetRect().w);
-            delete ge;
+            m_renderedWidth = SDL_max(m_renderedWidth, x);
         }
         y += settings->lineHeight;
         m_renderedHeight += settings->lineHeight;
@@ -278,33 +302,41 @@ void DockableWindow_MemoryDump::DrawBin16()
 
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
+    int whiteSpace = gApp->GetWhiteSpaceWidth();
 
     int y = m_contentArea.y - m_vertScroll;
     int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
     auto emu = gApp->GetEmulator();
     auto font = gApp->GetFont();
-    SDL_Color col = { 255, 255, 255, 255 };
+    auto fr = gApp->GetFontRenderer();
+    SDL_Color addrCol = { 255, 255, 255, 255 };
+    SDL_Color textCol = { 128, 200, 200, 255 };
 
-    for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount*2)
+    for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount * 2)
     {
         if (y + settings->lineHeight >= m_clipArea.y && y <= m_clipArea.y + m_clipArea.h)
         {
-            string text = FormatString("%04x ", addr);
+            int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+            string text = FormatString("%04x", addr);
+            SDL_Rect rect;
+            fr->RenderText(r, text, addrCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+            x += rect.w + whiteSpace * 2;
+
             for (int i = 0; i < m_dataCount; i++)
             {
-                u16 val = emu->GetByte(addr + i) + ((u16)emu->GetByte(addr + i + 1) << 8);
-                char out[18];
-                out[0] = ' ';
-                out[17] = 0;
+                u8 val = emu->GetByte(addr + i);
+                char out[17];
+                out[16] = 0;
                 for (int ii = 0; ii < 16; ii++)
-                    out[ii + 1] = (val & (1 << ii)) ? '1' : '0';
+                    out[ii] = (val & (1 << ii)) ? '1' : '0';
+
+                fr->RenderText(r, out, textCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+                x += rect.w + whiteSpace;
+
                 text += out;
             }
 
-            auto ge = GraphicElement::CreateFromText(r, font, text.c_str(), col, x, y + settings->textYMargin);
-            ge->Render(r);
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + ge->GetRect().w);
-            delete ge;
+            m_renderedWidth = SDL_max(m_renderedWidth, x);
         }
         y += settings->lineHeight;
         m_renderedHeight += settings->lineHeight;
@@ -317,19 +349,27 @@ void DockableWindow_MemoryDump::DrawPetsci()
 
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
+    int whiteSpace = gApp->GetWhiteSpaceWidth();
 
     int y = m_contentArea.y - m_vertScroll;
     int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
     auto emu = gApp->GetEmulator();
     auto font = gApp->GetFontC64();
-    SDL_Color col = { 255, 255, 255, 255 };
+    SDL_Color addrCol = { 255, 255, 255, 255 };
+    SDL_Color textCol = { 128, 200, 200, 255 };
 
     u16* text16 = new u16[m_dataCount + 6 + 1];
     for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount)
     {
         if (y + settings->lineHeight >= m_clipArea.y && y <= m_clipArea.y + m_clipArea.h)
         {
-            string text = FormatString("%04x  ", addr);
+            int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
+            string text = FormatString("%04x", addr);
+            SDL_Rect rect;
+            fr->RenderText(r, text, addrCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
+            x += rect.w + whiteSpace * 2;
+
             for (int i=0; i<6; i++)
                 text16[i] = (u16)text[i];
 
@@ -338,7 +378,7 @@ void DockableWindow_MemoryDump::DrawPetsci()
 
             text16[m_dataCount + 6] = 0;
 
-            SDL_Surface* surface = TTF_RenderUNICODE_Blended(font, text16, col);
+            SDL_Surface* surface = TTF_RenderUNICODE_Blended(font, text16, textCol);
             SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
             SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
             SDL_FreeSurface(surface);

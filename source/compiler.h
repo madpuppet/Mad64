@@ -103,15 +103,9 @@ struct CompilerExpression
 class CompilerLineInfo
 {
 public:
-    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelResolve(LabelResolve_Done)
-    {
-        gcMemAddr = new GraphicChunk();
-        gcDecode = new GraphicChunk();
-    }
+    CompilerLineInfo() : type(LT_Unknown), memAddr(0), opcode(0), operand(0), error(false), labelResolve(LabelResolve_Done) {}
     ~CompilerLineInfo()
     {
-        delete gcMemAddr;
-        delete gcDecode;
         for (auto e : dataExpr)
             delete e;
     }
@@ -134,9 +128,6 @@ public:
     vector<double> cmdParams;
 
     std::vector<u8> data;
-
-    GraphicChunk* gcMemAddr;
-    GraphicChunk* gcDecode;
 };
 
 class CompilerSourceInfo
@@ -146,12 +137,6 @@ public:
 
     // save as PRG
     void SavePrg(const char* path);
-
-    // clear all visualizations
-    void ClearVisuals();
-
-    // get visuals on demand
-    GraphicChunk* GetMemAddrGC(int line);
 
     // update the memory maps - done on thread at end of compile
     void BuildMemoryMap();

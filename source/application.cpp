@@ -163,8 +163,6 @@ void Application::ReloadFont()
     for (auto f : m_sourceFiles)
     {
         f->ClearAllVisuals();
-        if (f->GetCompileInfo())
-            f->GetCompileInfo()->ClearVisuals();
     }
 
 }

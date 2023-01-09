@@ -84,15 +84,13 @@ protected:
     SDL_Rect m_windowArea;      // size of window when we switch to undocked mode
 
     string m_title;
-    GraphicElement* m_geTitle;
+    SDL_Rect m_titleTextArea;
 
     vector <UIItem*> m_titleIconsRight;
     vector <UIItem*> m_titleIconsLeft;
 
     SDL_Window* m_window;
     SDL_Renderer* m_renderer;
-
-    void GenerateTitleGE();
 
     void OnDockPress();
 

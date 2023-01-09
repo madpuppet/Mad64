@@ -1331,36 +1331,6 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
     return true;
 }
 
-GraphicChunk* CompilerSourceInfo::GetMemAddrGC(int line)
-{
-    auto settings = gApp->GetSettings();
-    if (line < m_lines.size())
-    {
-        auto sl = m_lines[line];
-        if (sl->type != LT_Unknown && sl->type != LT_Comment)
-        {
-            if (sl->gcMemAddr->IsEmpty())
-            {
-                if (sl->error)
-                {
-                    SDL_Color addrCol = { 255, 0, 0, 255 };
-                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), "****", addrCol, 0, 0));
-                }
-                else
-                {
-                    char buffer[16];
-                    SDL_snprintf(buffer, 16, "%04x", sl->memAddr);
-                    SDL_Color addrCol = { 255, 255, 0, 255 };
-                    sl->gcMemAddr->Add(GraphicElement::CreateFromText(gApp->GetRenderer(), gApp->GetFont(), buffer, addrCol, 0, 0));
-                }
-            }
-            return sl->gcMemAddr;
-        }
-    }
-    return nullptr;
-}
-
-
 void Compiler::StartThreadedCompile()
 {
     // start recompile now
@@ -1528,15 +1498,6 @@ int CompilerSourceInfo::FindLineByAddress(u32 address)
     return -1;
 }
 
-
-void CompilerSourceInfo::ClearVisuals()
-{
-    for (auto l : m_lines)
-    {
-        l->gcDecode->Clear();
-        l->gcMemAddr->Clear();
-    }
-}
 
 void CompilerSourceInfo::SavePrg(const char* path)
 {

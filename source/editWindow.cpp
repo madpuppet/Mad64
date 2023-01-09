@@ -129,102 +129,119 @@ void EditWindow::Draw()
 		int endLine = min((m_sourceEditRect.h + m_activeSourceFileItem->vertScroll) / settings->lineHeight + 1, (int)file->GetLines().size());
 		m_renderedContentHeight = settings->lineHeight * (int)file->GetLines().size();
 
-		// draw addresses
+		if (csi)
 		{
-			ClipRectScope crs(r, &m_memAddrRect);
-			int sourceVersion = file->GetSourceVersion();
-			u16 emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
-			for (int i = startLine; i < endLine; i++)
+			// draw addresses
 			{
-				int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
-				int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
-				auto gc = csi ? csi->GetMemAddrGC(i) : nullptr;
-				bool emulating = IsEmulationAtLine(csi, i);
-				u8 breakpoint = file->GetLines()[i]->GetBreakpoint();
-				if (settings->renderLineBackgrounds || brighten || emulating)
+				ClipRectScope crs(r, &m_memAddrRect);
+				int sourceVersion = file->GetSourceVersion();
+				u16 emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
+				for (int i = startLine; i < endLine; i++)
 				{
-					SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
-					int red, green, blue;
-					if (emulating)
-					{
-						red = 96 + brighten;
-						green = 32 + brighten;
-						blue = 96 + brighten;
-					}
-					else
-					{
-						red = brighten;
-						green = brighten;
-						blue = brighten + 128 - ((i & 1) ? 16 : 0);
-					}
-					SDL_SetRenderDrawColor(r, red, green, blue, 255);
-					SDL_RenderFillRect(r, &lineQuad);
-				}
-				if (gc)
-					gc->DrawAt(m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin);
-				if (breakpoint)
-				{
-					SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
-					SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
-					SDL_SetRenderDrawColor(r, 255, 0, 0, 128);
-					SDL_RenderFillRect(r, &lineQuad);
-				}
-			}
-		}
-
-		// draw decode
-		{
-			SDL_Color dataCol = { 255, 64, 64, 255 };
-			SDL_Color cycleCol = { 255, 255, 0, 255 };
-
-			ClipRectScope src(r, &m_decodeRect);
-			for (int i = startLine; i < endLine; i++)
-			{
-				int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
-				int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
-				SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
-				bool emulating = IsEmulationAtLine(csi, i);
-				if (settings->renderLineBackgrounds || brighten || emulating)
-				{
-					int red, green, blue;
-					if (emulating)
-					{
-						red = 96 + brighten;
-						green = 32 + brighten;
-						blue = 96 + brighten;
-					}
-					else
-					{
-						red = brighten;
-						green = brighten;
-						blue = brighten + 128 - ((i & 1) ? 16 : 0);
-					}
-					SDL_SetRenderDrawColor(r, red, green, blue, 255);
-					SDL_RenderFillRect(r, &lineQuad);
-				}
-				if (csi)
-				{
+					int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+					int y = m_memAddrRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
+					bool emulating = IsEmulationAtLine(csi, i);
 					auto sl = csi->m_lines[i];
-					int x = m_decodeRect.x + settings->textXMargin;
-					if (sl->type == LT_Instruction)
+					u8 breakpoint = file->GetLines()[i]->GetBreakpoint();
+					if (settings->renderLineBackgrounds || brighten || emulating)
 					{
-						auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
-						fr->RenderText(r, FormatString("%d", opcode->cycles), cycleCol, x, y, CachedFontRenderer::StandardFont, nullptr, false);
-					}
-					if (sl->data.size() > 0)
-					{
-						for (int d = 0; d < min((int)sl->data.size(), 16); d++)
+						SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+						int red, green, blue;
+						if (emulating)
 						{
-							fr->RenderText(r, FormatString("%02x", sl->data[d]), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + d * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+							red = 96 + brighten;
+							green = 32 + brighten;
+							blue = 96 + brighten;
 						}
-						if (sl->data.size() > 16)
+						else
 						{
-							dataCol = { 255, 255, 64, 255 };
-							fr->RenderText(r, FormatString(".. %d bytes", sl->data.size()), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+							red = brighten;
+							green = brighten;
+							blue = brighten + 128 - ((i & 1) ? 16 : 0);
+						}
+						SDL_SetRenderDrawColor(r, red, green, blue, 255);
+						SDL_RenderFillRect(r, &lineQuad);
+					}
+					if (sl->type != LT_Unknown && sl->type != LT_Comment)
+					{
+						if (sl->error)
+						{
+							SDL_Color addrCol = { 255, 0, 0, 255 };
+							fr->RenderText(r, "****", addrCol, m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin, CachedFontRenderer::StandardFont, nullptr, false);
+						}
+						else
+						{
+							char buffer[16];
+							SDL_snprintf(buffer, 16, "%04x", sl->memAddr);
+							SDL_Color addrCol = { 255, 255, 0, 255 };
+							fr->RenderText(r, FormatString("%04x", sl->memAddr), addrCol, m_memAddrRect.x + settings->textXMargin, y + settings->textYMargin, CachedFontRenderer::StandardFont, nullptr, false);
+						}
+					}
+					if (breakpoint)
+					{
+						SDL_Rect lineQuad = { m_memAddrRect.x, y, m_memAddrRect.w, settings->lineHeight };
+						SDL_SetRenderDrawBlendMode(r, SDL_BLENDMODE_BLEND);
+						SDL_SetRenderDrawColor(r, 255, 0, 0, 128);
+						SDL_RenderFillRect(r, &lineQuad);
+					}
+				}
+			}
+
+			// draw decode
+			{
+				SDL_Color dataCol = { 255, 64, 64, 255 };
+				SDL_Color cycleCol = { 255, 255, 0, 255 };
+
+				ClipRectScope src(r, &m_decodeRect);
+				for (int i = startLine; i < endLine; i++)
+				{
+					int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
+					int y = m_decodeRect.y + i * settings->lineHeight - m_activeSourceFileItem->vertScroll;
+					SDL_Rect lineQuad = { m_decodeRect.x, y, m_decodeRect.w, settings->lineHeight };
+					bool emulating = IsEmulationAtLine(csi, i);
+					if (settings->renderLineBackgrounds || brighten || emulating)
+					{
+						int red, green, blue;
+						if (emulating)
+						{
+							red = 96 + brighten;
+							green = 32 + brighten;
+							blue = 96 + brighten;
+						}
+						else
+						{
+							red = brighten;
+							green = brighten;
+							blue = brighten + 128 - ((i & 1) ? 16 : 0);
+						}
+						SDL_SetRenderDrawColor(r, red, green, blue, 255);
+						SDL_RenderFillRect(r, &lineQuad);
+					}
+					if (csi)
+					{
+						auto sl = csi->m_lines[i];
+						int x = m_decodeRect.x + settings->textXMargin;
+						if (sl->type == LT_Instruction)
+						{
+							auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
+							fr->RenderText(r, FormatString("%d", opcode->cycles), cycleCol, x, y, CachedFontRenderer::StandardFont, nullptr, false);
+						}
+						if (sl->data.size() > 0)
+						{
+							for (int d = 0; d < min((int)sl->data.size(), 16); d++)
+							{
+								fr->RenderText(r, FormatString("%02x", sl->data[d]), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + d * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+							}
+							if (sl->data.size() > 16)
+							{
+								dataCol = { 255, 255, 64, 255 };
+								fr->RenderText(r, FormatString(".. %d bytes", sl->data.size()), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+							}
 						}
 					}
 				}
 			}
+
 		}
 
 		// draw text

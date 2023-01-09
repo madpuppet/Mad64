@@ -2,7 +2,7 @@
 #include "cachedFontRenderer.h"
 #include <algorithm>
 
-#define MAX_ITEMS 256
+#define MAX_ITEMS 1024
 
 CachedFontRenderer::CachedFontRenderer()
 {
