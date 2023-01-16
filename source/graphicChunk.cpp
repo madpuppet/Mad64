@@ -37,44 +37,6 @@ GraphicElement* GraphicElement::CreateFromTexture(SDL_Texture* tex, i32 x, i32 y
     return new GraphicElement(tex, x, y, ownTexture);
 }
 
-static vector<u16> convert_unicode;
-GraphicElement* GraphicElement::CreateFromText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
-{
-    SDL_Color backCol = { 0, 0, 0, 0 };
-
-    size_t len = SDL_strlen(text) + 1;
-    convert_unicode.resize(len);
-    for (size_t i = 0; i < len; i++)
-    {
-        convert_unicode[i] = (u16)((u8)text[i]);
-    }
-    SDL_Surface* surface = TTF_RenderUNICODE_Blended(font, convert_unicode.data(), col);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
-    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-    SDL_FreeSurface(surface);
-    return new GraphicElement(tex, x, y, true);
-}
-
-void GraphicElement::RenderText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y)
-{
-    GraphicElement* ge = GraphicElement::CreateFromText(r, font, text, col, x, y);
-    ge->Render(r);
-    delete ge;
-}
-
-
-void GraphicElement::SetText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col)
-{
-    if (m_ownTexture && m_tex)
-    {
-        SDL_DestroyTexture(m_tex);
-    }
-
-    SDL_Surface* surface = TTF_RenderText_Solid(font, text, col);
-    m_tex = SDL_CreateTextureFromSurface(r, surface);
-    SDL_FreeSurface(surface);
-}
-
 void GraphicElement::SetTexture(SDL_Texture* tex, bool ownTexture)
 {
     // never set a texture to itself if you already own it.

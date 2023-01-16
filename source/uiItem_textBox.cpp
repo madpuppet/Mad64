@@ -4,14 +4,9 @@
 #define BORDER_SIZE 2
 #define SPACING 8
 
-UIItem_TextBox::~UIItem_TextBox()
-{
-    delete m_geText;
-    delete m_geHintText;
-}
-
 void UIItem_TextBox::Draw(SDL_Renderer* r)
 {
+	auto fr = gApp->GetFontRenderer();
 	m_cursorAnim += TIMEDELTA * 5.0f;
 
     BuildGE(r);
@@ -40,18 +35,13 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
 
 		if (m_text.empty() && !m_isSelected)
 		{
-			if (m_geHintText)
-			{
-				int offset = (m_area.w - m_geHintText->GetRect().w) / 2;
-				m_geHintText->RenderAt(r, m_area.x + offset, m_area.y);
-			}
+			auto cs = fr->PrepareRender(r, m_hintText, 0, 0, CachedFontRenderer::StandardFont);
+			fr->RenderAt(cs, { 255, 255, 255, 128 }, m_area.x + (m_area.w - cs->rect.w) / 2, m_area.y);
 		}
 		else if (!m_text.empty())
 		{
-			if (m_geText)
-			{
-				m_geText->RenderAt(r, m_area.x + settings->textXMargin, m_area.y);
-			}
+			auto cs = fr->PrepareRender(r, m_text, 0, 0, CachedFontRenderer::StandardFont);
+			fr->RenderAt(cs, { 255, 255, 255, 255 }, m_area.x + settings->textXMargin, m_area.y);
 		}
 
 		if (m_isSelected)
@@ -68,8 +58,8 @@ void UIItem_TextBox::Draw(SDL_Renderer* r)
 		}
 	}
 
-	if (m_geTitleText)
-		m_geTitleText->RenderAt(r, m_area.x + m_area.w + SPACING, m_area.y);
+	SDL_Color titleCol = { 255, 255, 255, 128 };
+	fr->RenderText(r, m_titleText, titleCol, m_area.x + m_area.w + SPACING, m_area.y, CachedFontRenderer::StandardFont, nullptr, false);
 }
 void UIItem_TextBox::OnButtonDown(int button, int x, int y)
 {
@@ -114,7 +104,7 @@ void UIItem_TextBox::UpdateCursor(int x, int y)
 
 int UIItem_TextBox::GetWidth()
 {
-    return m_geTitleText ? m_boxWidth + m_geTitleText->GetRect().w + SPACING*3 : m_boxWidth;
+	return m_boxWidth;
 }
 int UIItem_TextBox::GetHeight()
 {
@@ -123,10 +113,6 @@ int UIItem_TextBox::GetHeight()
 }
 void UIItem_TextBox::OnRendererChange(SDL_Renderer* r)
 {
-    DeleteClear(m_geText);
-    DeleteClear(m_geHintText);
-    DeleteClear(m_geTitleText);
-
     BuildGE(r);
 }
 void UIItem_TextBox::SetPos(int x, int y)
@@ -141,15 +127,7 @@ bool UIItem_TextBox::Overlaps(int x, int y)
 
 void UIItem_TextBox::BuildGE(SDL_Renderer* r)
 {
-    auto font = gApp->GetFont();
-    SDL_Color col = { 255, 255, 255, 255 };
-    SDL_Color dark = { 128, 128, 128, 255 };
-    if (!m_geText && !m_text.empty())
-        m_geText = GraphicElement::CreateFromText(r, font, m_text.c_str(), col, 0, 0);
-    if (!m_geHintText && !m_hintText.empty())
-        m_geHintText = GraphicElement::CreateFromText(r, font, m_hintText.c_str(), dark, 0, 0);
-    if (!m_geTitleText && !m_titleText.empty())
-        m_geTitleText = GraphicElement::CreateFromText(r, font, m_titleText.c_str(), col, 0, 0);
+	m_boxWidth = 128;
 }
 
 void UIItem_TextBox::OnCapturedTextInput(bool lostCapture, const string &text)
@@ -169,7 +147,6 @@ void UIItem_TextBox::OnCapturedTextInput(bool lostCapture, const string &text)
 				m_cursorAnim = 0;
 				if (m_onChange)
 					m_onChange(m_text);
-				DeleteClear(m_geText);
 			}
 		}
 	}
@@ -214,7 +191,6 @@ void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym,
 					m_cursorAnim = 0;
 					if (m_onChange)
 						m_onChange(m_text);
-					DeleteClear(m_geText);
 				}
 				return;
 			case SDLK_ESCAPE:
@@ -228,7 +204,6 @@ void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym,
 					m_cursorAnim = 0;
 					if (m_onChange)
 						m_onChange(m_text);
-					DeleteClear(m_geText);
 				}
 				return;
 			case SDLK_RETURN:
@@ -259,7 +234,6 @@ void UIItem_TextBox::OnCapturedKeyInput(bool lostCapture, bool keyDown, u32 sym,
 						m_text += *ch;
 					}
 					m_cursorPos = (int)m_text.size();
-					DeleteClear(m_geText);
 					return;
 				}
 				break;
@@ -271,7 +245,6 @@ void UIItem_TextBox::SetText(const string& text)
 {
 	m_text = text;
 	m_cursorPos = (int)text.size();
-	DeleteClear(m_geText);
 	if (m_onChange)
 		m_onChange(m_text);
 }
@@ -279,7 +252,6 @@ void UIItem_TextBox::SetText(const string& text)
 void UIItem_TextBox::SetHint(const string& text)
 {
 	m_hintText = text;
-	DeleteClear(m_geHintText);
 }
 
 void UIItem_TextBox::SetSelected(bool selected)

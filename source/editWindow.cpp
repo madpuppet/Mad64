@@ -409,9 +409,6 @@ void EditWindow::Draw()
 		}
 	}
 
-//	// - context help
-//	gApp->GetLogWindow()->Draw();
-
 	// draw status bar
 	DrawStatus();
 
@@ -480,10 +477,6 @@ void EditWindow::CalcRects()
 	m_contextHelpRect = { m_activeXPosContextHelp, editY, windowWidth - m_activeXPosContextHelp, editHeight };
 
 	gApp->GetDockableMgr()->SetRect(m_contextHelpRect);
-
-//	gApp->GetLogWindow()->SetRect(m_contextHelpRect);
-//	m_searchBox->SetPos(activeXPosContextHelp, settings->lineHeight);
-//	m_replaceBox->SetPos(activeXPosContextHelp + 250, settings->lineHeight);
 }
 
 bool EditWindow::CalcHorizScrollBar(int& start, int& end)
@@ -739,19 +732,6 @@ bool EditWindow::ScanTokenAt(int line, int col, int &startCol, int &endCol)
 void EditWindow::OnMouseDown(SDL_Event* e)
 {
 	auto settings = gApp->GetSettings();
-
-	/*
-	if (m_inputCapture == IC_Search && !Contains(m_searchBox->GetArea(), e->button.x, e->button.y))
-	{
-		m_searchBox->SetActive(false);
-		m_inputCapture = IC_None;
-	}
-	else if (m_inputCapture == IC_Replace && !Contains(m_replaceBox->GetArea(), e->button.x, e->button.y))
-	{
-		m_replaceBox->SetActive(false);
-		m_inputCapture = IC_None;
-	}
-	*/
 
 	// LEFT button
 	if (Contains(m_titleTabsRect, e->button.x, e->button.y))
@@ -1574,12 +1554,13 @@ void EditWindow::DrawStatus()
 {
 	auto r = gApp->GetRenderer();
 	auto settings = gApp->GetSettings();
-	int charW = settings->fontSize;
+	int whiteSpace = gApp->GetWhiteSpaceWidth();
 
 	SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
 	SDL_RenderFillRect(r, &m_statusRect);
 
-	SDL_Color col = { 0,255,255,255 };
+	SDL_Color col1 = { 0,255,255,255 };
+	SDL_Color col2 = { 32,128,255,255 };
 	auto cmdMgr = m_activeSourceFileItem->file->GetCmdManager();
 	auto file = m_activeSourceFileItem->file;
 	auto line = m_activeSourceFileItem->file->GetLines()[m_activeSourceFileItem->activeLine];
@@ -1587,7 +1568,7 @@ void EditWindow::DrawStatus()
 	int currentCmd = cmdMgr->GetCurrentCmdIndex();
 	int totalLines = (int)m_activeSourceFileItem->file->GetLines().size();
 
-	string strMS = FormatString("%2.1f MS", m_status.m_avgTimeDelta * 1000);
+	string strMS = FormatString("%4.1f MS", m_status.m_avgTimeDelta * 1000);
 	string strFPS = FormatString("%4d FPS", (int)(1.0f / m_status.m_avgTimeDelta));
 	string strMODE = FormatString("%s %s %s", settings->overwriteMode ? "OVR" : "INS", settings->autoIndent ? "IND" : "---", settings->tabsToSpaces ? "SPC" : "TAB");
 	string strLINE = FormatString("LINE: %05d/%05d", m_activeSourceFileItem->activeLine + 1, totalLines);
@@ -1595,12 +1576,12 @@ void EditWindow::DrawStatus()
 	string strCMD = FormatString("CMD: %03d/%03d", currentCmd, totalCmds);
 
 	SDL_Rect rectMS, rectFPS, rectMODE, rectLINE, rectCOL, rectCMD;
-	gApp->GetFontRenderer()->RenderText(r, strMS, col, settings->textXMargin, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectMS, false);
-	gApp->GetFontRenderer()->RenderText(r, strFPS, col, rectMS.x + rectMS.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectFPS, false);
-	gApp->GetFontRenderer()->RenderText(r, strMODE, col, rectFPS.x + rectFPS.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectMODE, false);
-	gApp->GetFontRenderer()->RenderText(r, strLINE, col, rectMODE.x + rectMODE.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectLINE, false);
-	gApp->GetFontRenderer()->RenderText(r, strCOL, col, rectLINE.x + rectLINE.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectCOL, false);
-	gApp->GetFontRenderer()->RenderText(r, strCMD, col, rectCOL.x + rectCOL.w + 20, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectCMD, false);
+	gApp->GetFontRenderer()->RenderText(r, strMS, col1, settings->textXMargin, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectMS, false);
+	gApp->GetFontRenderer()->RenderText(r, strFPS, col2, settings->textXMargin + whiteSpace * 10, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectFPS, false);
+	gApp->GetFontRenderer()->RenderText(r, strMODE, col1, settings->textXMargin + whiteSpace * 21, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectMODE, false);
+	gApp->GetFontRenderer()->RenderText(r, strLINE, col2, settings->textXMargin + whiteSpace * 36, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectLINE, false);
+	gApp->GetFontRenderer()->RenderText(r, strCOL, col1, settings->textXMargin + whiteSpace * 57, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectCOL, false);
+	gApp->GetFontRenderer()->RenderText(r, strCMD, col2, settings->textXMargin + whiteSpace * 72, m_statusRect.y + settings->textYMargin, CachedFontRenderer::StandardFont, &rectCMD, false);
 }
 
 void EditWindow::GotoEmuPC()

@@ -3,19 +3,10 @@
 
 void DockableWindow_Log::OnChildRendererChange()
 {
-    Log("ChildRendererChange: Destroy");
-    for (auto& it : m_items)
-    {
-        DeleteClear(it.ge);
-    }
 }
 
 void DockableWindow_Log::Clear()
 {
-    for (auto& it : m_items)
-    {
-        delete it.ge;
-    }
     m_items.clear();
     SetContentDirty();
 }
@@ -28,42 +19,41 @@ void DockableWindow_Log::DrawChild()
 
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
 
     int y = m_contentArea.y - m_vertScroll;
     int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
     const string& filter = m_filterBox->GetText();
+
     for (auto& it : m_items)
     {
         if (!filter.empty() && StrFind(it.text.c_str(), filter) == string::npos)
             continue;
 
-        if (!it.ge)
+        SDL_Rect rect = { 0,0,100,100 };
+        SDL_Color colWhite = { 255, 255, 255, 255 };
         {
-            SDL_Color col = { 255, 255, 255, 255 };
-            it.ge = GraphicElement::CreateFromText(GetRenderer(), gApp->GetFont(), it.text.c_str(), col, x, y);
+            fr->RenderText(r, it.text, colWhite, x, y, CachedFontRenderer::StandardFont, &rect, false);
         }
+        if (it.addr != -1)
+        {
+            auto emu = gApp->GetEmulator();
+            auto str = FormatString("%02x %02x %02x %02x", emu->GetByte(it.addr), emu->GetByte(it.addr + 1),
+                emu->GetByte(it.addr + 2), emu->GetByte(it.addr + 3));
 
-        if (it.ge)
-        {
-            it.ge->RenderAt(r, x, y);
-            if (it.addr != -1)
-            {
-                auto emu = gApp->GetEmulator();
-                auto str = FormatString("%02x %02x %02x %02x", emu->GetByte(it.addr), emu->GetByte(it.addr + 1),
-                    emu->GetByte(it.addr + 2), emu->GetByte(it.addr + 3));
-                GraphicElement::RenderText(r, gApp->GetFont(), str.c_str(), { 0,255,0,255 }, it.ge->GetRect().w + x + 16, y);
-            }
-            if (it.lineNmbr != -1)
-            {
-                RenderedItem item;
-                item.area = { x, y, it.ge->GetRect().w, it.ge->GetRect().h };
-                item.lineNmbr = it.lineNmbr;
-                m_renderedItems.push_back(item);
-            }
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + it.ge->GetRect().w);
-            y += settings->lineHeight;
-            m_renderedHeight += settings->lineHeight;
+            SDL_Color col = { 0,255,0,255 };
+            fr->RenderText(r, str, col, rect.w + x + 16, y, CachedFontRenderer::StandardFont, nullptr, false);
         }
+        if (it.lineNmbr != -1)
+        {
+            RenderedItem item;
+            item.area = { x, y, rect.w, rect.h };
+            item.lineNmbr = it.lineNmbr;
+            m_renderedItems.push_back(item);
+        }
+        m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + rect.w);
+        y += settings->lineHeight;
+        m_renderedHeight += settings->lineHeight;
     }
 }
 
@@ -88,7 +78,6 @@ void DockableWindow_Log::LogText(const string& text, int lineNmbr, int color, in
     LineItem item;
     item.text = text;
     item.y = y;
-    item.ge = nullptr;
     item.lineNmbr = lineNmbr;
     item.colorIdx = color;
     item.addr = addr;

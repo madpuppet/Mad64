@@ -4,11 +4,6 @@
 
 void DockableWindow_SearchAndReplace::OnChildRendererChange()
 {
-    Log("ChildRendererChange: Destroy");
-    for (auto& it : m_items)
-    {
-        DeleteClear(it.ge);
-    }
 }
 
 void DockableWindow_SearchAndReplace::ClearAll()
@@ -19,10 +14,6 @@ void DockableWindow_SearchAndReplace::ClearAll()
 
 void DockableWindow_SearchAndReplace::Clear()
 {
-    for (auto& it : m_items)
-    {
-        delete it.ge;
-    }
     m_items.clear();
     SetContentDirty();
 }
@@ -34,45 +25,44 @@ void DockableWindow_SearchAndReplace::DrawChild()
 
     auto r = GetRenderer();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
 
     int y = m_contentArea.y - m_vertScroll;
     int x = m_contentArea.x + settings->textXMargin - m_horizScroll;
     int activeLine = gApp->GetEditWindow()->GetActiveLine();
+    int whiteSpace = gApp->GetWhiteSpaceWidth();
+
     for (auto& it : m_items)
     {
-        if (!it.ge)
+        if (it.lineNmbr == activeLine)
         {
-            SDL_Color col = { 255, 255, 255, 255 };
-            it.ge = GraphicElement::CreateFromText(r, gApp->GetFont(), it.text.c_str(), col, x, y);
+            SDL_SetRenderDrawColor(r, 64, 64, 0, 255);
+            SDL_Rect backRect = { m_contentArea.x, y, m_contentArea.w, settings->lineHeight };
+            SDL_RenderFillRect(r, &backRect);
         }
-
-        if (it.ge)
+        SDL_Color col = { 255, 255, 255, 255 };
+        SDL_Rect rect;
+        fr->RenderText(r, it.text, col, x, y, CachedFontRenderer::StandardFont, &rect, false);
+        int dataX = rect.x + rect.w + whiteSpace;
+        if (it.addr != -1)
         {
-            if (it.lineNmbr == activeLine)
+            auto emu = gApp->GetEmulator();
+            for (int i = 0; i < 4; i++)
             {
-                SDL_SetRenderDrawColor(r, 64, 64, 0, 255);
-                SDL_Rect backRect = { m_contentArea.x, y, m_contentArea.w, settings->lineHeight };
-                SDL_RenderFillRect(r, &backRect);
+                auto str = FormatString("%02x", emu->GetByte(it.addr + i));
+                fr->RenderText(r, str, col, dataX, y, CachedFontRenderer::StandardFont, &rect, false);
+                dataX += whiteSpace * 3;
             }
-
-            it.ge->RenderAt(r, x, y);
-            if (it.addr != -1)
-            {
-                auto emu = gApp->GetEmulator();
-                auto str = FormatString("%02x %02x %02x %02x", emu->GetByte(it.addr), emu->GetByte(it.addr + 1),
-                    emu->GetByte(it.addr + 2), emu->GetByte(it.addr + 3));
-                GraphicElement::RenderText(r, gApp->GetFont(), str.c_str(), { 0,255,0,255 }, it.ge->GetRect().w + x + 16, y);
-            }
-            if (it.lineNmbr != -1)
-            {
-                RenderedItem item;
-                item.area = { x, y, it.ge->GetRect().w, it.ge->GetRect().h };
-                item.lineNmbr = it.lineNmbr;
-                m_renderedItems.push_back(item);
-            }
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + it.ge->GetRect().w);
-            y += settings->lineHeight;
         }
+        if (it.lineNmbr != -1)
+        {
+            RenderedItem item;
+            item.area = { x, y, dataX - x, rect.h };
+            item.lineNmbr = it.lineNmbr;
+            m_renderedItems.push_back(item);
+        }
+        m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + (dataX - rect.x));
+        y += settings->lineHeight;
     }
 }
 
@@ -104,7 +94,6 @@ void DockableWindow_SearchAndReplace::LogText(const string& text, int lineNmbr, 
     LineItem item;
     item.text = text;
     item.y = y;
-    item.ge = nullptr;
     item.lineNmbr = lineNmbr;
     item.colorIdx = color;
     item.addr = addr;

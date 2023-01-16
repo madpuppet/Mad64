@@ -8,7 +8,7 @@ public:
     {
         m_options = options;
         m_onChange = onChange;
-        m_geButtonText = nullptr;
+//        m_geButtonText = nullptr;
         m_currentOption = initialOption;
         m_fixedWidth = fixedWidth;
     }
@@ -36,7 +36,7 @@ protected:
     int m_fixedWidth;
     vector<string> m_options;
     EnumChangeHook m_onChange;
-    GraphicElement* m_geButtonText;
+//    GraphicElement* m_geButtonText;
     SDL_Rect m_area;
     bool m_highlight;
 };

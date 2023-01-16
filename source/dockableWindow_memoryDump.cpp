@@ -359,7 +359,8 @@ void DockableWindow_MemoryDump::DrawPetsci()
     SDL_Color addrCol = { 255, 255, 255, 255 };
     SDL_Color textCol = { 128, 200, 200, 255 };
 
-    u16* text16 = new u16[m_dataCount + 6 + 1];
+    vector<u16> text16(m_dataCount + 1);
+    text16.resize(m_dataCount+1);
     for (u32 addr = m_memoryStart; addr <= m_memoryEnd; addr += m_dataCount)
     {
         if (y + settings->lineHeight >= m_clipArea.y && y <= m_clipArea.y + m_clipArea.h)
@@ -370,36 +371,24 @@ void DockableWindow_MemoryDump::DrawPetsci()
             fr->RenderText(r, text, addrCol, x, y + settings->textYMargin, CachedFontRenderer::StandardFont, &rect, false);
             x += rect.w + whiteSpace * 2;
 
-            for (int i=0; i<6; i++)
-                text16[i] = (u16)text[i];
-
             for (int i = 0; i < m_dataCount; i++)
-                text16[i+6] = 0xee00 + emu->GetByte(addr + i);
-
-            text16[m_dataCount + 6] = 0;
-
-            SDL_Surface* surface = TTF_RenderUNICODE_Blended(font, text16, textCol);
-            SDL_Texture* tex = SDL_CreateTextureFromSurface(r, surface);
-            SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-            SDL_FreeSurface(surface);
-
-            i32 w, h;
-            SDL_QueryTexture(tex, NULL, NULL, &w, &h);
-            SDL_Rect quad = { x, y + settings->textYMargin, w, h };
-            SDL_RenderCopy(r, tex, 0, &quad);
-            m_renderedWidth = SDL_max(m_renderedWidth, settings->textXMargin + w);
-            SDL_DestroyTexture(tex);
+                text16[i] = 0xee00 + emu->GetByte(addr + i);
+            text16[m_dataCount] = 0;
+            fr->RenderTextUnicode(r, text16, textCol, x, y + settings->textYMargin, CachedFontRenderer::C64Font, &rect, false);
+            x += rect.w;
+            m_renderedWidth = SDL_max(m_renderedWidth, x);
         }
         y += settings->lineHeight;
         m_renderedHeight += settings->lineHeight;
     }
-    delete[] text16;
 }
 
 void DockableWindow_MemoryDump::DrawSprite()
 {
     auto emu = gApp->GetEmulator();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
+    auto r = gApp->GetRenderer();
 
     int memStart, memEnd, dataCount;
     CalcClampedMemoryRange(memStart, memEnd, dataCount);
@@ -439,7 +428,7 @@ void DockableWindow_MemoryDump::DrawSprite()
     for (int i = spriteStart; i < spriteEnd; i++)
     {
         SDL_Color col = { 255, 255, 255, 255 };
-        GraphicElement::RenderText(GetRenderer(), gApp->GetFont(), FormatString("%04x", i * 64).c_str(), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - spriteMin) * 21 * m_zoomLevel - m_vertScroll);
+        fr->RenderText(r, FormatString("%04x", i * 64), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - spriteMin) * 21 * m_zoomLevel - m_vertScroll, CachedFontRenderer::StandardFont, nullptr, false);
     }
 
     u8* out = m_memMap;
@@ -506,6 +495,8 @@ void DockableWindow_MemoryDump::DrawCharSet()
 {
     auto emu = gApp->GetEmulator();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
+    auto r = GetRenderer();
 
     int memStart, memEnd, dataCount;
     CalcClampedMemoryRange(memStart, memEnd, dataCount);
@@ -539,7 +530,7 @@ void DockableWindow_MemoryDump::DrawCharSet()
         m_textureWidth = dataCount*8;
         m_textureHeight = ((m_visMemoryEnd - m_visMemoryStart) / dataCount);
 
-        m_memMapTexture = SDL_CreateTexture(GetRenderer(), SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, m_textureWidth, m_textureHeight);
+        m_memMapTexture = SDL_CreateTexture(r, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, m_textureWidth, m_textureHeight);
         m_memMapSize = m_textureWidth * m_textureHeight;
         m_memMap = (u8*)malloc(m_memMapSize);
         memset(m_memMap, 255, m_memMapSize);
@@ -548,7 +539,7 @@ void DockableWindow_MemoryDump::DrawCharSet()
     for (int i = charSetStart; i < charSetEnd; i++)
     {
         SDL_Color col = { 255, 255, 255, 255 };
-        GraphicElement::RenderText(GetRenderer(), gApp->GetFont(), FormatString("%04x", i * 2048).c_str(), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - charSetMin) * linesPerCharSet * m_zoomLevel - m_vertScroll);
+        fr->RenderText(r, FormatString("%04x", i * 2048), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - charSetMin) * linesPerCharSet * m_zoomLevel - m_vertScroll, CachedFontRenderer::StandardFont, nullptr, false);
     }
 
     if (m_currentMode == MODE_CharSet)
@@ -601,7 +592,7 @@ void DockableWindow_MemoryDump::DrawCharSet()
     SDL_UpdateTexture(m_memMapTexture, nullptr, m_memMap, dataCount*8);
     SDL_Rect dest = { m_contentArea.x + xOffset - m_horizScroll, m_contentArea.y + (charSetStart - charSetMin) * linesPerCharSet * m_zoomLevel - m_vertScroll, m_textureWidth * m_zoomLevel, m_textureHeight * m_zoomLevel };
 
-    SDL_RenderCopy(GetRenderer(), m_memMapTexture, nullptr, &dest);
+    SDL_RenderCopy(r, m_memMapTexture, nullptr, &dest);
 
     m_renderedWidth = dest.w + xOffset;
     m_renderedHeight = ((memEnd - memStart) / 2048) * linesPerCharSet * m_zoomLevel;
@@ -610,6 +601,8 @@ void DockableWindow_MemoryDump::DrawBitmap()
 {
     auto emu = gApp->GetEmulator();
     auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
+    auto r = GetRenderer();
 
     int memStart, memEnd, dataCount;
     CalcClampedMemoryRange(memStart, memEnd, dataCount);
@@ -643,7 +636,7 @@ void DockableWindow_MemoryDump::DrawBitmap()
         m_textureWidth = dataCount * 8;
         m_textureHeight = (bitmapEnd - bitmapStart) * 200;
 
-        m_memMapTexture = SDL_CreateTexture(GetRenderer(), SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, m_textureWidth, m_textureHeight);
+        m_memMapTexture = SDL_CreateTexture(r, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, m_textureWidth, m_textureHeight);
         m_memMapSize = m_textureWidth * m_textureHeight;
         m_memMap = (u8*)malloc(m_memMapSize);
         memset(m_memMap, 255, m_memMapSize);
@@ -652,7 +645,7 @@ void DockableWindow_MemoryDump::DrawBitmap()
     for (int i = bitmapStart; i < bitmapEnd; i++)
     {
         SDL_Color col = { 255, 255, 255, 255 };
-        GraphicElement::RenderText(GetRenderer(), gApp->GetFont(), FormatString("%04x", i * 8192).c_str(), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - bitmapMin) * linesPerBitmap * m_zoomLevel - m_vertScroll);
+        fr->RenderText(r, FormatString("%04x", i * 8192), col, m_contentArea.x - m_horizScroll + settings->textXMargin, m_contentArea.y + (i - bitmapMin) * linesPerBitmap * m_zoomLevel - m_vertScroll, CachedFontRenderer::StandardFont, nullptr, false);
     }
 
     if (m_currentMode == MODE_Bitmap)
@@ -705,7 +698,7 @@ void DockableWindow_MemoryDump::DrawBitmap()
     SDL_UpdateTexture(m_memMapTexture, nullptr, m_memMap, dataCount * 8);
     SDL_Rect dest = { m_contentArea.x + xOffset - m_horizScroll, m_contentArea.y + (bitmapStart - bitmapMin) * linesPerBitmap * m_zoomLevel - m_vertScroll, m_textureWidth * m_zoomLevel, m_textureHeight * m_zoomLevel };
 
-    SDL_RenderCopy(GetRenderer(), m_memMapTexture, nullptr, &dest);
+    SDL_RenderCopy(r, m_memMapTexture, nullptr, &dest);
 
     m_renderedWidth = dest.w + xOffset;
     m_renderedHeight = ((memEnd - memStart) / 8192) * linesPerBitmap * m_zoomLevel;

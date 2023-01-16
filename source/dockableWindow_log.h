@@ -31,7 +31,6 @@ protected:
     {
         int y;
         string text;
-        GraphicElement* ge;
         int lineNmbr;
         int colorIdx;
         int addr;

@@ -12,15 +12,9 @@ public:
         m_boxWidth = boxWidth;
         m_onEnter = onEnter;
         m_onChange = onChange;
-        m_geTitleText = nullptr;
-        m_geHintText = nullptr;
-        m_geText = nullptr;
-
         m_cursorPos = 0;
         m_isSelected = false;
     }
-
-    ~UIItem_TextBox();
 
     void SetTabCallbacks(const EventHook& onTab, const EventHook& onShiftTab)
     {
@@ -59,10 +53,6 @@ protected:
     TextHook m_onChange;
     EventHook m_onTab;
     EventHook m_onShiftTab;
-
-    GraphicElement* m_geTitleText;
-    GraphicElement* m_geHintText;
-    GraphicElement* m_geText;
 
     SDL_Rect m_area;
 

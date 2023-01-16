@@ -8,12 +8,8 @@ public:
 
     static GraphicElement* CreateFromImage(SDL_Renderer* r, const char* path, i32 x, i32 y);
     static GraphicElement* CreateFromTexture(SDL_Texture* tex, i32 x, i32 y, bool ownTexture);
-    static GraphicElement* CreateFromText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
-
-    static void RenderText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col, i32 x, i32 y);
 
     void SetPos(i32 x, i32 y) { m_quad.x = x; m_quad.y = y; }
-    void SetText(SDL_Renderer* r, TTF_Font* font, const char* text, const SDL_Color& col);
     void SetTexture(SDL_Texture *tex, bool ownTexture);
 
     void Render(SDL_Renderer *r)

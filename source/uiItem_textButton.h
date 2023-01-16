@@ -8,10 +8,8 @@ public:
     {
         m_text = text;
         m_onButtonPress = onPress;
-        m_geButtonText = nullptr;
     }
 
-    ~UIItem_TextButton();
     void Draw(SDL_Renderer* renderer);
     void OnButtonDown(int button, int x, int y);
     void OnButtonUp(int button, int x, int y);
@@ -32,9 +30,9 @@ protected:
 
     string m_text;
     ButtonPressHook m_onButtonPress;
-    GraphicElement* m_geButtonText;
     SDL_Rect m_area;
     bool m_highlight;
+    int m_width, m_height;
 };
 
 

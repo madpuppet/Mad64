@@ -1,10 +1,6 @@
 #include "common.h"
 #include "uiItem_textButton.h"
 
-UIItem_TextButton::~UIItem_TextButton()
-{
-}
-
 void UIItem_TextButton::Draw(SDL_Renderer* r) 
 {
     BuildGE(r);
@@ -22,12 +18,9 @@ void UIItem_TextButton::Draw(SDL_Renderer* r)
     SDL_SetRenderDrawColor(r, 0, 0, 0, 255);
     SDL_RenderDrawLine(r, m_area.x, m_area.y + m_area.h - 1, m_area.x + m_area.w - 1, m_area.y + m_area.h - 1);
 
-    if (m_geButtonText)
-    {
-        SDL_SetRenderDrawColor(r, 255, 255, 255, 255);
-        m_geButtonText->RenderAt(r, m_area.x + 4, m_area.y);
-    }
-
+    auto fr = gApp->GetFontRenderer();
+    SDL_Color col = { 255,255,255,255 };
+    fr->RenderText(r, m_text, col, m_area.x + 4, m_area.y, CachedFontRenderer::StandardFont, nullptr, false);
 }
 
 void UIItem_TextButton::OnButtonDown(int button, int x, int y)
@@ -46,28 +39,29 @@ void UIItem_TextButton::OnButtonUp(int button, int x, int y)
 
 int UIItem_TextButton::GetWidth()
 {
-    auto settings = gApp->GetSettings();
-    return m_geButtonText ? m_geButtonText->GetRect().w + 8 : settings->lineHeight - 8;
+    return m_width;
 }
 
 int UIItem_TextButton::GetHeight()
 {
-    auto settings = gApp->GetSettings();
-    return m_geButtonText ? settings->lineHeight - settings->textYMargin * 2 : settings->lineHeight - 8;
+    return m_height;
 }
 
 void UIItem_TextButton::OnRendererChange(SDL_Renderer* r)
 {
     Log("UI TextButton Destroy");
-    DeleteClear(m_geButtonText);
     BuildGE(r);
     m_highlight = false;
 }
 
 void UIItem_TextButton::BuildGE(SDL_Renderer *r)
 {
-    if (!m_geButtonText && !m_text.empty())
-        m_geButtonText = GraphicElement::CreateFromText(r, gApp->GetFont(), m_text.c_str(), { 255,255,255,255 }, 0, 0);
+    auto settings = gApp->GetSettings();
+    auto fr = gApp->GetFontRenderer();
+    SDL_Color col = { 255,255,255,255 };
+    auto cs = fr->PrepareRender(r, m_text, m_area.x + 4, m_area.y, CachedFontRenderer::StandardFont);
+    m_width = cs->rect.w + settings->textXMargin;
+    m_height = cs->rect.h;
 }
 
 void UIItem_TextButton::SetPos(int x, int y)
