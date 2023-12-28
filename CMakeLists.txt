@@ -49,12 +49,10 @@ if (APPLE)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 
-message(STATUS "Configuring using SDL include directories ${SDL2_INCLUDE_DIRS}")
-message(STATUS "Configuring using SDL lib directories ${SDL2_LIBRARIES}")
+find_library(SDL2TTF_LIBRARY NAMES SDL2_ttf PATHS /opt/homebrew/Cellar/sdl2_ttf/2.20.2/lib)
 
-target_link_libraries(Mad64 SDL2::SDL2)
-target_link_libraries(Mad64 SDL2_ttf)
 target_include_directories(Mad64 PUBLIC "include" , "source")
+target_link_libraries(Mad64 SDL2::SDL2 ${SDL2TTF_LIBRARY})
 
 else()
 

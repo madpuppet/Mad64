@@ -101,6 +101,7 @@ public:
     void DoEmuSingleInstruction();
     void DoEmuSingleRow();
     void DoEmuSingleFrame();
+    float CalcDPI();
 
 protected:
     vector<SourceFile*> m_sourceFiles;

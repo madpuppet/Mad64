@@ -258,6 +258,16 @@ void Application::Update()
     m_flashScreenRed = max(0.0f, m_flashScreenRed - TIMEDELTA*5.0f);
 }
 
+float Application::CalcDPI()
+{
+    int windowWidth, windowHeight;
+    int glWidth, glHeight;
+    SDL_GetWindowSize(m_window, &windowWidth, &windowHeight);
+    SDL_GL_GetDrawableSize(m_window, &glWidth, &glHeight);
+    float dpi = (float)glWidth / (float)windowWidth;
+    return dpi;
+}
+
 void Application::Draw()
 {
     {
@@ -289,6 +299,10 @@ void Application::HandleEvent(SDL_Event *e)
         break;
     case SDL_MOUSEBUTTONDOWN:
         {
+            float dpi = CalcDPI();
+            e->button.x = e->button.x * dpi;
+            e->button.y = e->button.y * dpi;
+
             u64 time = SDL_GetTicks();
             // we got a double click, so ignore further clicks until a delay
             if (m_latchDoubleClick && ((time - m_clickTime) < 400))
@@ -318,27 +332,37 @@ void Application::HandleEvent(SDL_Event *e)
         }
         break;
     case SDL_MOUSEBUTTONUP:
-        m_mouseMotionCapture = nullptr;
-        m_dockableMgr->OnMouseUp(e);
-        m_editWindow->OnMouseUp(e);
+        {
+            float dpi = CalcDPI();
+            e->button.x = e->button.x * dpi;
+            e->button.y = e->button.y * dpi;
+
+            m_mouseMotionCapture = nullptr;
+            m_dockableMgr->OnMouseUp(e);
+            m_editWindow->OnMouseUp(e);
+        }
         break;
     case SDL_MOUSEMOTION:
-        m_mouseWindowID = e->motion.windowID;
-        m_mouseX = e->motion.x;
-        m_mouseY = e->motion.y;
-
-        if (!m_latchDoubleClick)
         {
-            if (m_mouseMotionCapture != nullptr)
-                m_mouseMotionCapture(false, e->motion.x, e->motion.y);
-            else
+            float dpi = CalcDPI();
+            e->motion.x = e->motion.x * dpi;
+            e->motion.y = e->motion.y * dpi;
+
+            m_mouseWindowID = e->motion.windowID;
+
+            if (!m_latchDoubleClick)
             {
-                gApp->SetCursor(Cursor_Arrow);
-                m_dockableMgr->UpdateCursor(e->motion.windowID, e->motion.x, e->motion.y);
-                if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
+                if (m_mouseMotionCapture != nullptr)
+                    m_mouseMotionCapture(false, e->motion.x, e->motion.y);
+                else
                 {
-                    m_editWindow->UpdateCursor(e->motion.x, e->motion.y);
-                    m_editWindow->OnMouseMotion(e);
+                    gApp->SetCursor(Cursor_Arrow);
+                    m_dockableMgr->UpdateCursor(e->motion.windowID, e->motion.x, e->motion.y);
+                    if (!m_dockableMgr->OnMouseMotion(e) && (e->motion.windowID == SDL_GetWindowID(m_window)))
+                    {
+                        m_editWindow->UpdateCursor(e->motion.x, e->motion.y);
+                        m_editWindow->OnMouseMotion(e);
+                    }
                 }
             }
         }
