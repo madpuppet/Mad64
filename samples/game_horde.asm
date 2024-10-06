@@ -6,6 +6,8 @@ varScrPtr = $52
 
 playerX = $60
 playerY = $62
+playerVelX = $64
+playerVelY = $66
 
 jmpptr = $70
 
@@ -18,6 +20,8 @@ paramA = $90
 paramB = $91
 paramC = $92
 paramD = $93
+paramE = $94
+paramF = $95
 
 frameMask = $a0
 
@@ -32,25 +36,8 @@ sprite7Ptr = $7ff
 
 start:
     sei
-    lda #(6<<1)+(1<<4)
-    sta $d018
-    lda #$08
-    sta $d016
-    lda #$1b
-    sta $d011
-      
-    lda #0
-    sta $d022
-    lda #2
-    sta $d023
 
-    lda #0
-    sta $d024
-    lda #0
-
-    sta $d020
-    lda #5
-    sta $d021
+    jsr initGraphics
     jsr clearScreen
     jsr decodeLevel
     jsr startLevel
@@ -63,9 +50,9 @@ update:
     jsr updateEnemies
     jsr updateEnemies
     jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
+
+    jsr updatePlayerPos
+    jsr placePlayerSprite
     dec $d020
 
 wait:
@@ -121,7 +108,23 @@ _clearLoc2:
     sta _clearLoc2+2
     dey
     bpl _line2
-
+    rts
+    
+initGraphics:
+    lda #(6<<1)+(1<<4)
+    sta vic.memoryPointer
+    lda #(1<<3)
+    sta vic.control2
+    lda #(1<<4)+(1<<3)+3
+    sta vic.control1
+    lda #0
+    sta vic.borderColor
+    lda #5
+    sta vic.backgroundColor0
+    lda #56
+    sta sprite0Ptr
+    lda #$00000001
+    sta vic.spriteEnable
     rts
     
 decodeLevel:
@@ -145,9 +148,16 @@ startLevel:
     lda #$80
     sta frameMask
     lda #20
-    sta playerX
+    sta playerX+1
     lda #13
+    sta playerY+1
+    lda #0
+    sta playerX
     sta playerY
+    sta playerVelX
+    sta playerVelX+1
+    sta playerVelY
+    sta playerVelY+1
     rts
 
 ; process a single enemy and then update the screen updater
@@ -262,7 +272,7 @@ updateMonster:
     sta tempA               ; temp A is a flag to see if we can move at all
     ldx varScrX
     ldy varScrY
-    cpx playerX
+    cpx playerX+1
     beq _tryVert
     bcc _moveRight
     cpx #0                 ; check we are not on the left border
@@ -285,7 +295,7 @@ _testHoriz:                 ; check horiz position is empty
     ldx varScrX
     ldy varScrY             ; horiz taken, revert x
 _tryVert:
-    cpy playerY
+    cpy playerY+1
     beq _noMoveVert
     bcc _moveDown
     cpy #0                 ; check we can move down    
@@ -419,11 +429,271 @@ moveABtoCD:
     ldy paramD
     jmp storeColorXY
     
+placePlayerSprite:
+    ; WORLD_X = X+offset
+    clc
+    lda playerX
+    adc #0
+    sta tempA
+    lda playerX+1
+    adc #4
+    sta tempB       ; WORLD_X -> tempA,tempB
+
+    ; sprite X = WORLD_X * 8 / 256
+    ; 0010 0001 1000 0000 => 1 0000 1100
+    ; shift high byte left 3
+    ; shift low byte right 5
+
+    lda #0              
+    sta vic.spriteXMSB
+    lda tempB
+    asl
+    asl
+    asl
+    sta tempC
+    bcc _smallX             ; if carry set, set the MSB
+    lda #1
+    sta vic.spriteXMSB
+_smallX:
+    lda tempA
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    ora tempC
+    sta vic.sprite0X
+
+    ; WORLD_Y = Y+offset
+    clc
+    lda playerY
+    adc #0
+    sta tempA
+    lda playerY+1
+    adc #5
+    sta tempB
+
+    lda tempB
+    asl
+    asl
+    asl
+    sta tempC
+    lda tempA
+    lsr
+    lsr
+    lsr
+    lsr
+    lsr
+    ora tempC
+    sta vic.sprite0Y
+    rts
+
+updatePlayerPos:
+    ; check joystick l/r/u/d to change player velocity
+    lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
+    and #1
+    bne _tryRight
+    lda #-90                    ; joypad left so decrease velocity by 10
+    sta paramA
+    lda #-1
+    sta paramB
+    bne _addVelX
+_tryRight:
+    lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
+    and #2
+    bne _tryUp
+    lda #90                     ; joypad right so increase velocity by 10
+    sta paramA
+    lda #0
+    sta paramB
+_addVelX:
+    clc
+    lda paramA
+    adc playerVelX
+    sta playerVelX
+    lda paramB
+    adc playerVelX+1
+    sta playerVelX+1
+_tryUp:
+    lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
+    and #4
+    bne _tryDown
+    lda #-90                    ; joypad left so decrease velocity by 10
+    sta paramA
+    lda #-1
+    sta paramB
+    bne _addVelY
+_tryDown:
+    lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
+    and #8
+    bne _doneVel
+    lda #90                     ; joypad right so increase velocity by 10
+    sta paramA
+    lda #0
+    sta paramB
+_addVelY:
+    clc
+    lda paramA
+    adc playerVelY
+    sta playerVelY
+    lda paramB
+    adc playerVelY+1
+    sta playerVelY+1
+_doneVel:
+    
+    ; clamp X Velocity
+    lda playerVelX+1
+    cmp #-2
+    bne _notXSmall
+    lda #-128
+    sta playerVelX
+    lda #-1
+    sta playerVelX+1
+_notXSmall:
+    cmp #1
+    bne _notXBig
+    lda #127
+    sta playerVelX
+    lda #0
+    sta playerVelX+1
+_notXBig:
+
+    ; clamp Y Velocity
+    lda playerVelY+1
+    cmp #-2
+    bne _notYSmall
+    lda #-128
+    sta playerVelY
+    lda #-1
+    sta playerVelY+1
+_notYSmall:
+    cmp #1
+    bne _notYBig
+    lda #127
+    sta playerVelY
+    lda #0
+    sta playerVelY+1
+_notYBig:
+
+    ; half speed
+    lda playerVelX+1
+    bmi _goingLeft
+    lda playerVelX
+    lsr
+    sta playerVelX
+    jmp _doneX
+_goingLeft:
+    lda playerVelX
+    lsr
+    ora #$80
+    sta playerVelX
+_doneX:
+    lda playerVelY+1
+    bmi _goingUp
+    lda playerVelY
+    lsr
+    sta playerVelY
+    jmp _doneY
+_goingUp:
+    lda playerVelY
+    lsr
+    ora #$80
+    sta playerVelY
+_doneY:
+
+    clc                 ; add x velocity to position
+    lda playerVelX
+    adc playerX
+    sta playerX
+    lda playerVelX+1
+    adc playerX+1
+    sta playerX+1
+
+    clc                 ; add y velocity to position
+    lda playerVelY
+    adc playerY
+    sta playerY
+    lda playerVelY+1
+    adc playerY+1
+    sta playerY+1
+
+    ; clamp sprite to the screen
+    lda playerX+1
+    cmp #-1
+    bne _notLeft
+    lda #0
+    sta playerX+1
+    lda #0
+    sta playerX
+    sta playerVelX
+    sta playerVelX+1
+_notLeft:
+    lda playerX+1
+    cmp #40
+    bne _notRight
+    lda #39
+    sta playerX+1
+    lda #$ff
+    sta playerX
+    lda #0
+    sta playerVelX
+    sta playerVelX+1
+_notRight:
+    ; clamp sprite to the screen
+    lda playerY+1
+    cmp #-1
+    bne _notTop
+    lda #0
+    sta playerY+1
+    lda #0
+    sta playerY
+    sta playerVelY
+    sta playerVelY+1
+_notTop:
+    lda playerY+1
+    cmp #25
+    bne _notBottom
+    lda #24
+    sta playerY+1
+    lda #$ff
+    sta playerY
+    lda #0
+    sta playerVelY
+    sta playerVelY+1
+_notBottom:
+    rts
+
 screenLine:
     .generate.w 0,24,$0400+I*40
 colorLine:
     .generate.w 0,24,$d800+I*40
-    
+    dc.b
+
+* = $e00
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000111111000000000
+    dc.s %000000001111111100000000    
+    dc.s %000001001111111100100000    
+    dc.s %000011000011100001100000   
+    dc.s %000001111111111111100000    
+    dc.s %000000111111111110000000    
+    dc.s %000000001111110000000000    
+    dc.s %000000001111110000000000
+    dc.s %000000011110111000000000    
+    dc.s %000000011110111000000000    
+    dc.s %000000011100111000000000    
+    dc.s %000000111000111100000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.b 0
+
+
 * = $3000
     dc.b %00000000
     dc.b %00000000
