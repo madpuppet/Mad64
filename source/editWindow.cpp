@@ -136,6 +136,8 @@ void EditWindow::Draw()
 				ClipRectScope crs(r, &m_memAddrRect);
 				int sourceVersion = file->GetSourceVersion();
 				u16 emulatorAddr = gApp->GetEmulator()->GetCurrentPC();
+				startLine = min(startLine, csi->m_lines.size());
+				endLine = min(endLine, csi->m_lines.size());
 				for (int i = startLine; i < endLine; i++)
 				{
 					int brighten = (m_activeSourceFileItem->activeLine == i) ? 16 : 0;
@@ -162,7 +164,7 @@ void EditWindow::Draw()
 						SDL_SetRenderDrawColor(r, red, green, blue, 255);
 						SDL_RenderFillRect(r, &lineQuad);
 					}
-					if (sl->type != LT_Unknown && sl->type != LT_Comment)
+					if (sl && sl->type != LT_Unknown && sl->type != LT_Comment)
 					{
 						if (sl->error)
 						{
@@ -220,22 +222,25 @@ void EditWindow::Draw()
 					if (csi)
 					{
 						auto sl = csi->m_lines[i];
-						int x = m_decodeRect.x + settings->textXMargin;
-						if (sl->type == LT_Instruction)
+						if (sl)
 						{
-							auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
-							fr->RenderText(r, FormatString("%d", opcode->cycles), cycleCol, x, y, CachedFontRenderer::StandardFont, nullptr, false);
-						}
-						if (sl->data.size() > 0)
-						{
-							for (int d = 0; d < min((int)sl->data.size(), 16); d++)
+							int x = m_decodeRect.x + settings->textXMargin;
+							if (sl->type == LT_Instruction)
 							{
-								fr->RenderText(r, FormatString("%02x", sl->data[d]), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + d * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+								auto opcode = gApp->GetEmulator()->GetCpu()->GetOpcode(sl->opcode);
+								fr->RenderText(r, FormatString("%d", opcode->cycles), cycleCol, x, y, CachedFontRenderer::StandardFont, nullptr, false);
 							}
-							if (sl->data.size() > 16)
+							if (sl->data.size() > 0)
 							{
-								dataCol = { 255, 255, 64, 255 };
-								fr->RenderText(r, FormatString(".. %d bytes", sl->data.size()), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+								for (int d = 0; d < min((int)sl->data.size(), 16); d++)
+								{
+									fr->RenderText(r, FormatString("%02x", sl->data[d]), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + d * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+								}
+								if (sl->data.size() > 16)
+								{
+									dataCol = { 255, 255, 64, 255 };
+									fr->RenderText(r, FormatString(".. %d bytes", sl->data.size()), dataCol, x + gApp->GetWhiteSpaceWidth() * (3 + 16 * 3), y, CachedFontRenderer::StandardFont, nullptr, false);
+								}
 							}
 						}
 					}

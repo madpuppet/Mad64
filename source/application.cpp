@@ -863,7 +863,7 @@ void Application::OnKeyDown(SDL_Event* e)
 
                                 STARTUPINFOA info = { sizeof(info) };
                                 PROCESS_INFORMATION processInfo;
-                                string path = "F:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
+                                string path = "G:\\Emulators\\C64\\Vice3.6\\bin\\x64sc.exe";
                                 string cmdLine = "-autostartprgdiskimage \"" + prgname + "\"";
                                 if (CreateProcessA(path.c_str(), (char*)cmdLine.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
                                 {
