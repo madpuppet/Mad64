@@ -17,7 +17,7 @@ Vic::Vic()
     m_scPal.badLineCycles = 40;
 
     // 6 + 5 + 40 + 5 + 7 == 63
-    m_scPal.leftBorderStartCycle = 6;
+    m_scPal.leftBorderStartCycle = 8;
     m_scPal.backgroundStartCycle = 11;
     m_scPal.rightBorderStartCycle = 51;
     m_scPal.hblankStartCycles = 56;

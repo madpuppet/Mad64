@@ -11,7 +11,7 @@ public:
         // Monitoring / control of the 8 data lines of Port A.
         // The lines are used for multiple purposes :
         //    Read / Write : Bit 0..7 keyboard matrix columns
-        //    Read : Joystick Port 2 : Bit 0..3 Direction(Left / Right / Up / Down), Bit 4 Fire button. 0 = activated.
+        //    Read : Joystick Port 2 : Bit 0..3 Direction(Up / Down / Left / Right), Bit 4 Fire button. 0 = activated.
         //    Read : Lightpen : Bit 4 (as fire button), connected also with “ / LP”(Pin 9) of the VIC
         //    Read : Paddles: Bit 2..3 Fire buttons, Bit 6..7 Switch control port 1 (% 01 = Paddles A) or 2 (% 10 = Paddles B)
         u8 dataPortA;
@@ -19,7 +19,7 @@ public:
         // Monitoring / control of the 8 data lines of Port B.
         // The lines are used for multiple purposes :
         //    Read / Write : Bit 0..7 keyboard matrix rows
-        //    Read : Joystick Port 1 : Bit 0..3 Direction(Left / Right / Up / Down), Bit 4 Fire button. 0 = activated.
+        //    Read : Joystick Port 1 : Bit 0..3 Direction(Up / Down / Left / Right), Bit 4 Fire button. 0 = activated.
         //    Read : Bit 6 : Timer A : Toggle / Impulse output(see register 14 bit 2)
         //    Read : Bit 7 : Timer B : Toggle / Impulse output(see register 15 bit 2)
         u8 dataPortB;

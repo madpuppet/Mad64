@@ -312,18 +312,6 @@ void Cia1::OnJoystickAxisMotion(SDL_Event* e)
     if (e->jaxis.axis == 0)  // x axis
     {
         if (e->jaxis.value < -16000)
-            mask &= ~1;
-        else
-            mask |= 1;
-
-        if (e->jaxis.value > 16000)
-            mask &= ~2;
-        else
-            mask |= 2;
-    }
-    else if (e->jaxis.axis == 1)  // y axis
-    {
-        if (e->jaxis.value < -16000)
             mask &= ~4;
         else
             mask |= 4;
@@ -332,6 +320,18 @@ void Cia1::OnJoystickAxisMotion(SDL_Event* e)
             mask &= ~8;
         else
             mask |= 8;
+    }
+    else if (e->jaxis.axis == 1)  // y axis
+    {
+        if (e->jaxis.value < -16000)
+            mask &= ~1;
+        else
+            mask |= 1;
+
+        if (e->jaxis.value > 16000)
+            mask &= ~2;
+        else
+            mask |= 2;
     }
     m_joystickState[bid] = (m_joystickState[bid] | 0xf) & mask;
 }

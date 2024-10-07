@@ -1,8 +1,30 @@
 .basicStartup
 
+; tiles
+TILE_Grass = 0
+TILE_Spawner = 1
+TILE_Monster = 2
+TILE_Wall = 3
+TILE_Gate = 4
+TILE_Bomb = 5
+TILE_LazerH = 6
+TILE_LazerV = 7
+TILE_LazerTLtoBR = 8
+TILE_LazerTRtoBL = 9
+
 varScrX = $50
 varScrY = $51
-varScrPtr = $52
+varCycle = $52
+varFrame = $53
+varUpdateCount = $54
+varFireDownFrames = $55
+varBulletDX = $56
+varBulletDY = $57
+varBulletTile = $58
+varBulletStartX = $59
+varBulletStartY = $5a
+varBulletDir = $5b
+
 
 playerX = $60
 playerY = $62
@@ -23,6 +45,11 @@ paramD = $93
 paramE = $94
 paramF = $95
 
+testLocX = $96
+testLocY = $97
+bulletTraceX = $98
+bulletTraceY = $99
+
 frameMask = $a0
 
 sprite0Ptr = $7f8
@@ -36,23 +63,24 @@ sprite7Ptr = $7ff
 
 start:
     sei
-
     jsr initGraphics
     jsr clearScreen
     jsr decodeLevel
     jsr startLevel
 update:
     inc $d020
+    inc varCycle
+    lda #40
+    sta varUpdateCount
+enemiesLoop:
     jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
-    jsr updateEnemies
+    dec varUpdateCount
+    bne enemiesLoop
 
+    jsr clearBullet
     jsr updatePlayerPos
     jsr placePlayerSprite
+    jsr checkForFire
     dec $d020
 
 wait:
@@ -94,7 +122,7 @@ _clearLoc:
     ldy #24
     ldx #39
 _line2:
-    lda #0
+    lda #12
 _clearLoc2:
     sta $d800,x
     dex
@@ -109,7 +137,7 @@ _clearLoc2:
     dey
     bpl _line2
     rts
-    
+
 initGraphics:
     lda #(6<<1)+(1<<4)
     sta vic.memoryPointer
@@ -117,7 +145,7 @@ initGraphics:
     sta vic.control2
     lda #(1<<4)+(1<<3)+3
     sta vic.control1
-    lda #0
+    lda #5
     sta vic.borderColor
     lda #5
     sta vic.backgroundColor0
@@ -127,24 +155,14 @@ initGraphics:
     sta vic.spriteEnable
     rts
     
-decodeLevel:
-    lda #1
-    sta $400
-    sta $427
-    sta $7c0
-    sta $7e7
-    lda #11
-    sta $d800
-    sta $d827
-    sta $dbc0
-    sta $dbe7
-    rts
-
 ; reset screen updater x,y and player x,y    
 startLevel:
     lda #0
+    sta varFrame
+    sta varCycle
     sta varScrX
     sta varScrY
+    sta varBulletTile
     lda #$80
     sta frameMask
     lda #20
@@ -197,6 +215,7 @@ doneUpdateEnemies:
     cpy #25
     bne _skipReset
     ldy #0                      ; start frame again
+    inc varFrame
     lda frameMask
     eor #$80                    ; toggle the framemask
     sta frameMask               ; this is used to stop processing a tile twice
@@ -207,12 +226,15 @@ _skipReset:
     rts
 
 updateEnemyJumpTable:
-    dc.w updateEmpty, updateSpawner, updateMonster
+    dc.w updateEmpty, updateSpawner, updateMonster, updateEmpty
+    dc.w updateEmpty, updateEmpty, updateEmpty, updateEmpty
+    dc.w updateEmpty, updateEmpty, updateEmpty, updateEmpty
     
 updateEmpty:
     jmp doneUpdateEnemies
 
 updateSpawner:
+    lda varFrame
     ldy varScrY                 ; check if we are not on left border
     sty tempB
     ldx varScrX
@@ -260,9 +282,11 @@ _spawnMonster:
     ldx tempA
     ldy tempB
     jsr storeXY
+    ldx varScrX
+    ldy varScrY
+    jsr loadColorXY
     ldx tempA
     ldy tempB
-    lda #2
     jsr storeColorXY
     jmp doneUpdateEnemies
 
@@ -407,36 +431,44 @@ _mscr2:
     
 ; move byte from XY (AB) to XY (CD)
 moveABtoCD:
-    ldx paramA
+    ldx paramA          ; check if AB != CD
     ldy paramB
-    jsr loadXY
-    pha
-    lda #0
-    ldx paramA
-    ldy paramB
-    jsr storeXY
-    pla
+    cpx paramC
+    bne _doIt
+    cpy paramD
+    bne _doIt
+    rts
+_doIt:
+    jsr loadXY          ; get what we are moving
     and #$7f
-    ora frameMask
+    ora frameMask       ; mark it correctly for next frame
     ldx paramC
     ldy paramD
-    jsr storeXY
-    ; now color
+    jsr storeXY         ; store it at new location
     ldx paramA
     ldy paramB
-    jsr loadColorXY
+    jsr loadColorXY     ; grab old color
     ldx paramC
     ldy paramD
-    jmp storeColorXY
+    jsr storeColorXY    ; set new location to old color
+    ldx paramA 
+    ldy paramB
+    lda #0
+    jsr storeXY         ; clear old position back to grass
+    ldx paramA 
+    ldy paramB
+    lda #12
+    jsr storeColorXY    ; set grass color
+    
     
 placePlayerSprite:
     ; WORLD_X = X+offset
     clc
     lda playerX
-    adc #0
+    adc #140
     sta tempA
     lda playerX+1
-    adc #4
+    adc #1
     sta tempB       ; WORLD_X -> tempA,tempB
 
     ; sprite X = WORLD_X * 8 / 256
@@ -467,10 +499,10 @@ _smallX:
     ; WORLD_Y = Y+offset
     clc
     lda playerY
-    adc #0
+    adc #160
     sta tempA
     lda playerY+1
-    adc #5
+    adc #4
     sta tempB
 
     lda tempB
@@ -489,20 +521,20 @@ _smallX:
     rts
 
 updatePlayerPos:
-    ; check joystick l/r/u/d to change player velocity
-    lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
-    and #1
+    ; check joystick u/d/l/r to change player velocity
+    lda cia1.dataPortA           ; cia chip holds joypad u/d/l/r/fire
+    and #4
     bne _tryRight
-    lda #-90                    ; joypad left so decrease velocity by 10
+    lda #-40                    ; joypad left so decrease velocity
     sta paramA
     lda #-1
     sta paramB
     bne _addVelX
 _tryRight:
     lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
-    and #2
+    and #8
     bne _tryUp
-    lda #90                     ; joypad right so increase velocity by 10
+    lda #40                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
     sta paramB
@@ -516,18 +548,18 @@ _addVelX:
     sta playerVelX+1
 _tryUp:
     lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
-    and #4
+    and #1
     bne _tryDown
-    lda #-90                    ; joypad left so decrease velocity by 10
+    lda #-40                    ; joypad left so decrease velocity by 10
     sta paramA
     lda #-1
     sta paramB
     bne _addVelY
 _tryDown:
     lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
-    and #8
+    and #2
     bne _doneVel
-    lda #90                     ; joypad right so increase velocity by 10
+    lda #40                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
     sta paramB
@@ -575,18 +607,29 @@ _notYSmall:
     sta playerVelY+1
 _notYBig:
 
-    ; half speed
+    ; half speed every second cycle
+    lda varCycle
+    and #1
+    beq _doneX
+    
     lda playerVelX+1
     bmi _goingLeft
     lda playerVelX
     lsr
     sta playerVelX
-    jmp _doneX
+    jmp _doneY
 _goingLeft:
-    lda playerVelX
+    lda playerVelX          ; slow X by halving it
     lsr
-    ora #$80
+    ora #$80                ; need to keep it negative
+    cmp #$ff                ; if its now -1, just stop
+    bne _okLeft
+    lda #0
+    sta playerVelX+1
+_okLeft:
     sta playerVelX
+    jmp _doneY
+    
 _doneX:
     lda playerVelY+1
     bmi _goingUp
@@ -598,69 +641,103 @@ _goingUp:
     lda playerVelY
     lsr
     ora #$80
+    cmp #$ff                ; if its now -1, just stop
+    bne _okUp
+    lda #0
+    sta playerVelY+1
+_okUp:
     sta playerVelY
 _doneY:
 
-    clc                 ; add x velocity to position
+    ; add x velocity to position
+    clc
     lda playerVelX
     adc playerX
-    sta playerX
+    sta tempA
     lda playerVelX+1
     adc playerX+1
-    sta playerX+1
+    sta tempB
 
-    clc                 ; add y velocity to position
-    lda playerVelY
-    adc playerY
-    sta playerY
-    lda playerVelY+1
-    adc playerY+1
-    sta playerY+1
-
-    ; clamp sprite to the screen
-    lda playerX+1
+    ; clamp to screen
+    lda tempB
     cmp #-1
-    bne _notLeft
+    bne _notLeft        ; hit left border?
+    lda #0              ; yes
+    sta tempB
     lda #0
-    sta playerX+1
-    lda #0
-    sta playerX
-    sta playerVelX
+    sta tempA
+    sta playerVelX      ; cancel velocity
     sta playerVelX+1
 _notLeft:
-    lda playerX+1
+    lda tempB
     cmp #40
-    bne _notRight
-    lda #39
-    sta playerX+1
+    bne _notRight       ; hit right border?
+    lda #39             ; yes
+    sta tempB
     lda #$ff
-    sta playerX
+    sta tempA
     lda #0
-    sta playerVelX
+    sta playerVelX      ; cancel velocity
     sta playerVelX+1
 _notRight:
-    ; clamp sprite to the screen
-    lda playerY+1
+
+    ; check player can move here
+    ldx tempB
+    stx testLocX
+    ldy playerY+1
+    sty testLocY
+    jsr doPlayerOnXY    ; do actions for hitting tile
+    bne _cantMoveX      ; returns zero if we can move here
+    lda tempA
+    sta playerX
+    lda tempB
+    sta playerX+1
+_cantMoveX:
+
+    ; add y velocity to position
+    clc                 
+    lda playerVelY
+    adc playerY
+    sta tempA
+    lda playerVelY+1
+    adc playerY+1
+    sta tempB
+
+    ; clamp y to screen
+    lda tempB
     cmp #-1
     bne _notTop
     lda #0
-    sta playerY+1
+    sta tempB
     lda #0
-    sta playerY
+    sta tempA
     sta playerVelY
     sta playerVelY+1
 _notTop:
-    lda playerY+1
+    lda tempB
     cmp #25
     bne _notBottom
     lda #24
-    sta playerY+1
+    sta tempB
     lda #$ff
-    sta playerY
+    sta tempA
     lda #0
     sta playerVelY
     sta playerVelY+1
 _notBottom:
+
+    ; check player can move here
+    ldx playerX+1
+    stx testLocX
+    ldy tempB
+    sty testLocY
+    jsr doPlayerOnXY    ; do actions for hitting tile
+    bne _cantMoveY      ; returns zero if we can move here
+    lda tempA
+    sta playerY
+    lda tempB
+    sta playerY+1
+_cantMoveY:
     rts
 
 screenLine:
@@ -674,19 +751,19 @@ colorLine:
     dc.s %000000000000000000000000
     dc.s %000000000000000000000000
     dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000111111000000000
-    dc.s %000000001111111100000000    
-    dc.s %000001001111111100100000    
-    dc.s %000011000011100001100000   
-    dc.s %000001111111111111100000    
-    dc.s %000000111111111110000000    
-    dc.s %000000001111110000000000    
-    dc.s %000000001111110000000000
-    dc.s %000000011110111000000000    
-    dc.s %000000011110111000000000    
-    dc.s %000000011100111000000000    
-    dc.s %000000111000111100000000    
+    dc.s %000000000101010000000000
+    dc.s %000000001010101000000000
+    dc.s %000000010111110100000000    
+    dc.s %000000000101010000000000    
+    dc.s %000000000011100000000000   
+    dc.s %000000001011110110000000    
+    dc.s %000000011011111011000000
+    dc.s %000000011011011011000000    
+    dc.s %000000000011011000000000
+    dc.s %000000001110011100000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
@@ -695,15 +772,16 @@ colorLine:
 
 
 * = $3000
+    ; 0. grass
     dc.b %00000000
     dc.b %00000000
+    dc.b %00100000
     dc.b %00000000
     dc.b %00000000
+    dc.b %00001000
+    dc.b %01000000
     dc.b %00000000
-    dc.b %00000000
-    dc.b %00000000
-    dc.b %00000000
-    
+    ; 1. spawner    
     dc.b %00111000
     dc.b %01111110
     dc.b %11111111
@@ -712,7 +790,7 @@ colorLine:
     dc.b %11111111
     dc.b %11111111
     dc.b %11111111
-    
+    ; 2. monster
     dc.b %00111100
     dc.b %01111100
     dc.b %00111000
@@ -721,16 +799,81 @@ colorLine:
     dc.b %01111010
     dc.b %01101100
     dc.b %11101110
+    ; 3. wall
+    dc.b %11110111
+    dc.b %11110111
+    dc.b %11110111
+    dc.b %00000000
+    dc.b %11111110
+    dc.b %11111110
+    dc.b %11111110
+    dc.b %00000000
+    ; 4. gate
+    dc.b %00000000
+    dc.b %01111110
+    dc.b %11101111
+    dc.b %11000111
+    dc.b %11101111
+    dc.b %11000111
+    dc.b %01111110
+    dc.b %00000000
+    ; 5. bomb
+    dc.b %00010000
+    dc.b %00001000
+    dc.b %00010000
+    dc.b %01111110
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %01111110
+    ; 6. lazerH
+    dc.b %00000000
+    dc.b %01000100
+    dc.b %00000000
+    dc.b %11101110
+    dc.b %10111011
+    dc.b %00000000
+    dc.b %00001000
+    dc.b %01000000
+    ; 7. lazerV
+    dc.b %00011000
+    dc.b %01010000
+    dc.b %00011001
+    dc.b %00001000
+    dc.b %00011000
+    dc.b %10010000
+    dc.b %00011010
+    dc.b %00001000
+    ; 8. lazerTLtoBR
+    dc.b %10000000
+    dc.b %01101000
+    dc.b %00100000
+    dc.b %00110001
+    dc.b %01001100
+    dc.b %00000100
+    dc.b %00000110
+    dc.b %00100001
+    ; 9. lazerTRtoBL
+    dc.b %00010001
+    dc.b %00000010
+    dc.b %00001100
+    dc.b %10001000
+    dc.b %00110000
+    dc.b %00100010
+    dc.b %01100000
+    dc.b %10000100
+
 * = $3400
+    ; 0. grass
     dc.b %00000000
     dc.b %00000000
+    dc.b %00100000
     dc.b %00000000
     dc.b %00000000
+    dc.b %00001000
+    dc.b %01000000
     dc.b %00000000
-    dc.b %00000000
-    dc.b %00000000
-    dc.b %00000000
-    
+    ; 1. spawner    
     dc.b %00111000
     dc.b %01111110
     dc.b %11111111
@@ -739,14 +882,366 @@ colorLine:
     dc.b %11111111
     dc.b %11111111
     dc.b %11111111
-    
+    ; 2. monster
     dc.b %00111100
     dc.b %01111100
     dc.b %00111000
+    dc.b %11111110
+    dc.b %10111010
+    dc.b %01111010
+    dc.b %01101100
+    dc.b %11101110
+    ; 3. wall
+    dc.b %11110111
+    dc.b %11110111
+    dc.b %11110111
+    dc.b %00000000
+    dc.b %11111110
+    dc.b %11111110
+    dc.b %11111110
+    dc.b %00000000
+    ; 4. gate
+    dc.b %00000000
     dc.b %01111110
-    dc.b %11111001
-    dc.b %01111101
-    dc.b %11100110
-    dc.b %11100111
+    dc.b %11101111
+    dc.b %11000111
+    dc.b %11101111
+    dc.b %11000111
+    dc.b %01111110
+    dc.b %00000000
+    ; 5. bomb
+    dc.b %00010000
+    dc.b %00001000
+    dc.b %00010000
+    dc.b %01111110
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %01111110
+    ; 6. lazerH
+    dc.b %00000000
+    dc.b %01000100
+    dc.b %00000000
+    dc.b %11101110
+    dc.b %10111011
+    dc.b %00000000
+    dc.b %00001000
+    dc.b %01000000
+    ; 7. lazerV
+    dc.b %00011000
+    dc.b %01010000
+    dc.b %00011001
+    dc.b %00001000
+    dc.b %00011000
+    dc.b %10010000
+    dc.b %00011010
+    dc.b %00001000
+    ; 8. lazerTLtoBR
+    dc.b %10000000
+    dc.b %01101000
+    dc.b %00100000
+    dc.b %00110001
+    dc.b %01001100
+    dc.b %00000100
+    dc.b %00000110
+    dc.b %00100001
+    ; 9. lazerTRtoBL
+    dc.b %00010001
+    dc.b %00000010
+    dc.b %00001100
+    dc.b %10001000
+    dc.b %00110000
+    dc.b %00100010
+    dc.b %01100000
+    dc.b %10000100
 
+decodeLevel:
+    lda #1
+    sta $400
+    sta $427
+    sta $7c0
+    sta $7e7
+    lda #11
+    sta $d800
+    lda #12
+    sta $d827
+    lda #13
+    sta $dbc0
+    lda #14
+    sta $dbe7
+
+    lda #3
+    sta $400+5*40
+    sta $400+5*40+1
+    sta $400+5*40+2
+    sta $400+5*40+3
+    sta $400+5*40+4
+    sta $400+5*40+5
+    sta $400+5*40+6
+    sta $400+5*40+7
+    sta $400+5*40+8
+    sta $400+5*40+9
+    sta $400+5*40+10
+    sta $400+5*40+11
+    sta $400+5*40+13
+    sta $400+5*40+14
+    sta $400+5*40+15
+    sta $400+5*40+16
+    sta $400+5*40+17
+    sta $400+5*40+18
+    sta $400+6*40+18
+    sta $400+7*40+18
+    sta $400+8*40+18
+    sta $400+9*40+18
+    sta $400+10*40+18
+    sta $400+11*40+18
+    sta $400+12*40+18
+    sta $400+13*40+18
+    sta $400+14*40+18
+    sta $400+14*40+19
+    sta $400+14*40+20
+    sta $400+14*40+22
+    sta $400+14*40+23
+    sta $400+14*40+24
+    sta $400+14*40+25
+    sta $400+14*40+26
+    sta $400+14*40+27
+    sta $400+14*40+28
+    sta $400+14*40+29
+    sta $400+14*40+30
+    sta $400+14*40+31
+    sta $400+14*40+32
+    sta $400+14*40+33
+    sta $400+14*40+34
+    sta $400+14*40+35
+    sta $400+14*40+36
+    sta $400+14*40+37
+    sta $400+14*40+38
+    sta $400+14*40+39
+    sta $400+16*40+18
+    sta $400+16*40+19
+    sta $400+16*40+20
+    sta $400+17*40+22
+    sta $400+17*40+23
+    sta $400+17*40+24
+    sta $400+17*40+25
+    sta $400+17*40+26
+    sta $400+17*40+27
+    sta $400+17*40+28
+    sta $400+17*40+29
+    sta $400+17*40+30
+    sta $400+17*40+31
+    sta $400+17*40+33
+    sta $400+17*40+34
+    sta $400+17*40+35
+    sta $400+17*40+36
+    sta $400+17*40+37
+    sta $400+17*40+38
+    sta $400+17*40+39
+
+    lda #4
+    sta $400+5*40+12
+    sta $400+14*40+21
+    sta $400+17*40+32
+    rts
+
+doPlayerOnXY:
+    ldx testLocX
+    ldy testLocY
+    jsr loadXY
+    and #$7f
+    asl
+    tay
+    lda stepOnActionJumpTable,y
+    sta jmpptr
+    lda stepOnActionJumpTable+1,y
+    sta jmpptr+1
+    jmp (jmpptr)                ; this function will jump to doneUpdateEnemies when finished
+
+stepOnActionJumpTable:
+    dc.w actionNone, actionBlock, actionBlock, actionBlock
+    dc.w actionDestroy, actionNone, actionNone, actionNone
+    dc.w actionNone, actionNone
     
+actionNone:
+    lda #0
+    rts
+    
+actionBlock:
+    lda #1
+    rts
+    
+actionDestroy:
+    lda #0
+    ldx testLocX
+    ldy testLocY
+    jsr storeXY
+    lda #12
+    ldx testLocX
+    ldy testLocY
+    jmp storeColorXY
+
+fireDirectionTable:
+    dc.b -1,-1,-1,-1, -1,3,1,2, -1,5,7,6, -1,4,0,-1
+directionDXTable:
+    dc.b 0,1,1,1,0,-1,-1,-1
+directionDYTable:
+    dc.b -1,-1,0,1,1,1,0,-1
+bulletTileTable:
+    dc.b TILE_LazerV, TILE_LazerTRtoBL, TILE_LazerH, TILE_LazerTLtoBR
+    dc.b TILE_LazerV, TILE_LazerTRtoBL, TILE_LazerH, TILE_LazerTLtoBR
+    
+checkForFire:
+    ; first update the bullet direction
+    ; ready to fire - get fire direction
+    lda cia1.dataPortA
+    and #$f
+    tax
+    lda fireDirectionTable,x
+    bmi _checkFire
+    sta varBulletDir
+
+_checkFire:
+    lda cia1.dataPortA           ; cia chip holds joypad u/d/l/r/fire
+    and #16
+    beq _buttonDown
+    lda #0
+    sta varFireDownFrames
+_noFire:
+    rts
+_buttonDown:
+    inc varFireDownFrames
+    lda varFireDownFrames
+    and #3
+    cmp #1
+    bne _noFire
+
+    ldx varBulletDir            ; store all the bullet info
+    lda bulletTileTable,x       ; we will clear bullets next frame
+    sta varBulletTile
+    lda directionDXTable,x
+    sta varBulletDX
+    lda directionDYTable,x
+    sta varBulletDY
+    lda playerX+1
+    sta varBulletStartX
+    lda playerY+1
+    sta varBulletStartY
+
+    ; now draw the bullet
+    lda varBulletStartX
+    sta bulletTraceX
+    lda varBulletStartY
+    sta bulletTraceY
+_bulletLoop:
+    clc
+    lda bulletTraceX
+    adc varBulletDX
+    sta bulletTraceX
+    tax
+    clc
+    lda bulletTraceY
+    adc varBulletDY
+    sta bulletTraceY
+    tay
+
+    ; check bullet is not offscreen
+    cpx #40
+    bcs _doneBullet
+    cpy #25
+    bcs _doneBullet
+
+    jsr loadXY
+    and #$7f
+    beq _emptySpotForBullet
+    ; handle tile hit
+    asl
+    tay
+    lda onLazerHitActionTable,y
+    sta jmpptr
+    lda onLazerHitActionTable+1,y
+    sta jmpptr+1
+    jmp (jmpptr)                ; this function will jump to doneUpdateEnemies when finished
+
+_doneBullet:
+    rts
+
+onLazerHitActionTable:
+    dc.w hitNone, hitDestroy, hitDestroy, hitNone
+    dc.w hitNone, hitNone, hitNone, hitNone
+    dc.w hitNone, hitNone
+    
+hitNone:
+    rts
+
+hitDestroy:
+    ldx bulletTraceX
+    ldy bulletTraceY
+    lda #0
+    jsr storeXY
+    lda #12
+    ldx bulletTraceX
+    ldy bulletTraceY
+    jsr storeColorXY
+    rts
+
+_emptySpotForBullet:
+    lda varBulletTile
+    ldx bulletTraceX
+    ldy bulletTraceY
+    jsr storeXY
+    lda #1
+    ldx bulletTraceX
+    ldy bulletTraceY
+    jsr storeColorXY
+    jmp _bulletLoop    
+
+clearBullet:
+    lda varBulletTile
+    bne _validPath
+    rts
+_validPath:
+    lda varBulletStartX
+    sta bulletTraceX
+    lda varBulletStartY
+    sta bulletTraceY
+_clearBulletLoop:
+    clc
+    lda bulletTraceX
+    adc varBulletDX
+    sta bulletTraceX
+    tax
+    clc
+    lda bulletTraceY
+    adc varBulletDY
+    sta bulletTraceY
+    tay
+    ; check bullet is not offscreen
+    cpx #40
+    bcs _doneCBullet
+    cpy #25
+    bcs _doneCBullet
+
+    jsr loadXY
+    and #$7f
+    cmp varBulletTile
+    bne _doneCBullet
+
+    ; clear bullet back to grass
+    lda #0
+    ldx bulletTraceX
+    ldy bulletTraceY
+    jsr storeXY
+    lda #12
+    ldx bulletTraceX
+    ldy bulletTraceY
+    jsr storeColorXY
+    jmp _clearBulletLoop
+
+_doneCBullet:
+    lda #0
+    sta varBulletTile
+    rts
+
+
+
