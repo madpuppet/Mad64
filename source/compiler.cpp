@@ -1147,12 +1147,21 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
             if (instructionLength == 2)
             {
                 if (li->addressMode == Cpu6502::AM_Rel)
-                    li->operand = li->operand - (li->memAddr + 2);
+                {
+                    int op = (int)li->operand - ((int)li->memAddr + 2);
+                    if (op < -128 || op > 127)
+                    {
+                        ERR_RF("Operand (%d) is outside range for addressing mode %s", op, m_cpu->GetAddressingModeName(li->addressMode));
+                    }
+                    li->operand = (double)op;
+                }
+                else if ((int)li->operand > 255)
+                {
+                    ERR_RF("Operand (%d) too large for addressing mode %s", li->operand, m_cpu->GetAddressingModeName(li->addressMode));
+                }
 
-                if (li->operand > 255)
-                    ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, m_cpu->GetAddressingModeName(li->addressMode));
-
-                li->data.push_back((u8)(li->operand) & 0xff);
+                u8 op8 = (u8)((int)li->operand&0xff);
+                li->data.push_back(op8);
             }
             else if (instructionLength == 3)
             {
