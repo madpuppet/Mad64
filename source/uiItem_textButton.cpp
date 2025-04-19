@@ -49,7 +49,6 @@ int UIItem_TextButton::GetHeight()
 
 void UIItem_TextButton::OnRendererChange(SDL_Renderer* r)
 {
-    Log("UI TextButton Destroy");
     BuildGE(r);
     m_highlight = false;
 }

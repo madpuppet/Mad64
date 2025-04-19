@@ -175,6 +175,9 @@ protected:
     int m_keyMap[512];              // map Scan codes to keyState entries  r*8 + c;
     u8 m_joystickState[2];          // bits 0-4 lrudf
 
+    // allow joysticks controlled by keyboard
+    u8 m_virtualJoystickState[2];        // bits 0-4 lrudf
+    
     struct KeyMap
     {
         int symbol;
@@ -185,6 +188,15 @@ protected:
     };
     vector<KeyMap> m_keys;
     vector<KeyMap> m_keyDown;
+    
+    struct JoyKeyMap
+    {
+        int symbol;
+        int modifier;
+        int joystick;
+        int bit;
+    };
+    vector<JoyKeyMap> m_joyKeys;
 };
 
 

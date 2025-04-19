@@ -772,6 +772,8 @@ void DockableWindow_MemoryDump::CalcClampedMemoryRange(int& startMem, int& endMe
                 dataCount = 40;
             }
             break;
+        default:
+            break;
     }
 }
 

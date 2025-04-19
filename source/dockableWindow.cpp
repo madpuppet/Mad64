@@ -221,6 +221,8 @@ void DockableWindow::OnMouseMotion(int xAbs, int yAbs, int xRel, int yRel)
                 ClampTargetHorizScroll();
             }
             break;
+        default:
+            break;
     }
 }
 
@@ -308,10 +310,12 @@ void DockableWindow::LayoutIcons()
 
 void DockableWindow::OnDockPress()
 {
+#if defined(_WIN32)
     if (m_isDocked)
         Undock();
     else
         Dock();
+#endif
 }
 
 void DockableWindow::CalcScrollBars()
@@ -490,6 +494,7 @@ void DockableWindow::SetTitle(const string& str)
 
 void DockableWindow::Undock()
 {
+#if defined(_WIN32)
     SDL_ShowWindow(m_window);
 
     m_isDocked = false;
@@ -502,6 +507,7 @@ void DockableWindow::Undock()
 
     OnRendererChange();
     OnResize();
+#endif
 }
 
 int DockableWindow::GetID()

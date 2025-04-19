@@ -20,7 +20,7 @@ void DockableWindow_SearchAndReplace::Clear()
 
 void DockableWindow_SearchAndReplace::DrawChild()
 {
-    m_renderedWidth = 64;
+    m_renderedWidth = 128;
     m_renderedItems.clear();
 
     auto r = GetRenderer();

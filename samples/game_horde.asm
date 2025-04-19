@@ -1,3 +1,46 @@
+.globals
+varScrX     byte
+varScrY     byte
+varCycle    byte
+varFrame    byte
+
+varUpdateCount      byte
+varFireDownFrames   byte
+varBulletDX         byte
+varBulletDY         byte
+varBulletTile       byte
+varBulletStartX     byte
+varBulletStartY     byte
+varBulletDir        byte
+
+playerX     word
+playerY     word
+playerVelX  word
+playerVelY  word
+
+jmpptr      word
+
+tempA   byte
+tempB   byte
+tempC   byte
+tempD   byte
+
+paramA  byte
+paramB  byte
+paramC  byte
+paramD  byte
+paramE  byte
+paramF  byte
+
+testLocX        byte
+testLocY        byte
+bulletTraceX    byte
+bulletTraceY    byte
+
+playerFrame     byte    ; sprite frame (LRUD) for player 
+
+frameMask       byte    ; frame masks detemine of a tile has been processed this frame
+
 .basicStartup
 
 ; tiles
@@ -11,46 +54,6 @@ TILE_LazerH = 6
 TILE_LazerV = 7
 TILE_LazerTLtoBR = 8
 TILE_LazerTRtoBL = 9
-
-varScrX = $50
-varScrY = $51
-varCycle = $52
-varFrame = $53
-varUpdateCount = $54
-varFireDownFrames = $55
-varBulletDX = $56
-varBulletDY = $57
-varBulletTile = $58
-varBulletStartX = $59
-varBulletStartY = $5a
-varBulletDir = $5b
-
-
-playerX = $60
-playerY = $62
-playerVelX = $64
-playerVelY = $66
-
-jmpptr = $70
-
-tempA = $80
-tempB = $81
-tempC = $82
-tempD = $83
-
-paramA = $90
-paramB = $91
-paramC = $92
-paramD = $93
-paramE = $94
-paramF = $95
-
-testLocX = $96
-testLocY = $97
-bulletTraceX = $98
-bulletTraceY = $99
-
-frameMask = $a0
 
 sprite0Ptr = $7f8
 sprite1Ptr = $7f9
@@ -68,9 +71,9 @@ start:
     jsr decodeLevel
     jsr startLevel
 update:
-    inc $d020
+    ;inc $d020
     inc varCycle
-    lda #40
+    lda #20
     sta varUpdateCount
 enemiesLoop:
     jsr updateEnemies
@@ -81,7 +84,7 @@ enemiesLoop:
     jsr updatePlayerPos
     jsr placePlayerSprite
     jsr checkForFire
-    dec $d020
+    ;dec $d020
 
 wait:
     lda $d011
@@ -153,6 +156,8 @@ initGraphics:
     sta sprite0Ptr
     lda #$00000001
     sta vic.spriteEnable
+    lda #0 
+    sta playerFrame
     rts
     
 ; reset screen updater x,y and player x,y    
@@ -464,6 +469,9 @@ _doIt:
 placePlayerSprite:
     ; WORLD_X = X+offset
     clc
+    lda #56
+    adc playerFrame
+    sta sprite0Ptr
     lda playerX
     adc #140
     sta tempA
@@ -525,6 +533,8 @@ updatePlayerPos:
     lda cia1.dataPortA           ; cia chip holds joypad u/d/l/r/fire
     and #4
     bne _tryRight
+    lda #0
+    sta playerFrame
     lda #-40                    ; joypad left so decrease velocity
     sta paramA
     lda #-1
@@ -534,6 +544,8 @@ _tryRight:
     lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
     and #8
     bne _tryUp
+    lda #1
+    sta playerFrame
     lda #40                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
@@ -550,6 +562,8 @@ _tryUp:
     lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
     and #1
     bne _tryDown
+    lda #2
+    sta playerFrame
     lda #-40                    ; joypad left so decrease velocity by 10
     sta paramA
     lda #-1
@@ -559,6 +573,8 @@ _tryDown:
     lda cia1.dataPortA           ; cia chip holds joypad l/r/u/d/fire
     and #2
     bne _doneVel
+    lda #3
+    sta playerFrame
     lda #40                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
@@ -747,27 +763,139 @@ colorLine:
     dc.b
 
 * = $e00
-    dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000101010000000000
-    dc.s %000000001010101000000000
-    dc.s %000000010111110100000000    
-    dc.s %000000000101010000000000    
-    dc.s %000000000011100000000000   
-    dc.s %000000001011110110000000    
-    dc.s %000000011011111011000000
-    dc.s %000000011011011011000000    
-    dc.s %000000000011011000000000
-    dc.s %000000001110011100000000    
-    dc.s %000000000000000000000000    
-    dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000111111000000
+    dc.s %000000000001111111000000
+    dc.s %000000000000011100000000    
+    dc.s %000000000111101000000000    
+    dc.s %000000000000011100000000   
+    dc.s %000000000001111111000000    
+    dc.s %000000000000111111000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000001111110000000
+    dc.s %000000000001111111000000
+    dc.s %000000000000011100000000    
+    dc.s %000000000000001011110000    
+    dc.s %000000000000011100000000   
+    dc.s %000000000001111111000000    
+    dc.s %000000000001111110000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000010000000000
+    dc.s %000000000000010000000000
+    dc.s %000000000001010100000000
+    dc.s %000000000011010110000000    
+    dc.s %000000000011101110000000    
+    dc.s %000000000011111110000000   
+    dc.s %000000000011101110000000    
+    dc.s %000000000011000110000000
+    dc.s %000000000011000110000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000011000110000000
+    dc.s %000000000011000110000000
+    dc.s %000000000011101110000000
+    dc.s %000000000011111110000000    
+    dc.s %000000000011101110000000    
+    dc.s %000000000011010110000000   
+    dc.s %000000000001010100000000    
+    dc.s %000000000000010000000000
+    dc.s %000000000000010000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000011110000000000
+    dc.s %000000000111110000000000
+    dc.s %000000000011100000000000
+    dc.s %000000001111111000000000    
+    dc.s %000000001011101000000000    
+    dc.s %000000000111101000000000   
+    dc.s %000000000110110000000000    
+    dc.s %000000001110111000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000   
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
     dc.b 0
 
 
@@ -1084,24 +1212,16 @@ actionDestroy:
 fireDirectionTable:
     dc.b -1,-1,-1,-1, -1,3,1,2, -1,5,7,6, -1,4,0,-1
 directionDXTable:
-    dc.b 0,1,1,1,0,-1,-1,-1
+    dc.b -1,1,0,0
 directionDYTable:
-    dc.b -1,-1,0,1,1,1,0,-1
+    dc.b 0,0,-1,1
 bulletTileTable:
-    dc.b TILE_LazerV, TILE_LazerTRtoBL, TILE_LazerH, TILE_LazerTLtoBR
-    dc.b TILE_LazerV, TILE_LazerTRtoBL, TILE_LazerH, TILE_LazerTLtoBR
+    dc.b TILE_LazerH, TILE_LazerH
+    dc.b TILE_LazerV, TILE_LazerV
     
 checkForFire:
     ; first update the bullet direction
     ; ready to fire - get fire direction
-    lda cia1.dataPortA
-    and #$f
-    tax
-    lda fireDirectionTable,x
-    bmi _checkFire
-    sta varBulletDir
-
-_checkFire:
     lda cia1.dataPortA           ; cia chip holds joypad u/d/l/r/fire
     and #16
     beq _buttonDown
@@ -1116,7 +1236,7 @@ _buttonDown:
     cmp #1
     bne _noFire
 
-    ldx varBulletDir            ; store all the bullet info
+    ldx playerFrame ; store all the bullet info
     lda bulletTileTable,x       ; we will clear bullets next frame
     sta varBulletTile
     lda directionDXTable,x

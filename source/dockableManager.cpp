@@ -18,6 +18,10 @@ DockableManager::DockableManager()
 
 void DockableManager::AddWindow(class DockableWindow* window, const char* iconText, bool enabled, bool docked)
 {
+#if !defined(PLATFORM_Windows)
+    docked = true;
+#endif
+    
     DockableWindowItem item;
 
     SDL_Color col = { 255,255,255 };
@@ -278,6 +282,7 @@ void DockableManager::SetRect(const SDL_Rect& rect)
     m_contentArea = { rect.x, rect.y + settings->lineHeight, rect.w - settings->lineHeight, rect.h - settings->lineHeight * 2 };
 }
 
+
 void DockableManager::Draw()
 {
     ClampTargetVertScroll();
@@ -445,6 +450,8 @@ void DockableManager::OnMouseMotionCaptured(bool lostCapture, int x, int y)
                 m_targetHorizScroll = (float)(newBarStart - m_horizBarFullArea.x) / (float)m_horizBarFullArea.w * (float)GetDockedContentWidth();
                 ClampTargetHorizScroll();
             }
+            break;
+        default:
             break;
     }
 }

@@ -468,6 +468,9 @@ void Compiler::CmdImport_Parse(TokenFifo &fifo, CompilerSourceInfo *si, Compiler
         ERR("No filename specified");
 
     string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
+
+    Log("Import %s",path.c_str());
+
     FILE* fh = fopen(path.c_str(), "rb");
     if (fh)
     {
@@ -512,6 +515,20 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
     {
         li->type = LT_Comment;
         return;
+    }
+    else if (StrEqual(token, ".globals"))
+    {
+        currentMemAddr = 0x2;
+        li->type = LT_Address;
+        li->memAddr = currentMemAddr;
+        li->dataEvaluated = true;
+    }
+    else if (StrEqual(token, ".locals"))
+    {
+        currentMemAddr = 0xa0;
+        li->type = LT_Address;
+        li->memAddr = currentMemAddr;
+        li->dataEvaluated = true;
     }
     else if (StrEqual(token, ".import"))
     {
@@ -993,14 +1010,46 @@ void Compiler::CompileLinePass1(CompilerLineInfo* li, TokenisedLine *sourceLine,
         }
         else
         {
-            // value by address
-            if (fifo.Pop() != ":")
-                ERR("Cannot evaluate token '%s' - Expected ':' if its a label.", token.c_str());
-
             // address label
             li->type = LT_Label;
             li->memAddr = currentMemAddr;
             m_compiledFile->m_labels.push_back(new CompilerLabel(li->label, currentMemAddr, li->lineNmbr));
+            
+            auto sizeToken = fifo.Pop();
+            if (sizeToken == "byte" || sizeToken == "word" || sizeToken == "dword")
+            {
+                int elements = 1;
+                int elementSize = 1;
+                if (sizeToken == "word")
+                    elementSize = 2;
+                else if (sizeToken == "dword")
+                    elementSize = 4;
+                
+                if (fifo.Pop() == "[")
+                {
+                    li->dataExpr.push_back(new CompilerExpression());
+
+                    PopExpressionValue(fifo, li, li->dataExpr[0], 0);
+                    if (li->error)
+                        return;
+
+                    double arraySize;
+                    if (!EvaluateExpression(li, li->dataExpr[0], arraySize))
+                        return;
+                    
+                    elements = (int)arraySize;
+                    
+                    if (fifo.Pop() != "]")
+                    {
+                        ERR("Expecting a close brace");
+                        return;
+                    }
+                }
+                
+                currentMemAddr += elements*elementSize;
+            }
+            else if (sizeToken != ":")
+                ERR("Cannot evaluate token '%s' - Expected ':' if its a label.", token.c_str());
         }
     }
 
@@ -1160,7 +1209,7 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                     ERR_RF("Operand (%d) too large for addressing mode %s", li->operand, m_cpu->GetAddressingModeName(li->addressMode));
                 }
 
-                u8 op8 = (u8)((int)li->operand&0xff);
+                u8 op8 = (u8)((int)li->operand & 0xff);
                 li->data.push_back(op8);
             }
             else if (instructionLength == 3)
@@ -1168,8 +1217,8 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if ((i32)li->operand < -32768 || (i32)li->operand > 65535)
                     ERR_RF("Operand (%d) too large for addressing mode %s", li->opcode, m_cpu->GetAddressingModeName(li->addressMode));
 
-                li->data.push_back((u8)li->operand);
-                li->data.push_back((u8)((u16)li->operand >> 8));
+                li->data.push_back((u8)((int)li->operand));
+                li->data.push_back((u8)((int)li->operand >> 8));
             }
         }
     }
@@ -1194,7 +1243,7 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!EvaluateExpression(li, li->dataExpr[i], value))
                     return false;
 
-                li->data.push_back((u8)value & 0xff);
+                li->data.push_back((u8)((int)value) & 0xff);
             }
             li->dataEvaluated = true;
         }
@@ -1210,9 +1259,9 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!EvaluateExpression(li, li->dataExpr[i], value))
                     return false;
 
-                li->data.push_back((u8)((u32)value >> 16));
-                li->data.push_back((u8)((u32)value >> 8));
-                li->data.push_back((u8)value & 0xff);
+                li->data.push_back((u8)((int)value >> 16));
+                li->data.push_back((u8)((int)value >> 8));
+                li->data.push_back((u8)((int)value & 0xff));
             }
             li->dataEvaluated = true;
         }
@@ -1228,8 +1277,8 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!EvaluateExpression(li, li->dataExpr[i], value))
                     return false;
 
-                li->data.push_back((u8)value & 0xff);
-                li->data.push_back((u8)((u16)value >> 8));
+                li->data.push_back((u8)((int)value & 0xff));
+                li->data.push_back((u8)((int)value >> 8));
             }
             li->dataEvaluated = true;
         }
@@ -1279,7 +1328,7 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!success)
                     return false;
 
-                li->data.push_back((u8)value & 0xff);
+                li->data.push_back((u8)((int)value & 0xff));
             }
             li->dataEvaluated = true;
         }
@@ -1304,8 +1353,8 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!success)
                     return false;
 
-                li->data.push_back((u8)value & 0xff);
-                li->data.push_back((u8)((u16)value >> 8));
+                li->data.push_back((u8)((int)value & 0xff));
+                li->data.push_back((u8)((int)value >> 8));
             }
             li->dataEvaluated = true;
         }
@@ -1330,9 +1379,9 @@ bool Compiler::CompileLinePass2(CompilerLineInfo* li, TokenisedLine* sourceLine)
                 if (!success)
                     return false;
 
-                li->data.push_back((u8)((u32)value >> 16));
-                li->data.push_back((u8)((u16)value >> 8));
-                li->data.push_back((u8)value & 0xff);
+                li->data.push_back((u8)((int)value >> 16));
+                li->data.push_back((u8)((int)value >> 8));
+                li->data.push_back((u8)((int)value & 0xff));
             }
             li->dataEvaluated = true;
         }
@@ -1345,19 +1394,15 @@ void Compiler::StartThreadedCompile()
     // start recompile now
     auto lw = gApp->GetWindowCompiler();
     lw->Clear();
-    Profile PF("Start Compile");
-    PF.Log();
 }
 
 void Compiler::Compile(SourceFile* file)
 {
-    Profile PF("Compile Prep");
     m_cpu = gApp->GetEmulator()->GetCpu();
     if (m_nextFile)
         delete m_nextFile;
     m_nextFile = new TokenisedFile(file);
     m_nextFile->m_sf = file;
-    Log(PF.Log().c_str());
 }
 
 void Compiler::Update()
@@ -1417,7 +1462,7 @@ void Compiler::Update()
 
 void Compiler::DoCompile()
 {
-    Profile PF("Compile Time");
+    Log("COMPILE!");
 
     u32 currentMemAddr = 0;
 
@@ -1459,8 +1504,6 @@ void Compiler::DoCompile()
         }
     }
     m_compiledFile->BuildMemoryMap();
-
-    m_compiledFile->m_compileTimeMS = PF.Time();
 }
 
 void CompilerSourceInfo::Error(const string& text, int lineNmbr)
@@ -1667,7 +1710,13 @@ TokenisedFile::TokenisedFile(SourceFile* sf)
 
     // setup working directory so we can do includes/imports later
     string path = m_sf->GetPath();
+
     int pathEnd = (int)path.find_last_of('\\');
+    if (pathEnd == string::npos)
+    {
+        pathEnd = (int)path.find_last_of('/');
+    }
+
     if (pathEnd == string::npos)
     {
         m_workingDir = "";

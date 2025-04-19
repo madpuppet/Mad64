@@ -164,7 +164,7 @@ void EditWindow::Draw()
 						SDL_SetRenderDrawColor(r, red, green, blue, 255);
 						SDL_RenderFillRect(r, &lineQuad);
 					}
-					if (sl && sl->type != LT_Unknown && sl->type != LT_Comment)
+					if (sl && sl->type != LT_Unknown && sl->type != LT_Comment && sl->type != LT_Variable)
 					{
 						if (sl->error)
 						{
@@ -576,7 +576,7 @@ void EditWindow::SetActiveFileIdx(int idx)
 		{
 			m_activeSourceFileItem = m_fileTabs[idx];
 
-			m_activeSourceFileItem->vertScroll;
+//??			m_activeSourceFileItem->vertScroll;
 			m_horizScroll = m_activeSourceFileItem->horizScroll;
 			m_targetVertScroll = (float)m_vertScroll;
 			m_targetHorizScroll = (float)m_horizScroll;
@@ -978,6 +978,8 @@ void EditWindow::OnMouseMotionCaptured(bool lostCapture, int x, int y)
 				ClampTargetHorizScroll();
 			}
 			break;
+        default:
+            break;
 	}
 }
 
@@ -1091,6 +1093,12 @@ void EditWindow::OnKeyDown(SDL_Event* e)
 			settings->overwriteMode = !settings->overwriteMode;
 		return;
 	}
+    
+    if (e->key.keysym.sym == SDLK_RETURN && e->key.keysym.mod & KMOD_CTRL)
+    {
+        settings->overwriteMode = !settings->overwriteMode;
+        return;
+    }
 
 	if (m_activeSourceFileItem)
 	{

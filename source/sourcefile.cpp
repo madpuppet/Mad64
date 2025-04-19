@@ -135,7 +135,7 @@ bool SourceFile::SaveInternal()
         m_dirtyCount = 0;
         m_forceDirty = false;
         fclose(fh);
-
+        
         if (m_compileInfo)
         {
             size_t lastindex = m_path.find_last_of(".");

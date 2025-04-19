@@ -37,40 +37,57 @@ Cia1::Cia1()
     m_keys.push_back({ SDLK_RIGHT, 0, true, 0x02, 0 });
     m_keys.push_back({ SDLK_LEFT, 0, true, 0x02, 0x17 });
     m_keys.push_back({ SDLK_INSERT, 0, true, 0x00, 0x17 });
+ 
+    m_joyKeys.push_back({ SDLK_UP, 0, 0, 1});
+    m_joyKeys.push_back({ SDLK_DOWN, 0, 0, 2});
+    m_joyKeys.push_back({ SDLK_LEFT, 0, 0, 4});
+    m_joyKeys.push_back({ SDLK_RIGHT, 0, 0, 8});
+    m_joyKeys.push_back({ SDLK_SPACE, 0, 0, 16});
+
+    m_joyKeys.push_back({ SDLK_w, 0, 1, 1});
+    m_joyKeys.push_back({ SDLK_s, 0, 1, 2});
+    m_joyKeys.push_back({ SDLK_a, 0, 1, 4});
+    m_joyKeys.push_back({ SDLK_d, 0, 1, 8});
+    m_joyKeys.push_back({ SDLK_f, 0, 1, 16});
+    
+    m_virtualJoystickState[0] = 0xff;
+    m_virtualJoystickState[1] = 0xff;
 }
 
 void Cia1::Reset()
 {
     memset(&m_regs, 0, sizeof(m_regs));
-
+    
     m_regs.dataPortA = 0x7f;
     m_regs.dataPortB = 0xff;
     m_regs.dataPortA = 0xff;
     m_regs.dataDirPortA = 0xff;
     m_regs.controlTimerA = 0x01;
     m_regs.controlTimerB = 0x08;
-
+    
     m_interruptEnabledMask = (u8)Interrupts::TimerA;
-
+    
     m_timerALatch = m_timerAVal = 0x3fff;
     m_timerARunning = true;
     m_timerAOneShot = false;
     m_timerACNT = false;
     m_serialShiftIsWrite = false;
     m_realTimeClock50hz = true;
-
+    
     m_timerBLatch = m_timerBVal = 0x3fff;
     m_timerBRunning = false;
     m_timerBOneShot = false;
     m_timerBMode = TimerBMode::Cycle;
-
+    
     memset(m_keyState, 0xff, sizeof(m_keyState));
     memset(m_keyStateOr, 0, sizeof(m_keyStateOr));
     memset(m_keyStateAnd, 0xff, sizeof(m_keyStateAnd));
     m_keyboardRowMask = 0xff;
-
+    
     m_joystickState[0] = 0xff;
     m_joystickState[1] = 0xff;
+    m_virtualJoystickState[0] = 0xff;
+    m_virtualJoystickState[1] = 0xff;
 }
 
 void Cia1::StepTimerB()
@@ -144,7 +161,7 @@ u8 Cia1::ReadReg(u16 addr)
     u8 val = ((u8*)&m_regs)[addr];
     if (addr == (u16)((u64) & (((Registers*)0)->dataPortA)))
     {
-        return m_joystickState[0];
+        return m_joystickState[0] & m_virtualJoystickState[0];
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->dataPortB)))
     {
@@ -154,7 +171,7 @@ u8 Cia1::ReadReg(u16 addr)
             if (!(m_keyboardRowMask & (1 << i)))
                 val = ((val & m_keyState[i] & m_keyStateAnd[i]) | m_keyStateOr[i]);
         }
-        val &= m_joystickState[1];
+        val &= m_joystickState[1] & m_virtualJoystickState[1];
         return val;
     }
     else if (addr == (u16)((u64) & (((Registers*)0)->interruptControl)))
@@ -235,10 +252,20 @@ void Cia1::OnKeyDown(u32 symbol, u32 mod)
                     m_keyStateAnd[(k.code2 >> 4)] &= ~(1 << (k.code2 & 7));
             }
             m_keyDown.push_back(k);
-            return;
+            break;
         }
     }
 
+    // update virtual keyboard
+    for (auto &k: m_joyKeys)
+    {
+        if (symbol == k.symbol && mod == k.modifier)
+        {
+            m_virtualJoystickState[k.joystick] &= ~k.bit;
+            break;
+        }
+    }
+    
     int sym = (symbol >> 22) | (symbol & 255);
     int dat = m_keyMap[sym];
     if (dat != -1)
@@ -266,10 +293,20 @@ void Cia1::OnKeyUp(u32 symbol, u32 mod)
                     m_keyStateAnd[(k.code2 >> 4)] |= (1 << (k.code2 & 7));
             }
             m_keyDown.erase(it);
-            return;
+            break;
         }
     }
-
+    
+    // update virtual keyboard
+    for (auto &k: m_joyKeys)
+    {
+        if (symbol == k.symbol && mod == k.modifier)
+        {
+            m_virtualJoystickState[k.joystick] |= k.bit;
+            break;
+        }
+    }
+    
     int sym = (symbol >> 22) | (symbol & 255);
     int dat = m_keyMap[sym];
     if (dat != -1)
