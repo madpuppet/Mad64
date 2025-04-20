@@ -41,6 +41,10 @@ playerFrame     byte    ; sprite frame (LRUD) for player
 
 frameMask       byte    ; frame masks detemine of a tile has been processed this frame
 
+nextFrag    byte        ; cycle 0..3
+fragSprite  word[4]     ; frame and color
+fragPos     word[4]     ; x,y locations of frag sprites
+
 .basicStartup
 
 ; tiles
@@ -54,6 +58,11 @@ TILE_LazerH = 6
 TILE_LazerV = 7
 TILE_LazerTLtoBR = 8
 TILE_LazerTRtoBL = 9
+
+; SPRITES
+SPRITE_Player = 56
+SPRITE_Frag = 60
+SPRITE_Clear = 62
 
 sprite0Ptr = $7f8
 sprite1Ptr = $7f9
@@ -71,7 +80,7 @@ start:
     jsr decodeLevel
     jsr startLevel
 update:
-    ;inc $d020
+    inc $d020
     inc varCycle
     lda #20
     sta varUpdateCount
@@ -84,7 +93,8 @@ enemiesLoop:
     jsr updatePlayerPos
     jsr placePlayerSprite
     jsr checkForFire
-    ;dec $d020
+    jsr updateFrags
+    dec $d020
 
 wait:
     lda $d011
@@ -152,11 +162,32 @@ initGraphics:
     sta vic.borderColor
     lda #5
     sta vic.backgroundColor0
-    lda #56
-    sta sprite0Ptr
-    lda #$00000001
+    lda #$0000001f
     sta vic.spriteEnable
+    ldx #7
+    lda #SPRITE_Clear
+_clearSprites:
+    sta sprite0Ptr,x
+    dex
+    bpl _clearSprites    
+    
+    ldx #15
+    lda #0
+_clearSpritePos:
+    sta vic.sprite0X,x
+    dex
+    bpl _clearSpritePos
+
+    ldx #6
+    lda #8
+_clearFrags:
+    sta fragSprite,x
+    dex
+    dex
+    bpl _clearFrags
+
     lda #0 
+    sta vic.spriteXMSB
     sta playerFrame
     rts
     
@@ -469,7 +500,7 @@ _doIt:
 placePlayerSprite:
     ; WORLD_X = X+offset
     clc
-    lda #56
+    lda #SPRITE_Player
     adc playerFrame
     sta sprite0Ptr
     lda playerX
@@ -760,7 +791,6 @@ screenLine:
     .generate.w 0,24,$0400+I*40
 colorLine:
     .generate.w 0,24,$d800+I*40
-    dc.b
 
 * = $e00
     dc.s %000000000000000000000000    
@@ -830,6 +860,7 @@ colorLine:
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.b 0
+    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000
@@ -855,26 +886,50 @@ colorLine:
 
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
-    dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000000000000000000
-    dc.s %000000000011110000000000
-    dc.s %000000000111110000000000
-    dc.s %000000000011100000000000
-    dc.s %000000001111111000000000    
-    dc.s %000000001011101000000000    
-    dc.s %000000000111101000000000   
-    dc.s %000000000110110000000000    
-    dc.s %000000001110111000000000
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000
+    dc.s %000000100000000010000000
+    dc.s %000000001100100100000000
+    dc.s %000000000110111000000000
+    dc.s %000010001000001000000000
+    dc.s %000001100100110011000000
+    dc.s %000000010000011100000000
+    dc.s %000000001011100100000000
+    dc.s %000000111000100111000000
+    dc.s %000001000100010000110000
+    dc.s %000000010010100100000000
+    dc.s %000000000010100110000000
+    dc.s %000000000000000001000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.b 0
+
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000010000000000000000000    
+    dc.s %000001000000000000000000
+    dc.s %000000100000000010000000
+    dc.s %000000001000100100000000
+    dc.s %000000000000001000000100
+    dc.s %000010000000000000110000
+    dc.s %000001000000010011000000
+    dc.s %000000010000000100000000
+    dc.s %000000001000000000000000
+    dc.s %000000000000100110000000
+    dc.s %000001000000010000010000
+    dc.s %000010000000000000011000
+    dc.s %000100000010100000000010
+    dc.s %000000000100000001000000    
+    dc.s %000000000100000001000000    
+    dc.s %000000000000000000100000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000
@@ -1103,9 +1158,9 @@ decodeLevel:
     sta $400+5*40+1
     sta $400+5*40+2
     sta $400+5*40+3
-    sta $400+5*40+4
-    sta $400+5*40+5
-    sta $400+5*40+6
+    sta $400+7*40+4
+    sta $400+7*40+5
+    sta $400+7*40+6
     sta $400+5*40+7
     sta $400+5*40+8
     sta $400+5*40+9
@@ -1295,6 +1350,16 @@ hitNone:
     rts
 
 hitDestroy:
+    lda #0
+    sta paramA
+    ldx bulletTraceX
+    ldy bulletTraceY    
+    stx paramC
+    sty paramD
+    jsr loadColorXY
+    sta paramB
+    jsr AddFrag
+    
     ldx bulletTraceX
     ldy bulletTraceY
     lda #0
@@ -1363,5 +1428,72 @@ _doneCBullet:
     sta varBulletTile
     rts
 
+AddFrag:
+    inc nextFrag
+    lda nextFrag 
+    and #3
+    sta nextFrag
+    asl
+    tax
+    lda paramA
+    sta fragSprite,x
+    lda paramB
+    sta fragSprite+1,x        
+    lda paramC
+    sta fragPos,x
+    lda paramD
+    sta fragPos+1,x
+    rts
+
+updateFrags:
+    lda #0
+    sta paramF    
+    lda #0
+_updateFragLoop:
+    pha
+    tay
+    asl
+    tax
+    lda fragSprite,x
+    lsr
+    lsr
+    clc
+    adc #SPRITE_Frag
+    sta sprite1Ptr,y
+    cmp #SPRITE_Clear
+    beq _notThisBaby
+    inc fragSprite,x
+    lda fragSprite+1,x
+    sta vic.sprite1Color,y
+
+    ldy fragPos,x
+    lda charToSpriteXLow,y
+    sta vic.sprite1X,x
+    lda paramF
+    ora charToSpriteXHigh,y
+    asl
+    sta paramF
+    ldy fragPos+1,x
+    lda charToSpriteY,y
+    sta vic.sprite1Y,x    
+_notThisBaby:
+    pla
+    clc
+    adc #1
+    cmp #4
+    bne _updateFragLoop
+    lda vic.spriteXMSB
+    and #1
+    ora paramF
+    sta vic.spriteXMSB
+    rts
+    
+    
+charToSpriteXLow:
+    .generate.b 0,39,I*8+16
+charToSpriteXHigh:
+    .generate.b 0,39,(I*8+16)>>8
+charToSpriteY:
+    .generate.b 0,39,I*8+45
 
 

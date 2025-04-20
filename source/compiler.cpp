@@ -469,8 +469,6 @@ void Compiler::CmdImport_Parse(TokenFifo &fifo, CompilerSourceInfo *si, Compiler
 
     string path = si->m_workingDir + filename.substr(1, filename.size() - 2);
 
-    Log("Import %s",path.c_str());
-
     FILE* fh = fopen(path.c_str(), "rb");
     if (fh)
     {
@@ -1462,8 +1460,6 @@ void Compiler::Update()
 
 void Compiler::DoCompile()
 {
-    Log("COMPILE!");
-
     u32 currentMemAddr = 0;
 
     m_compiledFile = new CompilerSourceInfo();
