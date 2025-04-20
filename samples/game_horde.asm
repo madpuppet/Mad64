@@ -45,6 +45,8 @@ nextFrag    byte        ; cycle 0..3
 fragSprite  word[4]     ; frame and color
 fragPos     word[4]     ; x,y locations of frag sprites
 
+playerHitpoints byte    ; 255->0
+
 .basicStartup
 
 ; tiles
@@ -60,9 +62,15 @@ TILE_LazerTLtoBR = 8
 TILE_LazerTRtoBL = 9
 
 ; SPRITES
-SPRITE_Player = 56
-SPRITE_Frag = 60
-SPRITE_Clear = 62
+SPRITE_Player = 128
+SPRITE_Frag = 132
+SPRITE_Clear = 135
+SPRITE_UI = 136
+
+; COLORS
+COLOR_Border = 0
+COLOR_Background = 0
+COLOR_Grass = 12
 
 sprite0Ptr = $7f8
 sprite1Ptr = $7f9
@@ -76,11 +84,12 @@ sprite7Ptr = $7ff
 start:
     sei
     jsr initGraphics
+    jsr initUISprites
     jsr clearScreen
     jsr decodeLevel
     jsr startLevel
 update:
-    inc $d020
+;   inc $d020
     inc varCycle
     lda #20
     sta varUpdateCount
@@ -94,7 +103,8 @@ enemiesLoop:
     jsr placePlayerSprite
     jsr checkForFire
     jsr updateFrags
-    dec $d020
+    jsr showUI
+;   dec $d020
 
 wait:
     lda $d011
@@ -106,64 +116,48 @@ wait2:
     jmp update
 
 clearScreen:
-    lda #$00
-    sta _clearLoc+1
-    lda #$04
-    sta _clearLoc+2
-    ldy #24
-    ldx #39
-_line:
+    ldx #0
+_clearLoop:
     lda #0
-_clearLoc:
     sta $0400,x
-    dex
-    bpl _clearLoc
-    ldx #39
-    lda _clearLoc+1
-    adc #40
-    sta _clearLoc+1
-    lda _clearLoc+2
-    adc #0
-    sta _clearLoc+2
-    dey
-    bpl _line
-
-    lda #$00
-    sta _clearLoc+12
-    lda #$d8
-    sta _clearLoc+22
-    ldy #24
-    ldx #39
-_line2:
-    lda #12
-_clearLoc2:
+    sta $0400+250,x
+    sta $0400+500,x
+    sta $0400+750,x
+    lda #COLOR_Grass
     sta $d800,x
-    dex
-    bpl _clearLoc2
-    ldx #39
-    lda _clearLoc2+1
-    adc #40
-    sta _clearLoc2+1
-    lda _clearLoc2+2
-    adc #0
-    sta _clearLoc2+2
-    dey
-    bpl _line2
-    rts
+    sta $d800+250,x
+    sta $d800+500,x
+    sta $d800+750,x
+    inx
+    cpx #250
+    bne _clearLoop
+    rts    
 
 initGraphics:
+    lda #%110101
+    sta $1
     lda #(6<<1)+(1<<4)
     sta vic.memoryPointer
     lda #(1<<3)
     sta vic.control2
     lda #(1<<4)+(1<<3)+3
     sta vic.control1
-    lda #5
+    lda #0
     sta vic.borderColor
-    lda #5
+    lda #0
     sta vic.backgroundColor0
-    lda #$0000001f
-    sta vic.spriteEnable
+    lda #1
+    sta vic.backgroundColor1
+    lda #2
+    sta vic.backgroundColor2
+    lda #3
+    sta vic.backgroundColor3
+    lda #$ff
+    sta vic.spriteEnable    
+    lda #%11000000
+    sta vic.spriteMulticolor
+    sta vic.spriteXSize
+    sta vic.spriteYSize
     ldx #7
     lda #SPRITE_Clear
 _clearSprites:
@@ -212,8 +206,10 @@ startLevel:
     sta playerVelX+1
     sta playerVelY
     sta playerVelY+1
+    lda #255
+    sta playerHitpoints
     rts
-
+ 
 ; process a single enemy and then update the screen updater
 updateEnemies:
     ldx varScrX
@@ -493,7 +489,7 @@ _doIt:
     jsr storeXY         ; clear old position back to grass
     ldx paramA 
     ldy paramB
-    lda #12
+    lda #COLOR_Grass
     jsr storeColorXY    ; set grass color
     
     
@@ -792,7 +788,7 @@ screenLine:
 colorLine:
     .generate.w 0,24,$d800+I*40
 
-* = $e00
+* = $2000
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
@@ -891,12 +887,12 @@ colorLine:
     dc.s %000000100000000010000000
     dc.s %000000001100100100000000
     dc.s %000000000110111000000000
-    dc.s %000010001000001000000000
-    dc.s %000001100100110011000000
-    dc.s %000000010000011100000000
+    dc.s %000010001101001000000000
+    dc.s %000001100111110011000000
+    dc.s %000000010111111100000000
     dc.s %000000001011100100000000
-    dc.s %000000111000100111000000
-    dc.s %000001000100010000110000
+    dc.s %000000111100100111000000
+    dc.s %000001011100010000110000
     dc.s %000000010010100100000000
     dc.s %000000000010100110000000
     dc.s %000000000000000001000000    
@@ -914,18 +910,41 @@ colorLine:
     dc.s %000000100000000010000000
     dc.s %000000001000100100000000
     dc.s %000000000000001000000100
-    dc.s %000010000000000000110000
+    dc.s %000010000010000000110000
     dc.s %000001000000010011000000
     dc.s %000000010000000100000000
-    dc.s %000000001000000000000000
+    dc.s %000010001000000000000000
     dc.s %000000000000100110000000
     dc.s %000001000000010000010000
-    dc.s %000010000000000000011000
-    dc.s %000100000010100000000010
+    dc.s %000010001000001000011000
+    dc.s %000100000010100001000010
     dc.s %000000000100000001000000    
     dc.s %000000000100000001000000    
     dc.s %000000000000000000100000    
     dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.s %000000000000000000000000    
+    dc.b 0
+
+    dc.s %000000000000000000000000    
+    dc.s %000000000100000000000000    
+    dc.s %000010000000001000000000    
+    dc.s %000001000000000000001000
+    dc.s %000000100010000010000000
+    dc.s %000000001000100100000000
+    dc.s %000000000000001001000100
+    dc.s %000010000010000000110000
+    dc.s %000001000000000001000000
+    dc.s %000000000000000000000000
+    dc.s %000010000000000000000000
+    dc.s %010000000000000010000000
+    dc.s %000001000000000000010000
+    dc.s %000010001000001000011000
+    dc.s %000100000000100000000010
+    dc.s %000000000100000000000000    
+    dc.s %001000000100000000000010    
+    dc.s %000000000000000000001000    
+    dc.s %000001000000001000000000    
     dc.s %000000000000000000000000    
     dc.s %000000000000000000000000    
     dc.b 0
@@ -953,17 +972,64 @@ colorLine:
     dc.s %000000000000000000000000    
     dc.b 0
 
+    dc.s &111111111111   
+    dc.s &122222222222    
+    dc.s &122222222222    
+    dc.s &111111111111    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &333033303330    
+    dc.s &303030303030    
+    dc.s &303030303030    
+    dc.s &303030303030    
+    dc.s &333033303330    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &111111111111    
+    dc.s &111111111111    
+    dc.s &111111111111    
+    dc.b 0
+
+    dc.s &111111111110   
+    dc.s &222222222210    
+    dc.s &222222222210    
+    dc.s &111111111110    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &333033303330    
+    dc.s &303030303030    
+    dc.s &303030303030    
+    dc.s &303030303030    
+    dc.s &333033303330    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &111111111111    
+    dc.s &111111111111    
+    dc.s &111111111111    
+    dc.b 0
+
+
 
 * = $3000
     ; 0. grass
-    dc.b %00000000
-    dc.b %00000000
-    dc.b %00100000
-    dc.b %00000000
-    dc.b %00000000
-    dc.b %00001000
-    dc.b %01000000
-    dc.b %00000000
+    dc.b %01010000
+    dc.b %10100000
+    dc.b %00000101
+    dc.b %00001010
+    dc.b %10100000
+    dc.b %01010000
+    dc.b %00001010
+    dc.b %00000101
     ; 1. spawner    
     dc.b %00111000
     dc.b %01111110
@@ -1048,14 +1114,14 @@ colorLine:
 
 * = $3400
     ; 0. grass
-    dc.b %00000000
-    dc.b %00000000
-    dc.b %00100000
-    dc.b %00000000
-    dc.b %00000000
-    dc.b %00001000
-    dc.b %01000000
-    dc.b %00000000
+    dc.b %01010000
+    dc.b %10100000
+    dc.b %00000101
+    dc.b %00001010
+    dc.b %10100000
+    dc.b %01010000
+    dc.b %00001010
+    dc.b %00000101
     ; 1. spawner    
     dc.b %00111000
     dc.b %01111110
@@ -1139,20 +1205,6 @@ colorLine:
     dc.b %10000100
 
 decodeLevel:
-    lda #1
-    sta $400
-    sta $427
-    sta $7c0
-    sta $7e7
-    lda #11
-    sta $d800
-    lda #12
-    sta $d827
-    lda #13
-    sta $dbc0
-    lda #14
-    sta $dbe7
-
     lda #3
     sta $400+5*40
     sta $400+5*40+1
@@ -1172,35 +1224,11 @@ decodeLevel:
     sta $400+5*40+16
     sta $400+5*40+17
     sta $400+5*40+18
-    sta $400+6*40+18
-    sta $400+7*40+18
-    sta $400+8*40+18
-    sta $400+9*40+18
-    sta $400+10*40+18
     sta $400+11*40+18
-    sta $400+12*40+18
-    sta $400+13*40+18
     sta $400+14*40+18
     sta $400+14*40+19
     sta $400+14*40+20
-    sta $400+14*40+22
-    sta $400+14*40+23
-    sta $400+14*40+24
     sta $400+14*40+25
-    sta $400+14*40+26
-    sta $400+14*40+27
-    sta $400+14*40+28
-    sta $400+14*40+29
-    sta $400+14*40+30
-    sta $400+14*40+31
-    sta $400+14*40+32
-    sta $400+14*40+33
-    sta $400+14*40+34
-    sta $400+14*40+35
-    sta $400+14*40+36
-    sta $400+14*40+37
-    sta $400+14*40+38
-    sta $400+14*40+39
     sta $400+16*40+18
     sta $400+16*40+19
     sta $400+16*40+20
@@ -1208,14 +1236,6 @@ decodeLevel:
     sta $400+17*40+23
     sta $400+17*40+24
     sta $400+17*40+25
-    sta $400+17*40+26
-    sta $400+17*40+27
-    sta $400+17*40+28
-    sta $400+17*40+29
-    sta $400+17*40+30
-    sta $400+17*40+31
-    sta $400+17*40+33
-    sta $400+17*40+34
     sta $400+17*40+35
     sta $400+17*40+36
     sta $400+17*40+37
@@ -1226,6 +1246,38 @@ decodeLevel:
     sta $400+5*40+12
     sta $400+14*40+21
     sta $400+17*40+32
+
+    lda #1
+    sta $400
+    sta $427
+    sta $7c0
+    sta $7e7
+    sta $500
+    sta $600
+    sta $700
+    sta $550
+    sta $650
+    sta $670
+    sta $690
+    sta $490
+    lda #5
+    sta $d800
+    lda #12
+    sta $d827
+    lda #13
+    sta $dbc0
+    lda #14
+    sta $dbe7
+    lda #19
+    sta $d900
+    sta $da00
+    sta $db00
+    sta $d950
+    sta $da50
+    sta $da70
+    sta $da90
+    sta $d890
+
     rts
 
 doPlayerOnXY:
@@ -1448,7 +1500,7 @@ AddFrag:
 updateFrags:
     lda #0
     sta paramF    
-    lda #0
+    lda #3
 _updateFragLoop:
     pha
     tay
@@ -1461,10 +1513,11 @@ _updateFragLoop:
     adc #SPRITE_Frag
     sta sprite1Ptr,y
     cmp #SPRITE_Clear
-    beq _notThisBaby
+    beq _isBlankSprite
     inc fragSprite,x
     lda fragSprite+1,x
     sta vic.sprite1Color,y
+_isBlankSprite:
 
     ldy fragPos,x
     lda charToSpriteXLow,y
@@ -1476,19 +1529,16 @@ _updateFragLoop:
     ldy fragPos+1,x
     lda charToSpriteY,y
     sta vic.sprite1Y,x    
-_notThisBaby:
     pla
-    clc
-    adc #1
-    cmp #4
-    bne _updateFragLoop
+    sec
+    sbc #1
+    bpl _updateFragLoop
     lda vic.spriteXMSB
     and #1
     ora paramF
     sta vic.spriteXMSB
     rts
-    
-    
+        
 charToSpriteXLow:
     .generate.b 0,39,I*8+16
 charToSpriteXHigh:
@@ -1496,4 +1546,39 @@ charToSpriteXHigh:
 charToSpriteY:
     .generate.b 0,39,I*8+45
 
+showUI:
+_waitForBeforeBorder:
+    lda vic.rasterCounter
+    cmp #249
+    bne _waitForBeforeBorder
+    lda vic.control1
+    and #$f7
+    sta vic.control1
+_waitForBorder:
+    ldx vic.rasterCounter
+    cpx #255
+    bne _waitForBorder
+    ora #8
+    sta vic.control1
+    rts
 
+initUISprites:
+    lda #SPRITE_UI
+    sta sprite6Ptr
+    lda #SPRITE_UI+1
+    sta sprite7Ptr
+    lda #136
+    sta vic.sprite6X
+    lda #184
+    sta vic.sprite7X
+    lda #254
+    sta vic.sprite6Y
+    sta vic.sprite7Y
+    lda #8
+    sta vic.spriteMulticolor0
+    lda #5
+    sta vic.spriteMulticolor1
+    lda #1
+    sta vic.sprite6Color
+    sta vic.sprite7Color
+    rts
