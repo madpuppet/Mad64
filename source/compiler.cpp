@@ -1460,11 +1460,12 @@ void Compiler::Update()
 
 void Compiler::DoCompile()
 {
+    Profile PF("Compile Time");
     u32 currentMemAddr = 0;
-
+    
     m_compiledFile = new CompilerSourceInfo();
     m_compiledFile->m_sourceVersion = m_activeFile->m_sourceVersion;
-
+    
     int lineNmbr = 0;
     for (auto line : m_activeFile->m_lines)
     {
@@ -1474,8 +1475,8 @@ void Compiler::DoCompile()
         m_compiledFile->m_lines.push_back(lineInfo);
         lineNmbr++;
     }
-
-    // keep passing over the source until 
+    
+    // keep passing over the source until
     int lastCount = 0;
     int thisCount = 0;
     while (true)
@@ -1490,7 +1491,7 @@ void Compiler::DoCompile()
             break;
         lastCount = thisCount;
     }
-
+    
     if (thisCount != 0)
     {
         for (auto li : m_compiledFile->m_lines)
@@ -1500,6 +1501,7 @@ void Compiler::DoCompile()
         }
     }
     m_compiledFile->BuildMemoryMap();
+    m_compiledFile->m_compileTimeMS = PF.Time();
 }
 
 void CompilerSourceInfo::Error(const string& text, int lineNmbr)

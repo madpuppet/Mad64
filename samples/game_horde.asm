@@ -46,8 +46,14 @@ fragSprite  word[4]     ; frame and color
 fragPos     word[4]     ; x,y locations of frag sprites
 
 playerHitpoints byte    ; 255->0
+playerAmmo byte         ; 255->0
+hpDamageFlash byte      ; if non zero, then use red bar
+
+frameCounter byte       ; cycles each frame - used to have things only fire on some frames
 
 .basicStartup
+
+MAX_BAR_VALUE = 35
 
 ; tiles
 TILE_Grass = 0
@@ -89,22 +95,33 @@ start:
     jsr decodeLevel
     jsr startLevel
 update:
-;   inc $d020
+    inc vic.borderColor
+    jsr setBackColor
+
     inc varCycle
-    lda #20
+    lda #10
     sta varUpdateCount
 enemiesLoop:
     jsr updateEnemies
     dec varUpdateCount
     bne enemiesLoop
+    inc vic.borderColor
 
     jsr clearBullet
     jsr updatePlayerPos
     jsr placePlayerSprite
     jsr checkForFire
     jsr updateFrags
+    jsr refreshHitpoints
+    jsr refreshAmmo
+    jsr drawHitpoints
+    jsr drawAmmo
+
+    dec vic.borderColor
+
     jsr showUI
-;   dec $d020
+    
+    dec vic.borderColor
 
 wait:
     lda $d011
@@ -114,6 +131,15 @@ wait2:
     bmi wait2
 
     jmp update
+
+setBackColor:
+    lda #1
+    ldx hpDamageFlash
+    beq _setBack
+    lda #4
+_setBack:
+    sta vic.sprite0Color
+    rts
 
 clearScreen:
     ldx #0
@@ -134,8 +160,6 @@ _clearLoop:
     rts    
 
 initGraphics:
-    lda #%110101
-    sta $1
     lda #(6<<1)+(1<<4)
     sta vic.memoryPointer
     lda #(1<<3)
@@ -154,7 +178,7 @@ initGraphics:
     sta vic.backgroundColor3
     lda #$ff
     sta vic.spriteEnable    
-    lda #%11000000
+    lda #%11100000
     sta vic.spriteMulticolor
     sta vic.spriteXSize
     sta vic.spriteYSize
@@ -200,14 +224,16 @@ startLevel:
     lda #13
     sta playerY+1
     lda #0
+    sta hpDamageFlash
     sta playerX
     sta playerY
     sta playerVelX
     sta playerVelX+1
     sta playerVelY
     sta playerVelY+1
-    lda #255
+    lda #MAX_BAR_VALUE
     sta playerHitpoints
+    sta playerAmmo
     rts
  
 ; process a single enemy and then update the screen updater
@@ -384,7 +410,41 @@ _noMoveVert:
     sty paramB
     jsr moveABtoCD
 _noMoveAtAll:
+
+    ; did we hit the player
+    ldx varScrX
+    ldy varScrY
+    cpx playerX+1
+    bne _notYet
+    cpy playerY+1
+    bne _notYet
+    jsr enemyHitPlayer
+_notYet:
     jmp doneUpdateEnemies
+
+; call this if enemy at X,Y has hit the player
+; it will deduct hitpoints and frag at the spot
+enemyHitPlayer:
+    stx tempC
+    sty tempD
+    lda #TILE_Grass
+    jsr storeXY
+    ldx tempC
+    ldy tempD
+    lda #COLOR_Grass
+    jsr storeColorXY        
+    lda #4
+    sta paramA
+    jsr subtractHitpoints
+    lda #0
+    sta paramA
+    lda #1
+    sta paramB
+    lda tempC
+    sta paramC
+    lda tempD
+    sta paramD
+    jmp AddFrag
    
 ; load byte from screen location x,y into A
 loadXY:
@@ -972,17 +1032,21 @@ colorLine:
     dc.s %000000000000000000000000    
     dc.b 0
 
+HPSpriteStart:
     dc.s &111111111111   
-    dc.s &122222222222    
-    dc.s &122222222222    
     dc.s &111111111111    
     dc.s &000000000000    
+AmmoSpriteStart:
+    dc.s &333333333333    
+    dc.s &333333333333    
     dc.s &000000000000    
-    dc.s &333033303330    
-    dc.s &303030303030    
-    dc.s &303030303030    
-    dc.s &303030303030    
-    dc.s &333033303330    
+    dc.s &000002200000    
+    dc.s &222002000000    
+    dc.s &202002200000    
+    dc.s &202002000000    
+    dc.s &202022200000    
+    dc.s &222020200000    
+    dc.s &000022200000    
     dc.s &000000000000    
     dc.s &000000000000    
     dc.s &000000000000    
@@ -990,32 +1054,53 @@ colorLine:
     dc.s &000000000000    
     dc.s &000000000000    
     dc.s &000000000000    
+    dc.s &000000000000    
+    dc.b 0
+
+    dc.s &111111111111   
     dc.s &111111111111    
-    dc.s &111111111111    
-    dc.s &111111111111    
+    dc.s &000000000000    
+    dc.s &333333333333    
+    dc.s &333333333333    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &222022202220    
+    dc.s &202020202020    
+    dc.s &202020202020    
+    dc.s &202020202020    
+    dc.s &222022202220    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
     dc.b 0
 
     dc.s &111111111110   
-    dc.s &222222222210    
-    dc.s &222222222210    
     dc.s &111111111110    
     dc.s &000000000000    
-    dc.s &000000000000    
-    dc.s &333033303330    
-    dc.s &303030303030    
-    dc.s &303030303030    
-    dc.s &303030303030    
-    dc.s &333033303330    
+    dc.s &333333333330    
+    dc.s &333333333330    
     dc.s &000000000000    
     dc.s &000000000000    
+    dc.s &222022202220    
+    dc.s &202020202020    
+    dc.s &202020202020    
+    dc.s &202020202020    
+    dc.s &222022202220    
     dc.s &000000000000    
     dc.s &000000000000    
     dc.s &000000000000    
     dc.s &000000000000    
     dc.s &000000000000    
-    dc.s &111111111111    
-    dc.s &111111111111    
-    dc.s &111111111111    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
+    dc.s &000000000000    
     dc.b 0
 
 
@@ -1204,6 +1289,71 @@ colorLine:
     dc.b %01100000
     dc.b %10000100
 
+
+scoreDigitsOffsets:
+    dc.b 0,5,10,15,20,25,30,35,40,45
+scoreDigits:
+    dc.b &2220
+    dc.b &2020
+    dc.b &2020
+    dc.b &2020
+    dc.b &2220
+
+    dc.b &0200
+    dc.b &2200
+    dc.b &0200
+    dc.b &0200
+    dc.b &2220
+
+    dc.b &2220
+    dc.b &0020
+    dc.b &2220
+    dc.b &2000
+    dc.b &2220
+
+    dc.b &2220
+    dc.b &0020
+    dc.b &2220
+    dc.b &0020
+    dc.b &2220
+
+    dc.b &2020
+    dc.b &2020
+    dc.b &2220
+    dc.b &0020
+    dc.b &0020
+
+    dc.b &2220
+    dc.b &2000
+    dc.b &2220
+    dc.b &0020
+    dc.b &2220
+
+    dc.b &2220
+    dc.b &2000
+    dc.b &2220
+    dc.b &2020
+    dc.b &2220
+
+    dc.b &2220
+    dc.b &0020
+    dc.b &0020
+    dc.b &0020
+    dc.b &0020
+
+    dc.b &2220
+    dc.b &2020
+    dc.b &2220
+    dc.b &2020
+    dc.b &2220
+
+    dc.b &2220
+    dc.b &2020
+    dc.b &2220
+    dc.b &0020
+    dc.b &0020
+
+
 decodeLevel:
     lda #3
     sta $400+5*40
@@ -1291,10 +1441,12 @@ doPlayerOnXY:
     sta jmpptr
     lda stepOnActionJumpTable+1,y
     sta jmpptr+1
-    jmp (jmpptr)                ; this function will jump to doneUpdateEnemies when finished
-
+    ; this function will jump to doneUpdateEnemies when finished
+    ; note that TempA and TempB are used to keep player positions, so don't overwrite
+    jmp (jmpptr)
+    
 stepOnActionJumpTable:
-    dc.w actionNone, actionBlock, actionBlock, actionBlock
+    dc.w actionNone, actionBlock, actionFragDamage, actionBlock
     dc.w actionDestroy, actionNone, actionNone, actionNone
     dc.w actionNone, actionNone
     
@@ -1304,6 +1456,13 @@ actionNone:
     
 actionBlock:
     lda #1
+    rts
+
+actionFragDamage:
+    ldx testLocX
+    ldy testLocY
+    jsr enemyHitPlayer
+    lda #0
     rts
     
 actionDestroy:
@@ -1342,6 +1501,11 @@ _buttonDown:
     and #3
     cmp #1
     bne _noFire
+
+    ; any ammo left?
+    lda playerAmmo
+    beq _noFire
+    dec playerAmmo
 
     ldx playerFrame ; store all the bullet info
     lda bulletTileTable,x       ; we will clear bullets next frame
@@ -1554,6 +1718,18 @@ _waitForBeforeBorder:
     lda vic.control1
     and #$f7
     sta vic.control1
+
+    ;; we can set the bar colour while we wait
+    ldx hpDamageFlash
+    bne _flashRed
+    ldx #8
+    stx vic.spriteMulticolor0
+    bne _waitForBorder
+_flashRed:
+    dec hpDamageFlash
+    ldx #2
+    stx vic.spriteMulticolor0
+
 _waitForBorder:
     ldx vic.rasterCounter
     cpx #255
@@ -1564,21 +1740,165 @@ _waitForBorder:
 
 initUISprites:
     lda #SPRITE_UI
-    sta sprite6Ptr
+    sta sprite5Ptr
     lda #SPRITE_UI+1
+    sta sprite6Ptr
+    lda #SPRITE_UI+2
     sta sprite7Ptr
-    lda #136
+    lda #110
+    sta vic.sprite5X
+    lda #158
     sta vic.sprite6X
-    lda #184
+    lda #206
     sta vic.sprite7X
     lda #254
+    sta vic.sprite5Y
     sta vic.sprite6Y
     sta vic.sprite7Y
     lda #8
     sta vic.spriteMulticolor0
-    lda #5
+    lda #7
     sta vic.spriteMulticolor1
-    lda #1
+    lda #5
+    sta vic.sprite5Color
+    lda #14
     sta vic.sprite6Color
     sta vic.sprite7Color
     rts
+
+drawHitpoints:
+    lda #<HPSpriteStart
+    sta paramA
+    lda #>HPSpriteStart
+    sta paramB
+    lda playerHitpoints
+    sta paramC
+    lda #<hpData
+    sta paramD
+    lda #>hpData
+    sta paramE
+    jmp drawBar
+    
+drawAmmo:
+    lda #<AmmoSpriteStart
+    sta paramA
+    lda #>AmmoSpriteStart
+    sta paramB
+    lda playerAmmo
+    sta paramC
+    lda #<ammoData
+    sta paramD
+    lda #>ammoData
+    sta paramE
+    jmp drawBar
+
+hpData:
+    dc.b &0000,&1000,&1100,&1110,&1111
+ammoData:
+    dc.b &0000,&3000,&3300,&3330,&3333
+barOffsets:
+    dc.b 1,1,62,1,1,62,1,1
+
+; draw a sprite bar (value 0..255 -> bar graphics)
+; params:
+;  paramA,paramB -> address of sprite storage for UI Sprite 1
+;  paramC        -> value 0..255
+;  paramD,paramE -> table for values 0..4
+drawBar:
+    lda paramC
+    cmp #35
+    bcc _noClamp
+    lda #35
+_noClamp:
+    sta paramC
+    ldx #0          ; 9 bytes to write (twice for double thickness)
+_barByteLoop:
+    lda paramC
+    cmp #4
+    bcs _fullSegment
+    ; partial segment
+    tay
+    lda (paramD),y
+    jmp _storeSegment
+_fullSegment:
+    ldy #4
+    lda (paramD),y
+_storeSegment:
+    ldy #0
+    sta (paramA),y
+    ldy #3
+    sta (paramA),y
+    
+    ; now reduce total by 4, clamping to 0
+    lda paramC
+    sec
+    sbc #4
+    bpl _noClampBar
+    lda #0
+_noClampBar:
+    sta paramC
+    
+    ; update the store offset
+    lda barOffsets,x
+    clc
+    adc paramA
+    sta paramA
+    
+    inx
+    cpx #9
+    bne _barByteLoop
+    rts
+    
+refreshAmmo:
+    lda playerAmmo
+    cmp #MAX_BAR_VALUE
+    beq _noRefreshAmmo
+    lda varCycle
+    and #$f
+    bne _noRefreshAmmo
+    inc playerAmmo
+_noRefreshAmmo:
+    rts
+
+refreshHitpoints:
+    lda playerAmmo
+    cmp #MAX_BAR_VALUE
+    beq _noRefreshAmmo
+    lda varCycle
+    and #$3f
+    bne _noRefreshAmmo
+    inc playerAmmo
+_noRefreshAmmo:
+    rts
+
+; add ammo amount - amount in A
+addAmmo:
+    clc
+    adc playerAmmo
+    cmp #MAX_BAR_VALUE
+    bcc _doneAddAmmo
+    lda #MAX_BAR_VALUE
+_doneAddAmmo:
+    rts
+
+addHitpoints:
+    clc
+    adc playerhitpoints
+    cmp #MAX_BAR_VALUE
+    bcc _doneAddHitpoints
+    lda #MAX_BAR_VALUE
+_doneAddHitpoints:
+    rts
+
+subtractHitpoints:
+    lda #10
+    sta hpDamageFlash
+    lda playerHitpoints
+    sec
+    sbc paramA    
+    bcs _noUnderflow
+    lda #0
+_noUnderflow:
+    sta playerHitpoints
+    rts
+
