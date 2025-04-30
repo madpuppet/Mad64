@@ -1,4 +1,5 @@
 .globals
+varScrPtr   word
 varScrX     byte
 varScrY     byte
 varCycle    byte
@@ -17,6 +18,7 @@ playerX     word
 playerY     word
 playerVelX  word
 playerVelY  word
+playerKeys  byte
 
 jmpptr      word
 
@@ -36,6 +38,7 @@ testLocX        byte
 testLocY        byte
 bulletTraceX    byte
 bulletTraceY    byte
+bulletDist      byte
 
 playerFrame     byte    ; sprite frame (LRUD) for player 
 
@@ -50,10 +53,22 @@ playerAmmo byte         ; 255->0
 hpDamageFlash byte      ; if non zero, then use red bar
 
 frameCounter byte       ; cycles each frame - used to have things only fire on some frames
+gateTimer byte          ; when this runs out, all gates and walls open
+
+.locals
+
+; decode level locffals
+dl_index byte
+dl_tile byte
+dl_color byte
+dl_x byte
+dl_y byte
+dl_readPtr word
 
 .basicStartup
 
 MAX_BAR_VALUE = 35
+BULLET_RANGE = 10
 
 ; tiles
 TILE_Grass = 0
@@ -62,10 +77,12 @@ TILE_Monster = 2
 TILE_Wall = 3
 TILE_Gate = 4
 TILE_Bomb = 5
-TILE_LazerH = 6
-TILE_LazerV = 7
-TILE_LazerTLtoBR = 8
-TILE_LazerTRtoBL = 9
+TILE_Ammo = 6
+TILE_Key = 7
+TILE_LazerH = 8
+TILE_LazerV = 9
+TILE_LazerTLtoBR = 10
+TILE_LazerTRtoBL = 11
 
 ; SPRITES
 SPRITE_Player = 128
@@ -96,16 +113,24 @@ start:
     jsr startLevel
 update:
     inc vic.borderColor
-    jsr setBackColor
-
     inc varCycle
+    bne _notNow
+    lda gateTimer
+    beq _notNow
+    dec gateTimer
+_notNow:
+    lda playerHitpoints
+    beq gameOverLoop
+
+    jsr setBackColor
     lda #10
     sta varUpdateCount
 enemiesLoop:
+    jsr nextSrcXY
     jsr updateEnemies
     dec varUpdateCount
     bne enemiesLoop
-    inc vic.borderColor
+    dec vic.borderColor
 
     jsr clearBullet
     jsr updatePlayerPos
@@ -117,20 +142,28 @@ enemiesLoop:
     jsr drawHitpoints
     jsr drawAmmo
 
-    dec vic.borderColor
+   inc vic.borderColor
 
     jsr showUI
     
     dec vic.borderColor
 
-wait:
-    lda $d011
-    bpl wait
-wait2:
-    lda $d011
-    bmi wait2
-
     jmp update
+
+gameOverLoop:
+    lda vic.rasterCounter
+    bne gameOverLoop
+    lda varCycle
+    and #3
+    tax
+    lda gameOverColor,x
+    sta vic.backgroundColor0
+    sta vic.borderColor
+    jsr showUI
+    jmp update
+
+gameOverColor:
+    dc.b 2,0,2,11
 
 setBackColor:
     lda #1
@@ -211,14 +244,17 @@ _clearFrags:
     
 ; reset screen updater x,y and player x,y    
 startLevel:
+    lda #<randomTileTable
+    sta varScrPtr
+    lda #>randomTileTable
+    sta varScrPtr+1
     lda #0
     sta varFrame
     sta varCycle
     sta varScrX
     sta varScrY
     sta varBulletTile
-    lda #$80
-    sta frameMask
+    sta playerKeys
     lda #20
     sta playerX+1
     lda #13
@@ -234,7 +270,36 @@ startLevel:
     lda #MAX_BAR_VALUE
     sta playerHitpoints
     sta playerAmmo
+    lda #5
+    sta gateTimer
     rts
+
+nextSrcXY:
+    ldy #0
+    lda (varScrPtr),y
+    sta varScrX
+    iny
+    lda (varScrPtr),y
+    sta varScrY
+    lda varScrPtr
+    clc
+    adc #2
+    sta varScrPtr
+    bcc _noOver
+    inc varScrPtr+1
+_noOver:
+    lda varScrPtr
+    cmp #<randomTileTableEnd
+    bne _noEnd
+    lda varScrPtr+1
+    cmp #>randomTileTableEnd
+    bne _noEnd
+    lda #<randomTileTable
+    sta varScrPtr
+    lda #>randomTileTable
+    sta varScrPtr+1
+_noEnd:
+    rts    
  
 ; process a single enemy and then update the screen updater
 updateEnemies:
@@ -284,9 +349,19 @@ _skipReset:
     rts
 
 updateEnemyJumpTable:
-    dc.w updateEmpty, updateSpawner, updateMonster, updateEmpty
+    dc.w updateEmpty, updateSpawner, updateMonster, updateGate
+    dc.w updateGate, updateEmpty, updateEmpty, updateEmpty
     dc.w updateEmpty, updateEmpty, updateEmpty, updateEmpty
-    dc.w updateEmpty, updateEmpty, updateEmpty, updateEmpty
+
+updateGate:
+    lda gateTimer
+    bne _noDestroy
+    ldx varScrX
+    ldy varScrY
+    lda #2
+    jsr storeXY
+_noDestroy:
+    jmp doneUpdateEnemies
     
 updateEmpty:
     jmp doneUpdateEnemies
@@ -622,7 +697,7 @@ updatePlayerPos:
     bne _tryRight
     lda #0
     sta playerFrame
-    lda #-40                    ; joypad left so decrease velocity
+    lda #-30                    ; joypad left so decrease velocity
     sta paramA
     lda #-1
     sta paramB
@@ -633,7 +708,7 @@ _tryRight:
     bne _tryUp
     lda #1
     sta playerFrame
-    lda #40                     ; joypad right so increase velocity by 10
+    lda #30                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
     sta paramB
@@ -651,7 +726,7 @@ _tryUp:
     bne _tryDown
     lda #2
     sta playerFrame
-    lda #-40                    ; joypad left so decrease velocity by 10
+    lda #-30                    ; joypad left so decrease velocity by 10
     sta paramA
     lda #-1
     sta paramB
@@ -662,7 +737,7 @@ _tryDown:
     bne _doneVel
     lda #3
     sta playerFrame
-    lda #40                     ; joypad right so increase velocity by 10
+    lda #30                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
     sta paramB
@@ -1107,14 +1182,15 @@ AmmoSpriteStart:
 
 * = $3000
     ; 0. grass
-    dc.b %01010000
-    dc.b %10100000
-    dc.b %00000101
-    dc.b %00001010
-    dc.b %10100000
-    dc.b %01010000
-    dc.b %00001010
-    dc.b %00000101
+     dc.b %01010000
+     dc.b %10100000
+     dc.b %00000101
+     dc.b %00001010
+     dc.b %10100000
+     dc.b %01010000
+     dc.b %00001010
+     dc.b %00000101
+
     ; 1. spawner    
     dc.b %00111000
     dc.b %01111110
@@ -1160,6 +1236,25 @@ AmmoSpriteStart:
     dc.b %11111111
     dc.b %11111111
     dc.b %01111110
+    ; 6. ammo
+    dc.b %00000000
+    dc.b %00100100
+    dc.b %01100110
+    dc.b %01100110
+    dc.b %01100110
+    dc.b %01100110
+    dc.b %01110111
+    dc.b %00000000
+    ; 6. key
+    dc.b %00000000
+    dc.b %00111110
+    dc.b %00110000
+    dc.b %00111100
+    dc.b %00110000
+    dc.b %01111110
+    dc.b %01100110
+    dc.b %01111110
+
     ; 6. lazerH
     dc.b %00000000
     dc.b %01000100
@@ -1252,7 +1347,26 @@ AmmoSpriteStart:
     dc.b %11111111
     dc.b %11111111
     dc.b %01111110
-    ; 6. lazerH
+    ; 6. ammo
+    dc.b %00000000
+    dc.b %00100100
+    dc.b %01100110
+    dc.b %01100110
+    dc.b %01100110
+    dc.b %01100110
+    dc.b %01110111
+    dc.b %00000000
+    ; 6. key
+    dc.b %00000000
+    dc.b %00111110
+    dc.b %00110000
+    dc.b %00111100
+    dc.b %00110000
+    dc.b %01111110
+    dc.b %01100110
+    dc.b %01111110
+
+    ; 7. lazerH
     dc.b %00000000
     dc.b %01000100
     dc.b %00000000
@@ -1261,7 +1375,7 @@ AmmoSpriteStart:
     dc.b %00000000
     dc.b %00001000
     dc.b %01000000
-    ; 7. lazerV
+    ; 8. lazerV
     dc.b %00011000
     dc.b %01010000
     dc.b %00011001
@@ -1270,7 +1384,7 @@ AmmoSpriteStart:
     dc.b %10010000
     dc.b %00011010
     dc.b %00001000
-    ; 8. lazerTLtoBR
+    ; 9. lazerTLtoBR
     dc.b %10000000
     dc.b %01101000
     dc.b %00100000
@@ -1279,7 +1393,7 @@ AmmoSpriteStart:
     dc.b %00000100
     dc.b %00000110
     dc.b %00100001
-    ; 9. lazerTRtoBL
+    ; 10. lazerTRtoBL
     dc.b %00010001
     dc.b %00000010
     dc.b %00001100
@@ -1288,7 +1402,6 @@ AmmoSpriteStart:
     dc.b %00100010
     dc.b %01100000
     dc.b %10000100
-
 
 scoreDigitsOffsets:
     dc.b 0,5,10,15,20,25,30,35,40,45
@@ -1354,80 +1467,87 @@ scoreDigits:
     dc.b &0020
 
 
+
+levelData00:
+    dc.b TILE_Spawner,14,0,0,39,1,26,6,255
+    dc.b TILE_Spawner,5,39,14,39,17,25,10,255
+    dc.b TILE_Spawner,7,39,24,30,24,25,24,20,24,255
+    dc.b TILE_Spawner,3,0,5,0,10,0,15,0,20,8,16,255
+    dc.b TILE_Wall
+    dc.b 8,5,5,5,6,5,7,5,8,5,9,5,10,5,11,5,12,6,5,7,5,8,5,9,5,10,5,11,5,12,5
+    dc.b 13,5,14,5,15,5,16,5,17,5,18,5,19,5,20,5,21,5,22,5,23,5,24,5
+    dc.b 24,6,24,7,24,8,24,9
+    dc.b 10,10,10,11,10,12,10,13,10,14,10,15,10,16,10,17,10,18,10,19,10,20
+    dc.b 10,21,10,22,10,23,10,24
+    dc.b 24,10,24,11,24,12,24,13,24,14
+    dc.b 0,8,1,8,2,8,3,8,4,8
+    dc.b 25,8,26,8,27,8,28,8,29,8,30,8,31,8,32,8,33,8,34,8,35,8,36,8,37,8,38,8,39,8
+    dc.b 24,11,24,12,24,13,24,14,24,15,24,16,24,17,24,18,24,19,24,20
+    dc.b 25,20,26,20,27,20,28,20,29,20,30,20,31,20,32,20,33,20,34,20,35,20
+    dc.b 36,20,37,20,38,20,39,20,5,13,5,14,5,15,5,16,5,17,5,18,6,18,7,18,8,18,9,18
+    dc.b 255
+    dc.b TILE_Gate,7,10,20,24,16,16,5,255
+    dc.b TILE_Key,7,7,16,37,15,3,10,37,6,255
+    dc.b TILE_Ammo,3,14,20,7,1,6,6,26,6,255
+    dc.b 255
+
 decodeLevel:
-    lda #3
-    sta $400+5*40
-    sta $400+5*40+1
-    sta $400+5*40+2
-    sta $400+5*40+3
-    sta $400+7*40+4
-    sta $400+7*40+5
-    sta $400+7*40+6
-    sta $400+5*40+7
-    sta $400+5*40+8
-    sta $400+5*40+9
-    sta $400+5*40+10
-    sta $400+5*40+11
-    sta $400+5*40+13
-    sta $400+5*40+14
-    sta $400+5*40+15
-    sta $400+5*40+16
-    sta $400+5*40+17
-    sta $400+5*40+18
-    sta $400+11*40+18
-    sta $400+14*40+18
-    sta $400+14*40+19
-    sta $400+14*40+20
-    sta $400+14*40+25
-    sta $400+16*40+18
-    sta $400+16*40+19
-    sta $400+16*40+20
-    sta $400+17*40+22
-    sta $400+17*40+23
-    sta $400+17*40+24
-    sta $400+17*40+25
-    sta $400+17*40+35
-    sta $400+17*40+36
-    sta $400+17*40+37
-    sta $400+17*40+38
-    sta $400+17*40+39
+    lda #$00
+    sta frameMask
+    lda #<levelData00
+    sta dl_readPtr
+    lda #>levelData00
+    sta dl_readPtr+1
 
-    lda #4
-    sta $400+5*40+12
-    sta $400+14*40+21
-    sta $400+17*40+32
-
-    lda #1
-    sta $400
-    sta $427
-    sta $7c0
-    sta $7e7
-    sta $500
-    sta $600
-    sta $700
-    sta $550
-    sta $650
-    sta $670
-    sta $690
-    sta $490
-    lda #5
-    sta $d800
-    lda #12
-    sta $d827
-    lda #13
-    sta $dbc0
-    lda #14
-    sta $dbe7
-    lda #19
-    sta $d900
-    sta $da00
-    sta $db00
-    sta $d950
-    sta $da50
-    sta $da70
-    sta $da90
-    sta $d890
-
+    ldy #0
+    sty dl_index
+_decodeTileLoop:
+    lda (dl_readPtr),y
+    bmi _doneLevelDecode
+    sta dl_tile
+    iny
+    lda (dl_readPtr),y
+    sta dl_color
+    iny
+_decodeTileLocLoop:
+    lda (dl_readPtr),y    
+    bmi _doneTileDecode
+    sta dl_x
+    tax
+    iny
+    lda (dl_readPtr),y
+    sta dl_y
+    iny
+    sty dl_index
+    tay
+    lda dl_tile
+    jsr storeXY
+    lda dl_color
+    ldx dl_x
+    ldy dl_y
+    jsr storeColorXY
+    ldy dl_index
+    jmp _decodeTileLocLoop
+_doneTileDecode:
+    iny
+    tya
+    clc
+    adc dl_readPtr
+    sta dl_readPtr
+    lda #0
+    adc dl_readPtr+1
+    sta dl_readPtr+1
+    ldy #0
+    sta dl_index
+    beq _decodeTileLoop    
+_doneLevelDecode:
+    rts    
+_loadLevelByte:
+    lda $1000
+    inc _loadLevelByte+1
+    bne _noLLBOverflow
+    inc _loadLevelByte+2
+_noLLBOverflow:
     rts
 
 doPlayerOnXY:
@@ -1447,7 +1567,7 @@ doPlayerOnXY:
     
 stepOnActionJumpTable:
     dc.w actionNone, actionBlock, actionFragDamage, actionBlock
-    dc.w actionDestroy, actionNone, actionNone, actionNone
+    dc.w actionOpenGate, actionNone, actionCollectAmmo, actionCollectKey
     dc.w actionNone, actionNone
     
 actionNone:
@@ -1465,7 +1585,7 @@ actionFragDamage:
     lda #0
     rts
     
-actionDestroy:
+destroyTestLoc:
     lda #0
     ldx testLocX
     ldy testLocY
@@ -1473,7 +1593,28 @@ actionDestroy:
     lda #12
     ldx testLocX
     ldy testLocY
-    jmp storeColorXY
+    jsr storeColorXY
+    lda #0
+    rts
+
+actionOpenGate:
+    lda playerKeys
+    beq _gateLocked
+    dec playerKeys
+    jmp destroyTestLoc
+_gateLocked:
+    lda #1
+    rts
+
+actionCollectAmmo:
+    lda #35
+    sta playerAmmo
+    jmp destroyTestLoc
+
+actionCollectKey:
+    inc playerKeys
+    jmp destroyTestLoc
+
 
 fireDirectionTable:
     dc.b -1,-1,-1,-1, -1,3,1,2, -1,5,7,6, -1,4,0,-1
@@ -1518,6 +1659,8 @@ _buttonDown:
     sta varBulletStartX
     lda playerY+1
     sta varBulletStartY
+    lda #BULLET_RANGE
+    sta bulletDist
 
     ; now draw the bullet
     lda varBulletStartX
@@ -1535,6 +1678,10 @@ _bulletLoop:
     adc varBulletDY
     sta bulletTraceY
     tay
+
+    ; restrict range of bullet
+    dec bulletDist
+    beq _doneBullet
 
     ; check bullet is not offscreen
     cpx #40
@@ -1854,21 +2001,21 @@ refreshAmmo:
     cmp #MAX_BAR_VALUE
     beq _noRefreshAmmo
     lda varCycle
-    and #$f
+    and #$1f
     bne _noRefreshAmmo
     inc playerAmmo
 _noRefreshAmmo:
     rts
 
 refreshHitpoints:
-    lda playerAmmo
+    lda playerHitpoints
     cmp #MAX_BAR_VALUE
-    beq _noRefreshAmmo
+    beq _noRefreshHitpoints
     lda varCycle
     and #$3f
-    bne _noRefreshAmmo
-    inc playerAmmo
-_noRefreshAmmo:
+    bne _noRefreshHitpoints
+    inc playerHitpoints
+_noRefreshHitpoints:
     rts
 
 ; add ammo amount - amount in A
@@ -1901,4 +2048,57 @@ subtractHitpoints:
 _noUnderflow:
     sta playerHitpoints
     rts
+
+randomTileTable:
+    dc.b 17,4, 0,11, 23,1, 18,18, 8,2, 20,4, 16,24, 27,8, 34,23, 21,6, 31,17, 24,5, 28,15, 36,4, 4,6, 28,10, 1,1, 20,2, 33,14, 17,2
+    dc.b 33,18, 34,17, 29,19, 16,8, 31,13, 35,11, 5,4, 7,17, 11,15, 30,17, 21,12, 19,7, 22,11, 24,8, 24,7, 7,15, 5,1, 8,12, 31,9, 7,5
+    dc.b 11,8, 3,0, 30,18, 19,3, 25,15, 23,22, 4,9, 25,19, 10,18, 11,18, 14,17, 9,5, 10,0, 37,9, 20,24, 25,5, 39,1, 21,14, 14,10, 15,3
+    dc.b 5,22, 36,1, 37,16, 30,19, 36,18, 13,19, 32,21, 19,23, 6,7, 21,18, 5,21, 12,12, 13,11, 25,22, 18,15, 23,11, 37,6, 17,18, 9,3, 26,14
+    dc.b 24,17, 29,12, 28,14, 16,13, 3,24, 29,23, 34,10, 33,0, 22,18, 18,6, 7,2, 26,0, 8,21, 18,24, 33,1, 1,15, 34,19, 20,6, 14,23, 4,2
+    dc.b 0,2, 9,17, 10,14, 38,10, 23,4, 22,8, 9,10, 3,18, 27,21, 37,18, 17,9, 26,7, 12,14, 24,4, 31,15, 6,12, 14,1, 1,23, 37,14, 19,15
+    dc.b 25,6, 15,19, 7,23, 15,9, 24,1, 11,24, 1,8, 9,0, 7,9, 29,22, 4,7, 31,14, 17,8, 2,4, 26,10, 7,13, 8,10, 5,0, 2,17, 0,24
+    dc.b 18,13, 38,14, 12,8, 7,6, 34,8, 4,23, 35,7, 2,20, 24,14, 9,18, 1,21, 28,12, 33,6, 10,10, 23,23, 30,15, 18,4, 13,22, 37,22, 18,2
+    dc.b 14,7, 11,6, 16,17, 0,1, 14,16, 11,5, 13,9, 4,3, 29,15, 36,20, 18,23, 8,3, 1,6, 29,13, 6,9, 15,6, 5,24, 22,6, 31,8, 20,16
+    dc.b 34,11, 3,23, 22,1, 2,3, 11,7, 16,11, 1,14, 19,4, 9,20, 36,24, 27,19, 4,12, 28,11, 23,19, 14,21, 27,0, 8,6, 24,6, 32,0, 28,18
+    dc.b 24,24, 0,14, 11,14, 35,6, 7,20, 15,11, 22,21, 15,10, 29,9, 33,9, 35,23, 5,18, 39,9, 33,8, 10,23, 32,14, 23,13, 29,21, 24,20, 19,20
+    dc.b 18,14, 21,19, 19,9, 37,12, 3,6, 18,3, 33,5, 24,2, 10,5, 15,24, 9,8, 12,0, 30,16, 28,20, 23,15, 14,5, 0,19, 14,20, 19,6, 12,1
+    dc.b 19,21, 33,19, 18,19, 24,9, 30,12, 29,7, 28,5, 36,22, 3,16, 17,22, 19,18, 25,10, 10,11, 25,24, 12,9, 19,8, 7,19, 8,1, 6,11, 30,10
+    dc.b 35,24, 14,9, 31,4, 5,23, 12,11, 9,16, 37,23, 22,0, 3,22, 12,2, 23,6, 22,19, 20,23, 10,13, 14,2, 17,11, 5,10, 13,0, 37,5, 7,10
+    dc.b 33,16, 4,24, 28,23, 16,6, 25,1, 29,3, 26,22, 11,16, 23,14, 34,1, 36,21, 16,7, 18,16, 16,19, 32,10, 0,12, 15,20, 6,6, 38,15, 33,4
+    dc.b 6,1, 21,10, 20,9, 15,1, 20,3, 8,23, 8,16, 30,13, 5,17, 33,10, 28,21, 38,17, 15,13, 17,17, 32,1, 24,12, 27,9, 26,21, 21,21, 21,0
+    dc.b 33,11, 35,22, 4,4, 12,10, 23,8, 39,3, 5,20, 2,10, 3,5, 22,20, 9,9, 28,2, 11,9, 24,0, 2,8, 10,8, 32,22, 9,19, 35,15, 2,13
+    dc.b 36,16, 30,24, 17,20, 4,11, 20,5, 29,14, 29,24, 0,8, 2,5, 10,9, 22,4, 22,15, 26,2, 5,11, 9,11, 34,18, 21,16, 7,24, 38,2, 35,1
+    dc.b 2,7, 26,4, 31,6, 11,1, 26,6, 22,5, 38,21, 10,12, 18,0, 35,2, 23,3, 7,21, 38,22, 38,13, 24,23, 0,18, 12,6, 22,7, 34,5, 36,2
+    dc.b 36,10, 0,9, 24,15, 37,8, 25,7, 33,12, 22,10, 0,17, 27,20, 13,21, 11,12, 12,4, 25,3, 5,5, 12,3, 17,6, 3,12, 13,10, 12,22, 30,4
+    dc.b 26,23, 10,6, 29,17, 7,14, 27,2, 3,19, 27,10, 15,8, 32,20, 23,9, 8,22, 36,12, 8,18, 36,23, 12,16, 39,5, 1,3, 2,21, 7,4, 14,11
+    dc.b 19,0, 10,20, 32,11, 16,0, 27,17, 26,16, 9,12, 11,22, 20,1, 17,19, 35,18, 11,4, 6,15, 29,20, 32,7, 35,16, 33,20, 34,15, 22,24, 2,24
+    dc.b 16,22, 34,13, 3,9, 39,19, 3,1, 38,23, 38,4, 22,22, 9,14, 36,19, 9,13, 39,21, 13,20, 35,3, 34,7, 28,19, 10,15, 24,13, 15,21, 27,4
+    dc.b 25,8, 31,23, 5,19, 37,2, 5,16, 35,8, 2,9, 26,20, 3,2, 13,8, 17,15, 26,8, 14,19, 7,11, 19,11, 5,8, 32,18, 7,1, 16,9, 18,22  
+    dc.b 39,24, 21,13, 16,14, 36,14, 6,24, 17,12, 4,5, 16,23, 4,21, 2,11, 36,6, 31,0, 16,20, 32,24, 15,15, 32,4, 12,23, 31,16, 2,16, 1,13
+    dc.b 11,2, 9,7, 39,14, 14,15, 39,22, 5,13, 8,0, 23,12, 34,14, 31,12, 8,24, 2,2, 20,17, 5,3, 18,1, 17,1, 10,21, 20,19, 1,24, 21,7
+    dc.b 10,22, 17,23, 4,18, 33,21, 0,20, 1,18, 19,19, 20,14, 15,14, 36,11, 3,7, 32,17, 27,11, 7,16, 16,18, 25,20, 30,21, 27,24, 2,0, 12,7
+    dc.b 38,19, 8,19, 23,7, 6,17, 13,13, 36,7, 15,0, 4,22, 13,12, 36,15, 28,1, 3,15, 34,12, 21,22, 4,20, 6,0, 25,0, 16,1, 13,23, 20,15
+    dc.b 6,3, 19,14, 17,24, 26,5, 10,17, 19,2, 11,21, 20,11, 3,11, 27,13, 11,23, 5,14, 25,4, 27,22, 35,14, 24,11, 13,14, 20,21, 18,8, 10,24
+    dc.b 9,24, 27,12, 17,7, 7,3, 21,4, 24,18, 27,14, 30,23, 32,19, 12,21, 23,17, 10,4, 21,5, 31,2, 16,15, 0,6, 30,5, 34,9, 30,7, 31,21
+    dc.b 35,12, 11,10, 0,4, 30,0, 3,4, 14,8, 35,10, 0,5, 16,4, 30,2, 29,6, 7,18, 4,14, 17,16, 1,4, 27,1, 23,5, 39,20, 1,0, 36,9
+    dc.b 0,21, 30,22, 11,13, 19,24, 17,14, 34,22, 33,2, 16,3, 37,4, 37,19, 4,13, 14,13, 4,0, 27,3, 38,12, 33,24, 18,10, 27,18, 19,10, 11,19
+    dc.b 23,10, 30,8, 39,10, 21,1, 1,11, 27,23, 35,20, 6,4, 27,5, 38,8, 37,7, 35,4, 8,9, 28,9, 21,2, 32,16, 29,5, 39,6, 38,11, 10,3
+    dc.b 26,15, 28,7, 6,23, 12,15, 8,5, 16,5, 3,8, 38,5, 12,5, 37,1, 14,24, 9,21, 20,22, 34,0, 8,8, 37,20, 6,21, 33,22, 37,3, 22,16
+    dc.b 18,12, 15,12, 27,16, 10,19, 15,7, 5,2, 34,20, 6,22, 13,15, 25,16, 28,4, 26,24, 3,13, 2,23, 1,22, 26,19, 26,1, 29,11, 20,12, 36,17
+    dc.b 6,18, 18,11, 12,20, 3,17, 2,22, 12,19, 29,1, 31,18, 34,6, 29,10, 30,1, 13,7, 26,3, 4,8, 9,22, 39,12, 28,24, 21,24, 37,15, 1,20
+    dc.b 39,23, 31,3, 34,4, 30,6, 13,2, 39,16, 3,14, 32,8, 19,22, 1,19, 2,19, 32,23, 0,3, 29,18, 10,2, 7,22, 13,24, 2,1, 8,15, 31,7
+    dc.b 37,24, 29,8, 25,21, 28,8, 20,20, 0,15, 1,2, 13,4, 18,5, 18,20, 31,22, 15,22, 34,16, 30,9, 33,13, 14,22, 37,13, 34,3, 13,16, 4,17
+    dc.b 38,0, 2,14, 34,24, 2,15, 1,7, 14,4, 24,22, 26,18, 21,11, 13,18, 15,16, 10,7, 23,24, 15,2, 11,11, 8,17, 0,13, 34,2, 4,1, 20,10
+    dc.b 36,0, 8,14, 8,20, 20,8, 21,3, 22,9, 24,3, 37,17, 24,16, 19,5, 23,2, 26,17, 18,17, 6,16, 5,6, 33,15, 1,12, 35,17, 29,16, 16,10
+    dc.b 27,7, 39,7, 25,13, 24,10, 14,3, 4,16, 2,12, 12,24, 26,9, 6,19, 9,23, 17,3, 38,7, 6,14, 26,13, 6,2, 30,11, 25,2, 35,19, 23,16
+    dc.b 18,9, 37,11, 28,16, 21,23, 27,6, 16,21, 19,13, 18,7, 15,17, 11,20, 25,17, 30,14, 38,1, 0,22, 3,20, 8,4, 12,13, 39,2, 21,8, 9,6
+    dc.b 18,21, 0,10, 31,11, 5,12, 29,0, 28,17, 25,23, 36,3, 5,15, 33,7, 35,0, 25,12, 11,17, 31,1, 32,12, 28,13, 15,18, 29,4, 6,10, 1,9
+    dc.b 11,3, 26,12, 21,20, 38,9, 22,12, 20,7, 39,4, 31,5, 13,17, 32,15, 9,2, 19,16, 4,15, 12,17, 17,0, 22,3, 30,20, 14,12, 16,2, 35,13
+    dc.b 32,5, 36,8, 34,21, 5,9, 1,17, 36,13, 30,3, 3,10, 1,16, 9,15, 0,16, 39,17, 39,8, 39,11, 19,12, 13,1, 14,0, 28,6, 8,7, 38,3
+    dc.b 39,18, 39,0, 28,3, 23,18, 7,0, 8,11, 0,0, 31,10, 25,18, 6,8, 38,20, 32,13, 3,3, 11,0, 0,7, 15,23, 6,13, 14,14, 31,20, 35,5
+    dc.b 16,12, 14,6, 39,15, 22,23, 21,17, 31,24, 1,10, 38,16, 6,20, 28,0, 22,17, 13,5, 22,13, 13,6, 7,12, 7,8, 0,23, 33,23, 38,18, 4,10
+    dc.b 26,11, 9,1, 33,3, 24,21, 39,13, 35,9, 2,18, 37,10, 10,1, 22,14, 37,0, 32,3, 19,1, 33,17, 5,7, 20,18, 19,17, 29,2, 25,14, 32,6
+    dc.b 28,22, 17,10, 17,13, 13,3, 10,16, 9,4, 2,6, 22,2, 27,15, 15,5, 23,20, 31,19, 37,21, 15,4, 36,5, 7,7, 21,15, 23,0, 8,13, 20,13
+    dc.b 23,21, 32,2, 1,5, 3,21, 21,9, 14,18, 16,16, 17,5, 17,21, 12,18, 24,19, 20,0, 6,5, 38,6, 35,21, 25,11, 4,19, 32,9, 25,9, 38,24
+randomTileTableEnd:
 
