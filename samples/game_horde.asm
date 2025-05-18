@@ -67,7 +67,7 @@ dl_readPtr word
 
 .basicStartup
 
-MAX_BAR_VALUE = 35
+MAX_BAR_VALUE = 140
 BULLET_RANGE = 10
 
 ; tiles
@@ -83,6 +83,8 @@ TILE_LazerH = 8
 TILE_LazerV = 9
 TILE_LazerTLtoBR = 10
 TILE_LazerTRtoBL = 11
+TILE_Regen = 12
+TILE_Exit = 13
 
 ; SPRITES
 SPRITE_Player = 128
@@ -112,7 +114,7 @@ start:
     jsr decodeLevel
     jsr startLevel
 update:
-    inc vic.borderColor
+;    inc vic.borderColor
     inc varCycle
     bne _notNow
     lda gateTimer
@@ -123,30 +125,27 @@ _notNow:
     beq gameOverLoop
 
     jsr setBackColor
-    lda #10
+    lda #15
     sta varUpdateCount
 enemiesLoop:
     jsr nextSrcXY
     jsr updateEnemies
     dec varUpdateCount
     bne enemiesLoop
-    dec vic.borderColor
 
+    dec vic.borderColor
     jsr clearBullet
     jsr updatePlayerPos
     jsr placePlayerSprite
     jsr checkForFire
     jsr updateFrags
-    jsr refreshHitpoints
-    jsr refreshAmmo
     jsr drawHitpoints
     jsr drawAmmo
-
-   inc vic.borderColor
+    inc vic.borderColor
 
     jsr showUI
     
-    dec vic.borderColor
+;    dec vic.borderColor
 
     jmp update
 
@@ -270,7 +269,7 @@ startLevel:
     lda #MAX_BAR_VALUE
     sta playerHitpoints
     sta playerAmmo
-    lda #5
+    lda #50
     sta gateTimer
     rts
 
@@ -352,6 +351,19 @@ updateEnemyJumpTable:
     dc.w updateEmpty, updateSpawner, updateMonster, updateGate
     dc.w updateGate, updateEmpty, updateEmpty, updateEmpty
     dc.w updateEmpty, updateEmpty, updateEmpty, updateEmpty
+    dc.w updateEmpty, updateEmpty, updateEmpty, updateEmpty
+
+stepOnActionJumpTable:
+    dc.w actionNone, actionBlock, actionFragDamage, actionBlock
+    dc.w actionOpenGate, actionNone, actionCollectAmmo, actionCollectKey
+    dc.w actionNone, actionNone, actionNone, actionNone
+    dc.w actionRegen, actionNone, actionNone, actionNone 
+
+onLazerHitActionTable:
+    dc.w hitNone, hitDestroy, hitDestroy, hitNone
+    dc.w hitNone, hitNone, hitNone, hitNone
+    dc.w hitNone, hitNone, hitNone, hitNone
+    dc.w hitNone, hitNone, hitNone, hitNone
 
 updateGate:
     lda gateTimer
@@ -360,6 +372,10 @@ updateGate:
     ldy varScrY
     lda #2
     jsr storeXY
+    lda #2
+    ldx varScrX
+    ldy varScrY
+    jsr storeColorXY
 _noDestroy:
     jmp doneUpdateEnemies
     
@@ -368,6 +384,9 @@ updateEmpty:
 
 updateSpawner:
     lda varFrame
+    and #1
+    bne _belowNotEmpty
+    
     ldy varScrY                 ; check if we are not on left border
     sty tempB
     ldx varScrX
@@ -697,7 +716,7 @@ updatePlayerPos:
     bne _tryRight
     lda #0
     sta playerFrame
-    lda #-30                    ; joypad left so decrease velocity
+    lda #-20                    ; joypad left so decrease velocity
     sta paramA
     lda #-1
     sta paramB
@@ -708,7 +727,7 @@ _tryRight:
     bne _tryUp
     lda #1
     sta playerFrame
-    lda #30                     ; joypad right so increase velocity by 10
+    lda #20                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
     sta paramB
@@ -726,7 +745,7 @@ _tryUp:
     bne _tryDown
     lda #2
     sta playerFrame
-    lda #-30                    ; joypad left so decrease velocity by 10
+    lda #-20                    ; joypad left so decrease velocity by 10
     sta paramA
     lda #-1
     sta paramB
@@ -737,7 +756,7 @@ _tryDown:
     bne _doneVel
     lda #3
     sta playerFrame
-    lda #30                     ; joypad right so increase velocity by 10
+    lda #20                     ; joypad right so increase velocity by 10
     sta paramA
     lda #0
     sta paramB
@@ -1116,6 +1135,7 @@ AmmoSpriteStart:
     dc.s &333333333333    
     dc.s &000000000000    
     dc.s &000002200000    
+KeySpriteStart:
     dc.s &222002000000    
     dc.s &202002200000    
     dc.s &202002000000    
@@ -1178,18 +1198,16 @@ AmmoSpriteStart:
     dc.s &000000000000    
     dc.b 0
 
-
-
 * = $3000
     ; 0. grass
-     dc.b %01010000
-     dc.b %10100000
-     dc.b %00000101
-     dc.b %00001010
-     dc.b %10100000
-     dc.b %01010000
-     dc.b %00001010
-     dc.b %00000101
+    dc.b %00000000
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %01111111
 
     ; 1. spawner    
     dc.b %00111000
@@ -1209,6 +1227,7 @@ AmmoSpriteStart:
     dc.b %01111010
     dc.b %01101100
     dc.b %11101110
+
     ; 3. wall
     dc.b %11110111
     dc.b %11110111
@@ -1245,7 +1264,7 @@ AmmoSpriteStart:
     dc.b %01100110
     dc.b %01110111
     dc.b %00000000
-    ; 6. key
+    ; 7. key
     dc.b %00000000
     dc.b %00111110
     dc.b %00110000
@@ -1255,7 +1274,7 @@ AmmoSpriteStart:
     dc.b %01100110
     dc.b %01111110
 
-    ; 6. lazerH
+    ; 8. lazerH
     dc.b %00000000
     dc.b %01000100
     dc.b %00000000
@@ -1264,7 +1283,7 @@ AmmoSpriteStart:
     dc.b %00000000
     dc.b %00001000
     dc.b %01000000
-    ; 7. lazerV
+    ; 9. lazerV
     dc.b %00011000
     dc.b %01010000
     dc.b %00011001
@@ -1273,7 +1292,7 @@ AmmoSpriteStart:
     dc.b %10010000
     dc.b %00011010
     dc.b %00001000
-    ; 8. lazerTLtoBR
+    ; 10. lazerTLtoBR
     dc.b %10000000
     dc.b %01101000
     dc.b %00100000
@@ -1282,7 +1301,7 @@ AmmoSpriteStart:
     dc.b %00000100
     dc.b %00000110
     dc.b %00100001
-    ; 9. lazerTRtoBL
+    ; 11. lazerTRtoBL
     dc.b %00010001
     dc.b %00000010
     dc.b %00001100
@@ -1291,17 +1310,35 @@ AmmoSpriteStart:
     dc.b %00100010
     dc.b %01100000
     dc.b %10000100
+    ; 12. regen
+    dc.b %00000000
+    dc.b %01100110
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %01111110
+    dc.b %00111100
+    dc.b %00011000
+    dc.b %00000000
+    ; 13. exit
+    dc.b %10101010
+    dc.b %00000001
+    dc.b %10000000
+    dc.b %00011001
+    dc.b %10011000
+    dc.b %00000001
+    dc.b %10000000
+    dc.b %01010101
 
 * = $3400
     ; 0. grass
-    dc.b %01010000
-    dc.b %10100000
-    dc.b %00000101
-    dc.b %00001010
-    dc.b %10100000
-    dc.b %01010000
-    dc.b %00001010
-    dc.b %00000101
+    dc.b %00000000
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %00100101
+    dc.b %01111111
     ; 1. spawner    
     dc.b %00111000
     dc.b %01111110
@@ -1356,7 +1393,7 @@ AmmoSpriteStart:
     dc.b %01100110
     dc.b %01110111
     dc.b %00000000
-    ; 6. key
+    ; 7. key
     dc.b %00000000
     dc.b %00111110
     dc.b %00110000
@@ -1365,8 +1402,7 @@ AmmoSpriteStart:
     dc.b %01111110
     dc.b %01100110
     dc.b %01111110
-
-    ; 7. lazerH
+    ; 8. lazerH
     dc.b %00000000
     dc.b %01000100
     dc.b %00000000
@@ -1375,7 +1411,7 @@ AmmoSpriteStart:
     dc.b %00000000
     dc.b %00001000
     dc.b %01000000
-    ; 8. lazerV
+    ; 9. lazerV
     dc.b %00011000
     dc.b %01010000
     dc.b %00011001
@@ -1384,7 +1420,7 @@ AmmoSpriteStart:
     dc.b %10010000
     dc.b %00011010
     dc.b %00001000
-    ; 9. lazerTLtoBR
+    ; 10. lazerTLtoBR
     dc.b %10000000
     dc.b %01101000
     dc.b %00100000
@@ -1393,7 +1429,7 @@ AmmoSpriteStart:
     dc.b %00000100
     dc.b %00000110
     dc.b %00100001
-    ; 10. lazerTRtoBL
+    ; 11. lazerTRtoBL
     dc.b %00010001
     dc.b %00000010
     dc.b %00001100
@@ -1402,6 +1438,24 @@ AmmoSpriteStart:
     dc.b %00100010
     dc.b %01100000
     dc.b %10000100
+    ; 12. regen
+    dc.b %01100110
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %11111111
+    dc.b %01111110
+    dc.b %01111110
+    dc.b %00111100
+    dc.b %00011000
+    ; 13. exit
+    dc.b %01010101
+    dc.b %10000000
+    dc.b %00000001
+    dc.b %10000000
+    dc.b %00000001
+    dc.b %10000000
+    dc.b %00000001
+    dc.b %10101010
 
 scoreDigitsOffsets:
     dc.b 0,5,10,15,20,25,30,35,40,45
@@ -1466,15 +1520,13 @@ scoreDigits:
     dc.b &0020
     dc.b &0020
 
-
-
 levelData00:
     dc.b TILE_Spawner,14,0,0,39,1,26,6,255
     dc.b TILE_Spawner,5,39,14,39,17,25,10,255
     dc.b TILE_Spawner,7,39,24,30,24,25,24,20,24,255
     dc.b TILE_Spawner,3,0,5,0,10,0,15,0,20,8,16,255
     dc.b TILE_Wall
-    dc.b 8,5,5,5,6,5,7,5,8,5,9,5,10,5,11,5,12,6,5,7,5,8,5,9,5,10,5,11,5,12,5
+    dc.b 8,5,5,5,8,5,9,5,10,5,11,6,5,7,5,8,5,9,5,10,5,11,5,12,5
     dc.b 13,5,14,5,15,5,16,5,17,5,18,5,19,5,20,5,21,5,22,5,23,5,24,5
     dc.b 24,6,24,7,24,8,24,9
     dc.b 10,10,10,11,10,12,10,13,10,14,10,15,10,16,10,17,10,18,10,19,10,20
@@ -1482,13 +1534,16 @@ levelData00:
     dc.b 24,10,24,11,24,12,24,13,24,14
     dc.b 0,8,1,8,2,8,3,8,4,8
     dc.b 25,8,26,8,27,8,28,8,29,8,30,8,31,8,32,8,33,8,34,8,35,8,36,8,37,8,38,8,39,8
-    dc.b 24,11,24,12,24,13,24,14,24,15,24,16,24,17,24,18,24,19,24,20
+    dc.b 24,16,24,17,24,18,24,19,24,20
     dc.b 25,20,26,20,27,20,28,20,29,20,30,20,31,20,32,20,33,20,34,20,35,20
     dc.b 36,20,37,20,38,20,39,20,5,13,5,14,5,15,5,16,5,17,5,18,6,18,7,18,8,18,9,18
+    dc.b 20,3,21,3,22,3,23,3,24,3,24,2,24,1,24,0
     dc.b 255
-    dc.b TILE_Gate,7,10,20,24,16,16,5,255
-    dc.b TILE_Key,7,7,16,37,15,3,10,37,6,255
-    dc.b TILE_Ammo,3,14,20,7,1,6,6,26,6,255
+    dc.b TILE_Gate,7,20,4,21,4,22,4,23,4,24,4,255
+    dc.b TILE_Key,7, 7,16, 37,15, 3,10, 39,21, 23,0, 255
+    dc.b TILE_Ammo,3, 14,20, 7,1, 6,6, 26,6, 20,1, 20,10, 27,10, 28,10, 28,22, 39,22, 255
+    dc.b TILE_Regen,2,15,15,30,15,255
+    dc.b TILE_Exit,1,39,0,255
     dc.b 255
 
 decodeLevel:
@@ -1565,11 +1620,6 @@ doPlayerOnXY:
     ; note that TempA and TempB are used to keep player positions, so don't overwrite
     jmp (jmpptr)
     
-stepOnActionJumpTable:
-    dc.w actionNone, actionBlock, actionFragDamage, actionBlock
-    dc.w actionOpenGate, actionNone, actionCollectAmmo, actionCollectKey
-    dc.w actionNone, actionNone
-    
 actionNone:
     lda #0
     rts
@@ -1601,20 +1651,26 @@ actionOpenGate:
     lda playerKeys
     beq _gateLocked
     dec playerKeys
+    jsr updateKeys
     jmp destroyTestLoc
 _gateLocked:
     lda #1
     rts
 
 actionCollectAmmo:
-    lda #35
-    sta playerAmmo
+    lda #20
+    jsr addAmmo
     jmp destroyTestLoc
 
 actionCollectKey:
     inc playerKeys
+    jsr updateKeys
     jmp destroyTestLoc
 
+actionRegen:
+    lda #20
+    jsr addHitpoints
+    jmp destroyTestLoc
 
 fireDirectionTable:
     dc.b -1,-1,-1,-1, -1,3,1,2, -1,5,7,6, -1,4,0,-1
@@ -1704,11 +1760,6 @@ _bulletLoop:
 _doneBullet:
     rts
 
-onLazerHitActionTable:
-    dc.w hitNone, hitDestroy, hitDestroy, hitNone
-    dc.w hitNone, hitNone, hitNone, hitNone
-    dc.w hitNone, hitNone
-    
 hitNone:
     rts
 
@@ -1919,6 +1970,8 @@ drawHitpoints:
     lda #>HPSpriteStart
     sta paramB
     lda playerHitpoints
+    lsr
+    lsr
     sta paramC
     lda #<hpData
     sta paramD
@@ -1932,6 +1985,8 @@ drawAmmo:
     lda #>AmmoSpriteStart
     sta paramB
     lda playerAmmo
+    lsr
+    lsr
     sta paramC
     lda #<ammoData
     sta paramD
@@ -1996,28 +2051,6 @@ _noClampBar:
     bne _barByteLoop
     rts
     
-refreshAmmo:
-    lda playerAmmo
-    cmp #MAX_BAR_VALUE
-    beq _noRefreshAmmo
-    lda varCycle
-    and #$1f
-    bne _noRefreshAmmo
-    inc playerAmmo
-_noRefreshAmmo:
-    rts
-
-refreshHitpoints:
-    lda playerHitpoints
-    cmp #MAX_BAR_VALUE
-    beq _noRefreshHitpoints
-    lda varCycle
-    and #$3f
-    bne _noRefreshHitpoints
-    inc playerHitpoints
-_noRefreshHitpoints:
-    rts
-
 ; add ammo amount - amount in A
 addAmmo:
     clc
@@ -2026,6 +2059,7 @@ addAmmo:
     bcc _doneAddAmmo
     lda #MAX_BAR_VALUE
 _doneAddAmmo:
+    sta playerAmmo
     rts
 
 addHitpoints:
@@ -2035,10 +2069,11 @@ addHitpoints:
     bcc _doneAddHitpoints
     lda #MAX_BAR_VALUE
 _doneAddHitpoints:
+    sta playerhitpoints
     rts
 
 subtractHitpoints:
-    lda #10
+    lda #20
     sta hpDamageFlash
     lda playerHitpoints
     sec
@@ -2047,6 +2082,44 @@ subtractHitpoints:
     lda #0
 _noUnderflow:
     sta playerHitpoints
+    rts
+
+updateKeys:
+    lda playerKeys
+    sta paramA
+    lda #<(KeySpriteStart)
+    sta paramB
+    lda #>(KeySpriteStart)
+    sta paramC
+    jmp updateNumber
+    
+updateNumber:       ; paramA = value, ParamB,ParamC = address
+    ldx paramA
+    lda scoreDigitsOffsets,x
+    tax
+    lda scoreDigits,x
+    ldy #0
+    sta (paramB),y
+    lda scoreDigits+1,x
+    iny
+    iny
+    iny
+    sta (paramB),y
+    lda scoreDigits+2,x
+    iny
+    iny
+    iny
+    sta (paramB),y
+    lda scoreDigits+3,x
+    iny
+    iny
+    iny
+    sta (paramB),y
+    lda scoreDigits+4,x
+    iny
+    iny
+    iny
+    sta (paramB),y
     rts
 
 randomTileTable:
