@@ -196,7 +196,7 @@ int Application::MainLoop()
         else
 #endif
         {
-            if (SDL_PollEvent(&e))
+            while (SDL_PollEvent(&e))
                 HandleEvent(&e);
         }
 
